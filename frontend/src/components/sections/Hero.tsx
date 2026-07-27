@@ -1,3 +1,14 @@
+import {
+  Sparkles,
+  ArrowRight,
+  CheckCircle2,
+  TrendingUp,
+  TriangleAlert,
+  Users,
+  Gauge,
+  Brain,
+} from "../ui/icons";
+
 export default function Hero() {
   return (
     <section className="relative overflow-hidden flex min-h-screen items-center px-6 pt-20">
@@ -16,9 +27,10 @@ export default function Hero() {
         {/* Left */}
         <div className="flex flex-col justify-center">
 
-          <span className="w-fit rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-400">
+          <div className="inline-flex w-fit items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-400">
+            <Sparkles size={16} />
             Powered by AI Decision Intelligence
-          </span>
+          </div>
 
           <h1 className="mt-8 text-5xl font-extrabold leading-tight md:text-7xl">
             Stop Guessing.
@@ -39,8 +51,9 @@ export default function Hero() {
               Join Beta
             </button>
 
-            <button className="rounded-xl border border-slate-700 bg-slate-900 px-8 py-4 transition duration-300 hover:border-cyan-400 hover:bg-slate-800">
+            <button className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-8 py-4 transition duration-300 hover:border-cyan-400 hover:bg-slate-800">
               Watch Demo
+              <ArrowRight size={18} />
             </button>
 
           </div>
@@ -50,11 +63,28 @@ export default function Hero() {
           </p>
 
           {/* Trust Indicators */}
-          <div className="mt-8 flex flex-wrap gap-4 text-sm text-slate-400">
-            <span>✓ AI Recommendations</span>
-            <span>✓ Forecasting</span>
-            <span>✓ CSV Uploads</span>
-            <span>✓ Business Insights</span>
+          <div className="mt-8 flex flex-wrap gap-5 text-sm">
+
+            <div className="flex items-center gap-2 text-slate-300">
+              <CheckCircle2 size={18} className="text-cyan-400" />
+              AI Recommendations
+            </div>
+
+            <div className="flex items-center gap-2 text-slate-300">
+              <CheckCircle2 size={18} className="text-cyan-400" />
+              Forecasting
+            </div>
+
+            <div className="flex items-center gap-2 text-slate-300">
+              <CheckCircle2 size={18} className="text-cyan-400" />
+              CSV Uploads
+            </div>
+
+            <div className="flex items-center gap-2 text-slate-300">
+              <CheckCircle2 size={18} className="text-cyan-400" />
+              Business Insights
+            </div>
+
           </div>
 
         </div>
@@ -64,45 +94,76 @@ export default function Hero() {
 
           <div className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-2xl transition duration-300 hover:-translate-y-2 hover:border-cyan-500">
 
-            <h3 className="mb-8 text-xl font-bold">
+            <h3 className="mb-8 flex items-center gap-2 text-xl font-bold">
+              <Brain className="text-cyan-400" size={24} />
               Live Decision Intelligence
             </h3>
 
             <div className="space-y-5">
 
               <div className="rounded-xl bg-slate-800 p-5">
-                Revenue Forecast
+
+                <div className="flex items-center gap-3">
+                  <TrendingUp className="text-green-400" size={20} />
+                  <span>Revenue Forecast</span>
+                </div>
+
                 <div className="mt-2 text-2xl font-bold text-green-400">
                   +18%
                 </div>
+
               </div>
 
               <div className="rounded-xl bg-slate-800 p-5">
-                Inventory Risk
+
+                <div className="flex items-center gap-3">
+                  <TriangleAlert className="text-yellow-400" size={20} />
+                  <span>Inventory Risk</span>
+                </div>
+
                 <div className="mt-2 text-2xl font-bold text-yellow-400">
                   Low
                 </div>
+
               </div>
 
               <div className="rounded-xl bg-slate-800 p-5">
-                Customer Growth
+
+                <div className="flex items-center gap-3">
+                  <Users className="text-cyan-400" size={20} />
+                  <span>Customer Growth</span>
+                </div>
+
                 <div className="mt-2 text-2xl font-bold text-cyan-400">
                   +24%
                 </div>
+
               </div>
 
               <div className="rounded-xl bg-slate-800 p-5">
-                Operational Efficiency
+
+                <div className="flex items-center gap-3">
+                  <Gauge className="text-green-400" size={20} />
+                  <span>Operational Efficiency</span>
+                </div>
+
                 <div className="mt-2 text-2xl font-bold text-green-400">
                   91%
                 </div>
+
               </div>
 
               <div className="rounded-xl bg-slate-800 p-5">
-                AI Recommendation
+
+                <div className="flex items-center gap-3">
+                  <Brain className="text-cyan-400" size={20} />
+                  <span>AI Recommendation</span>
+                </div>
+
                 <div className="mt-2 text-cyan-400">
                   Increase stock of Product A
                 </div>
+
               </div>
 
             </div>

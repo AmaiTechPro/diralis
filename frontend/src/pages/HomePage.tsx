@@ -8,6 +8,7 @@ import WhyDiralis from "../components/sections/WhyDiralis";
 import DashboardPreview from "../components/sections/DashboardPreview";
 import CTA from "../components/sections/CTA";
 import Footer from "../components/layout/Footer";
+import FAQ from "../components/sections/FAQ";
 
 export default function HomePage() {
   return (
@@ -20,6 +21,9 @@ export default function HomePage() {
       <HowItWorks />
       <WhyDiralis />
       <DashboardPreview />
+      <CTA />
+      <FAQ />
+      <Footer />
     </main>
   );
 }

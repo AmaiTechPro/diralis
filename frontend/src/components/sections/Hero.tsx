@@ -1,3 +1,6 @@
+import { motion } from "framer-motion";
+import FadeIn from "../ui/FadeIn";
+
 import {
   Sparkles,
   ArrowRight,
@@ -25,7 +28,8 @@ export default function Hero() {
       <div className="mx-auto grid max-w-7xl gap-16 lg:grid-cols-2">
 
         {/* Left */}
-        <div className="flex flex-col justify-center">
+        <FadeIn>
+          <div className="flex flex-col justify-center">
 
           <div className="inline-flex w-fit items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-400">
             <Sparkles size={16} />
@@ -36,25 +40,37 @@ export default function Hero() {
             Stop Guessing.
             <br />
             Start
-            <span className="text-cyan-400"> Growing.</span>
+            <span className="text-cyan-400"> Growing Smarter.</span>
           </h1>
 
           <p className="mt-8 max-w-xl text-lg leading-8 text-slate-400">
-            Diralis transforms spreadsheets, sales, inventory,
-            and operational data into AI-powered recommendations,
-            forecasts, and business insights in minutes.
+            Diralis transforms spreadsheets, operational metrics, sales reports, and inventory data into AI-powered recommendations, predictive forecasts, and actionable business insights—helping you make confident decisions in minutes.
+
           </p>
 
           <div className="mt-10 flex flex-wrap gap-5">
 
-            <button className="rounded-xl bg-cyan-500 px-8 py-4 font-semibold text-slate-950 shadow-lg shadow-cyan-500/30 transition duration-300 hover:-translate-y-1 hover:bg-cyan-400">
+          <motion.button
+             whileHover={{ scale: 1.05, y: -3 }}
+              whileTap={{ scale: 0.97 }}
+             className="rounded-xl bg-cyan-500 px-8 py-4 font-semibold text-slate-950 shadow-lg shadow-cyan-500/30 transition"
+>
               Join Beta
-            </button>
+            </motion.button>
+              Join Beta
+          
 
-            <button className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-8 py-4 transition duration-300 hover:border-cyan-400 hover:bg-slate-800">
-              Watch Demo
-              <ArrowRight size={18} />
-            </button>
+            <motion.button
+  whileHover={{ scale: 1.05 }}
+  whileTap={{ scale: 0.97 }}
+  className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-8 py-4 transition hover:border-cyan-400 hover:bg-slate-800"
+>
+  Watch Demo
+  <ArrowRight
+    size={18}
+    className="transition-transform group-hover:translate-x-1"
+  />
+</motion.button>
 
           </div>
 
@@ -88,11 +104,23 @@ export default function Hero() {
           </div>
 
         </div>
+        </FadeIn>
 
         {/* Right */}
-        <div className="flex items-center justify-center">
+        <FadeIn delay={0.25}>
+          <div className="flex items-center justify-center">
 
-          <div className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-2xl transition duration-300 hover:-translate-y-2 hover:border-cyan-500">
+          <motion.div
+         animate={{
+           y: [0, -8, 0],
+               }}
+              transition={{
+             repeat: Infinity,
+              duration: 6,
+              ease: "easeInOut",
+          }}
+           className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-2xl hover:border-cyan-500"
+           ></motion.div>
 
             <h3 className="mb-8 flex items-center gap-2 text-xl font-bold">
               <Brain className="text-cyan-400" size={24} />
@@ -101,8 +129,13 @@ export default function Hero() {
 
             <div className="space-y-5">
 
-              <div className="rounded-xl bg-slate-800 p-5">
-
+              <motion.div
+            whileHover={{
+               scale: 1.03,
+            y: -4,
+           }}
+          className="rounded-xl bg-slate-800 p-5 transition"
+              >
                 <div className="flex items-center gap-3">
                   <TrendingUp className="text-green-400" size={20} />
                   <span>Revenue Forecast</span>
@@ -112,7 +145,7 @@ export default function Hero() {
                   +18%
                 </div>
 
-              </div>
+              </motion.div>
 
               <div className="rounded-xl bg-slate-800 p-5">
 
@@ -170,7 +203,7 @@ export default function Hero() {
 
           </div>
 
-        </div>
+        </FadeIn>
 
       </div>
 

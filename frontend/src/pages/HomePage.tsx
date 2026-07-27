@@ -10,6 +10,7 @@ import CTA from "../components/sections/CTA";
 import Footer from "../components/layout/Footer";
 import FAQ from "../components/sections/FAQ";
 
+
 export default function HomePage() {
   return (
     <main className="bg-slate-950 text-white">
@@ -27,5 +28,3 @@ export default function HomePage() {
     </main>
   );
 }
-
-

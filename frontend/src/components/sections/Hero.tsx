@@ -4,6 +4,7 @@ import FadeIn from "../ui/FadeIn";
 import RevenueChart from "../dashboard/RevenueChart";
 import LiveStatus from "../ui/LiveStatus";
 import AIRecommendation from "../dashboard/AIRecommendation";
+import useLiveMetrics from "../../hooks/useLiveMetrics";
 
 import {
   Sparkles,
@@ -17,6 +18,7 @@ import {
 } from "../ui/icons";
 
 export default function Hero() {
+  const metrics = useLiveMetrics();
   return (
     <section className="relative flex min-h-screen items-center overflow-hidden px-6 pt-20">
 
@@ -127,7 +129,7 @@ export default function Hero() {
 
   <KpiCard
   title="Revenue Forecast"
-  value={18}
+  value={metrics.revenue}
   prefix="+"
   suffix="%"
   icon={<TrendingUp size={20} />}
@@ -144,10 +146,8 @@ export default function Hero() {
 />
 
 <KpiCard
-  title="Customer Growth"
-  value={24}
-  prefix="+"
-  suffix="%"
+  title="Active Customers"
+  value={metrics.customers}
   icon={<Users size={20} />}
   color="text-cyan-400"
   delay={0.2}

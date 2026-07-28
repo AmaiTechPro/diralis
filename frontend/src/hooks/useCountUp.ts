@@ -4,27 +4,58 @@ export default function useCountUp(
   end: number,
   duration: number = 2000
 ) {
+
   const [count, setCount] = useState(0);
 
+
   useEffect(() => {
+
     let start = 0;
 
-    const increment = end / (duration / 16);
+    const startTime = performance.now();
 
-    const timer = setInterval(() => {
-      start += increment;
 
-      if (start >= end) {
-        setCount(end);
-        clearInterval(timer);
+    const update = (currentTime: number) => {
+
+      const elapsed = currentTime - startTime;
+
+      const progress = Math.min(
+        elapsed / duration,
+        1
+      );
+
+
+      const value =
+        start +
+        (end - start) * progress;
+
+
+      setCount(
+        Number(value.toFixed(1))
+      );
+
+
+      if (progress < 1) {
+
+        requestAnimationFrame(update);
+
       } else {
-        setCount(Math.floor(start));
-      }
-    }, 16);
 
-    return () => clearInterval(timer);
+        setCount(end);
+
+      }
+
+    };
+
+
+    requestAnimationFrame(update);
+
+
   }, [end, duration]);
 
+
   return count;
+
 }
+
 

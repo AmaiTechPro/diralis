@@ -51,26 +51,11 @@ export default function KpiCard({
         <div>
           <p className="text-sm text-slate-400">{title}</p>
 
-          {/*<div className="mt-2 text-2xl font-bold text-white">
-            {isNumber ? (
-              <>
-                {prefix}
-                <CountUp
-                  end={value as number}
-                  duration={2}
-                  separator=","
-                  enableScrollSpy
-                  scrollSpyOnce
-                />
-                {suffix}
-              </>
-            ) : (
-              value
-            )}
-          </div> */}
           <div className="mt-2 text-2xl font-bold text-white">
   {prefix}
-  {animatedValue}
+  {typeof animatedValue === "number"
+ ? animatedValue.toFixed(1)
+ : animatedValue}
   {suffix}
 </div>
         </div>

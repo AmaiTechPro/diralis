@@ -1,6 +1,8 @@
 export default function Problem() {
   return (
-    <section className="bg-slate-900 py-28 px-6">
+    <section 
+    id="problem"
+    className="bg-slate-900 py-28 px-6">
 
       <div className="mx-auto max-w-7xl">
 

@@ -33,7 +33,9 @@ export default function FAQ() {
   const [open, setOpen] = useState<number | null>(0);
 
   return (
-    <section className="bg-slate-950 px-6 py-24">
+    <section 
+    id="faq"
+    className="bg-slate-950 px-6 py-24">
 
       <div className="mx-auto max-w-4xl">
 

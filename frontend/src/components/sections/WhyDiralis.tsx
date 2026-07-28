@@ -39,7 +39,9 @@ const reasons = [
 
 export default function WhyDiralis() {
   return (
-    <section className="bg-slate-900 py-28 px-6">
+    <section 
+    id="why-diralis"
+    className="bg-slate-900 py-28 px-6">
       <div className="mx-auto max-w-7xl">
 
         <div className="mx-auto max-w-3xl text-center">

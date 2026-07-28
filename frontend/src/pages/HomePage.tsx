@@ -1,3 +1,5 @@
+
+
 import Navbar from "../components/layout/Navbar";
 import Hero from "../components/sections/Hero";
 import Problem from "../components/sections/Problem";
@@ -9,22 +11,35 @@ import DashboardPreview from "../components/sections/DashboardPreview";
 import CTA from "../components/sections/CTA";
 import Footer from "../components/layout/Footer";
 import FAQ from "../components/sections/FAQ";
+import FadeIn from "../components/ui/FadeIn";
+
+
+
+
+
 
 
 export default function HomePage() {
   return (
     <main className="bg-slate-950 text-white">
       <Navbar />
-      <Hero />
+      <Hero /> 
       <Problem />
       <Solution />
-      <Features />
-      <HowItWorks />
-      <WhyDiralis />
-      <DashboardPreview />
-      <CTA />
-      <FAQ />
-      <Footer />
+      <Features /> 
+      <HowItWorks /> 
+       <WhyDiralis /> 
+      <DashboardPreview /> 
+       <CTA /> 
+       <Footer/> 
+      <FAQ/> 
+      <FadeIn children={undefined}/> 
+
     </main>
   );
 }
+
+
+
+
+

@@ -2,7 +2,9 @@ import Button from "../ui/Button";
 
 export default function CTA() {
   return (
-    <section className="bg-cyan-500 py-24 px-6">
+    <section 
+    id="cta"
+    className="bg-cyan-500 py-24 px-6">
       <div className="mx-auto max-w-4xl text-center">
 
         <h2 className="text-4xl font-extrabold text-slate-950 md:text-6xl">

@@ -3,6 +3,7 @@ import { motion } from "framer-motion";
 import FadeIn from "../ui/FadeIn";
 import RevenueChart from "../dashboard/RevenueChart";
 import LiveStatus from "../ui/LiveStatus";
+import AIRecommendation from "../dashboard/AIRecommendation";
 
 import {
   Sparkles,
@@ -160,63 +161,7 @@ export default function Hero() {
   color="text-green-400"
   delay={0.3}
 />
-
-  <motion.div
-    whileHover={{
-      scale: 1.02,
-      y: -4,
-    }}
-    transition={{ duration: 0.2 }}
-    className="rounded-xl border border-cyan-500/20 bg-slate-800 p-5"
-  >
-    <div className="flex items-center justify-between">
-
-      <div className="flex items-center gap-3">
-        <Brain className="text-cyan-400" size={20} />
-        <span className="font-semibold">
-          AI Recommendation
-        </span>
-      </div>
-
-      <span className="rounded-full bg-red-500/20 px-3 py-1 text-xs font-medium text-red-400">
-        High Priority
-      </span>
-
-    </div>
-
-    <p className="mt-5 font-medium text-cyan-300">
-      Increase stock of Product A
-    </p>
-
-    <p className="mt-2 text-sm text-slate-400">
-      Predicted stock-out within the next 5 days based on recent sales trends.
-    </p>
-
-    <div className="mt-5">
-
-      <div className="mb-2 flex items-center justify-between text-sm">
-        <span className="text-slate-400">
-          AI Confidence
-        </span>
-
-        <span className="font-semibold text-cyan-400">
-          97%
-        </span>
-      </div>
-
-      <div className="h-2 overflow-hidden rounded-full bg-slate-700">
-
-        <motion.div
-          initial={{ width: 0 }}
-          animate={{ width: "97%" }}
-          transition={{ duration: 1.4 }}
-          className="h-full rounded-full bg-cyan-400"
-        />
-
-            </div>
-    </div>
-
-  </motion.div> {/* End AI Recommendation */}
+<AIRecommendation />
 <RevenueChart />  {/* End Revenue Chart */}
 </div> {/* End space-y-5 */}
 

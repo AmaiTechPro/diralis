@@ -12,7 +12,10 @@ import CTA from "../components/sections/CTA";
 import Footer from "../components/layout/Footer";
 import FAQ from "../components/sections/FAQ";
 import FadeIn from "../components/ui/FadeIn";
-
+import SocialProof from "../components/sections/SocialProof";
+import Metrics from "../components/sections/Metrics";
+import Testimonials from "../components/sections/Testimonials";
+import Pricing from "../components/sections/Pricing";
 
 
 
@@ -30,10 +33,15 @@ export default function HomePage() {
       <HowItWorks /> 
        <WhyDiralis /> 
       <DashboardPreview /> 
+      <SocialProof />
+      <Metrics />
+      <Testimonials />
+      <Pricing />
        <CTA /> 
        <Footer/> 
       <FAQ/> 
       <FadeIn children={undefined}/> 
+      
 
     </main>
   );

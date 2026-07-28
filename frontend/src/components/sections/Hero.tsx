@@ -162,7 +162,10 @@ export default function Hero() {
   delay={0.3}
 />
 <AIRecommendation confidence={metrics.confidence} />
-<RevenueChart />  {/* End Revenue Chart */}
+
+<RevenueChart
+  revenueHistory={metrics.revenueHistory}
+        />            {/* End Revenue Chart */}
 </div> {/* End space-y-5 */}
 
 </motion.div> {/* End floating dashboard */}

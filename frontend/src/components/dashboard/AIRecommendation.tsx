@@ -1,5 +1,6 @@
 import { motion } from "framer-motion";
 import { Brain } from "../ui/icons";
+import { dashboardData } from "../../data/dashboardData";
 
 interface AIRecommendationProps {
   confidence: number;
@@ -44,12 +45,12 @@ export default function AIRecommendation({
 
 
       <p className="mt-5 font-medium text-cyan-300">
-        Increase stock of Product A
+       {dashboardData.recommendation.title}
       </p>
 
 
       <p className="mt-2 text-sm text-slate-400">
-        Predicted stock-out within the next 5 days based on recent sales trends.
+        {dashboardData.recommendation.description}
       </p>
 
       <div className="mt-5 space-y-3">
@@ -61,7 +62,7 @@ export default function AIRecommendation({
     </p>
 
     <p className="mt-1 text-sm text-slate-300">
-      Sales velocity increased by 32% and customer demand is trending upward.
+      {dashboardData.recommendation.reason}
     </p>
 
   </div>
@@ -74,7 +75,7 @@ export default function AIRecommendation({
     </p>
 
     <p className="mt-1 font-semibold text-cyan-300">
-      +12% Revenue Protection
+      {dashboardData.recommendation.impact}
     </p>
 
   </div>
@@ -109,9 +110,7 @@ export default function AIRecommendation({
 
 
     <span className="text-sm text-green-300">
-      {confidence > 90
-        ? "Prediction Engine Healthy"
-        : "Model Recalibrating"}
+      {dashboardData.model.name} {dashboardData.model.status}
       
     </span>
 

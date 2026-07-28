@@ -1,5 +1,4 @@
 
-
 import Navbar from "../components/layout/Navbar";
 import Hero from "../components/sections/Hero";
 import Problem from "../components/sections/Problem";
@@ -16,7 +15,7 @@ import SocialProof from "../components/sections/SocialProof";
 import Metrics from "../components/sections/Metrics";
 import Testimonials from "../components/sections/Testimonials";
 import Pricing from "../components/sections/Pricing";
-
+import FeatureComparison from "../components/sections/FeatureComparison";
 
 
 
@@ -37,6 +36,7 @@ export default function HomePage() {
       <Metrics />
       <Testimonials />
       <Pricing />
+      <FeatureComparison />
        <CTA /> 
        <Footer/> 
       <FAQ/> 

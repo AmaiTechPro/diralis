@@ -2,6 +2,7 @@ import KpiCard from "../ui/KpiCard";
 import { motion } from "framer-motion";
 import FadeIn from "../ui/FadeIn";
 import RevenueChart from "../dashboard/RevenueChart";
+import LiveStatus from "../ui/LiveStatus";
 
 import {
   Sparkles,
@@ -120,6 +121,8 @@ export default function Hero() {
               
 
               <div className="space-y-5">
+
+  <LiveStatus />
 
   <KpiCard
   title="Revenue Forecast"

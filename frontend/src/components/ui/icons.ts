@@ -1,4 +1,5 @@
 export {
+  Activity,
   ArrowRight,
   ArrowUpRight,
   BarChart3,

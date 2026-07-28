@@ -161,7 +161,7 @@ export default function Hero() {
   color="text-green-400"
   delay={0.3}
 />
-<AIRecommendation />
+<AIRecommendation confidence={metrics.confidence} />
 <RevenueChart />  {/* End Revenue Chart */}
 </div> {/* End space-y-5 */}
 

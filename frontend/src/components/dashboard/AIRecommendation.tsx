@@ -1,7 +1,15 @@
 import { motion } from "framer-motion";
 import { Brain } from "../ui/icons";
 
-export default function AIRecommendation() {
+interface AIRecommendationProps {
+  confidence: number;
+}
+
+export default function AIRecommendation({
+  confidence,
+}: AIRecommendationProps) {
+
+
   return (
     <motion.div
       whileHover={{
@@ -82,10 +90,9 @@ export default function AIRecommendation() {
             AI Confidence
           </span>
 
-
           <span className="font-semibold text-cyan-400">
-            97%
-          </span>
+            {confidence.toFixed(1)}%
+           </span>
 
         </div>
         <div className="mt-5 flex items-center justify-between rounded-lg border border-green-500/20 bg-green-500/5 px-3 py-2">
@@ -102,7 +109,10 @@ export default function AIRecommendation() {
 
 
     <span className="text-sm text-green-300">
-      Prediction Engine Healthy
+      {confidence > 90
+        ? "Prediction Engine Healthy"
+        : "Model Recalibrating"}
+      
     </span>
 
   </div>
@@ -119,11 +129,11 @@ export default function AIRecommendation() {
 
           <motion.div
             initial={{
-              width: 0,
-            }}
-            animate={{
-              width: "97%",
-            }}
+            width: 0,
+              }}
+           animate={{
+             width: `${confidence}%`,
+             }}
             transition={{
               duration: 1.4,
             }}

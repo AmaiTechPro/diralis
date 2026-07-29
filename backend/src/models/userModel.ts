@@ -1,17 +1,13 @@
 export interface User {
   id: string;
-
   fullName: string;
-
   username: string;
-
   email: string;
-
-  password: string;
-
+  password?: string;
   provider: "local" | "google";
-
-  createdAt: Date;
+  googleId?: string;
+  picture?: string;
+  createdAt: string;
 }
 
 const users: User[] = [];
@@ -20,34 +16,25 @@ export function getUsers() {
   return users;
 }
 
+export function addUser(user: User) {
+  users.push(user);
+}
+
 export function findUserByEmail(email: string) {
   return users.find(
-    (user) =>
-      user.email.toLowerCase() === email.toLowerCase()
+    (user) => user.email.toLowerCase() === email.toLowerCase()
   );
 }
 
 export function findUserByUsername(username: string) {
   return users.find(
-    (user) =>
-      user.username.toLowerCase() ===
-      username.toLowerCase()
+    (user) => user.username.toLowerCase() === username.toLowerCase()
   );
 }
 
-export function findUserByIdentifier(
-  identifier: string
-) {
-  const value = identifier.toLowerCase();
-
+export function findUserByGoogleId(googleId: string) {
   return users.find(
-    (user) =>
-      user.email.toLowerCase() === value ||
-      user.username.toLowerCase() === value
+    (user) => user.googleId === googleId
   );
-}
-
-export function addUser(user: User) {
-  users.push(user);
 }
 

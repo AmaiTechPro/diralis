@@ -1,6 +1,6 @@
 import { useState } from "react";
 import { Link, useNavigate } from "react-router-dom";
-
+import GoogleLoginButton from "../components/auth/GoogleLoginButton";
 import { register as registerApi } from "../api/auth";
 import { useAuth } from "../context/AuthContext";
 
@@ -136,12 +136,18 @@ export default function Register() {
               : "Create Account"}
           </button>
 
-          <button
-            type="button"
-            className="w-full rounded-xl border border-slate-700 p-3 transition hover:border-slate-500"
-          >
-            Continue with Google
-          </button>
+          <div className="my-4 flex items-center">
+            <div className="h-px flex-1 bg-slate-700" />
+            <span className="px-3 text-sm text-slate-500">
+            OR
+          </span>
+         <div className="h-px flex-1 bg-slate-700" />
+           </div>
+
+        <div className="flex justify-center">
+            <GoogleLoginButton />
+            </div>
+
         </div>
 
         <div className="mt-8 text-center text-sm text-slate-400">

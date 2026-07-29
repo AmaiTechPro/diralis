@@ -1,4 +1,5 @@
 import { Request, Response } from "express";
+import { loginWithGoogle, verifyGoogleToken } from "../services/googleAuthService";
 import {
   registerUser,
   loginUser,
@@ -47,6 +48,29 @@ export async function login(
     );
 
     res.status(200).json(result);
+  } catch (error) {
+    res.status(401).json({
+      error: (error as Error).message,
+    });
+  }
+}
+
+export async function googleLogin(
+  req: Request,
+  res: Response
+  )
+ {
+  try {
+    const { credential } = req.body;
+
+    if (!credential) {
+      return res.status(400).json({
+        error: "Google credential is required.",
+      });
+    }
+
+    const result = await loginWithGoogle(credential);
+    res.json(result);
   } catch (error) {
     res.status(401).json({
       error: (error as Error).message,

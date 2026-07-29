@@ -34,13 +34,5 @@ app.get("/health", (_req, res) => {
   });
 });
 
-app.get("/health", (_req, res) => {
-  res.json({
-    status: "OK",
-    uptime: process.uptime(),
-    timestamp: new Date().toISOString(),
-  });
-});
-
 export default app;
 

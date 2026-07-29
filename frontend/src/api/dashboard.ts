@@ -1,3 +1,5 @@
+import { apiFetch } from "./apiClient";
+
 export interface DashboardData {
   revenueForecast: number;
   customerGrowth: number;
@@ -17,16 +19,7 @@ export interface DashboardData {
   }[];
 }
 
-const API_URL = "http://localhost:5000/api/dashboard";
-
-export async function getDashboardData(): Promise<DashboardData> {
-  const response = await fetch(API_URL);
-
-  if (!response.ok) {
-    throw new Error("Failed to fetch dashboard data");
-  }
-
-  return response.json();
+export function getDashboardData() {
+  return apiFetch<DashboardData>("/dashboard");
 }
-
 

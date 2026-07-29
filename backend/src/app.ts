@@ -12,11 +12,25 @@ app.use(morgan("dev"));
 app.use(express.json());
 
 // Routes
+import routes from "./routes/index.routes";
+
+// ...
+
 app.get("/", (_req, res) => {
   res.json({
     success: true,
     message: "Welcome to the Diralis API 🚀",
     version: "1.0.0",
+  });
+});
+
+app.use("/api", routes);
+
+app.get("/health", (_req, res) => {
+  res.json({
+    status: "OK",
+    uptime: process.uptime(),
+    timestamp: new Date().toISOString(),
   });
 });
 

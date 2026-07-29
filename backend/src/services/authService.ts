@@ -1,31 +1,35 @@
 import bcrypt from "bcryptjs";
 import { randomUUID } from "crypto";
+
 import { generateToken } from "../utils/jwt";
 
+import {
+  addUser,
+  findUserByEmail,
+  findUserByUsername,
+  findUserByIdentifier,
+  User,
+} from "../models/userModel";
 
 type AuthResponse = {
   user: Omit<User, "password">;
   token: string;
 };
 
-
-import {
-  addUser,
-  findUserByEmail,
-  User,
-} from "../models/userModel";
-
 const SALT_ROUNDS = 10;
 
 export async function registerUser(
-  name: string,
+  fullName: string,
+  username: string,
   email: string,
   password: string
 ): Promise<AuthResponse> {
-  const existingUser = findUserByEmail(email);
-
-  if (existingUser) {
+  if (findUserByEmail(email)) {
     throw new Error("Email already registered.");
+  }
+
+  if (findUserByUsername(username)) {
+    throw new Error("Username already taken.");
   }
 
   const hashedPassword = await bcrypt.hash(
@@ -35,31 +39,34 @@ export async function registerUser(
 
   const user: User = {
     id: randomUUID(),
-    name,
+    fullName,
+    username,
     email,
     password: hashedPassword,
+    provider: "local",
+    createdAt: new Date(),
   };
 
   addUser(user);
 
-  const token = generateToken(user.id);
+  const { password: _, ...safeUser } = user;
 
-const { password: _, ...safeUser } = user;
-
-return {
-  user: safeUser,
-  token,
-};
+  return {
+    user: safeUser,
+    token: generateToken(user.id),
+  };
 }
 
 export async function loginUser(
-  email: string,
+  identifier: string,
   password: string
 ): Promise<AuthResponse> {
-  const user = findUserByEmail(email);
+  const user = findUserByIdentifier(identifier);
 
   if (!user) {
-    throw new Error("Invalid email or password.");
+    throw new Error(
+      "Invalid username/email or password."
+    );
   }
 
   const passwordMatches = await bcrypt.compare(
@@ -68,17 +75,17 @@ export async function loginUser(
   );
 
   if (!passwordMatches) {
-    throw new Error("Invalid email or password.");
+    throw new Error(
+      "Invalid username/email or password."
+    );
   }
 
-  const token = generateToken(user.id);
+  const { password: _, ...safeUser } = user;
 
-const { password: _, ...safeUser } = user;
-
-return {
-  user: safeUser,
-  token,
-};
+  return {
+    user: safeUser,
+    token: generateToken(user.id),
+  };
 }
 
 

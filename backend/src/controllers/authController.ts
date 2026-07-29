@@ -9,10 +9,16 @@ export async function register(
   res: Response
 ) {
   try {
-    const { name, email, password } = req.body;
+    const {
+      fullName,
+      username,
+      email,
+      password,
+    } = req.body;
 
     const result = await registerUser(
-      name,
+      fullName,
+      username,
       email,
       password
     );
@@ -30,14 +36,17 @@ export async function login(
   res: Response
 ) {
   try {
-    const { email, password } = req.body;
+    const {
+      identifier,
+      password,
+    } = req.body;
 
     const result = await loginUser(
-      email,
+      identifier,
       password
     );
 
-    res.json(result);
+    res.status(200).json(result);
   } catch (error) {
     res.status(401).json({
       error: (error as Error).message,

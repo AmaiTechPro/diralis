@@ -1,6 +1,7 @@
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "framer-motion";
 import { Menu, X } from "../ui/icons";
+import ThemeToggle from "../ui/ThemeToggle";
 
 const navItems = [
   { label: "Features", href: "#features" },
@@ -133,7 +134,7 @@ export default function Navbar() {
                   {item.label}
                 </a>
               ))}
-
+              <ThemeToggle />
               <button className="rounded-xl bg-cyan-500 px-6 py-3 font-semibold text-slate-950">
                 Join Beta
               </button>

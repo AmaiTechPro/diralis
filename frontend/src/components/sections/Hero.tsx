@@ -5,6 +5,9 @@ import RevenueChart from "../dashboard/RevenueChart";
 import LiveStatus from "../ui/LiveStatus";
 import AIRecommendation from "../dashboard/AIRecommendation";
 import useLiveMetrics from "../../hooks/useLiveMetrics";
+import { useDashboard } from "../../hooks/useDashboard";
+
+
 
 import {
   Sparkles,
@@ -14,11 +17,62 @@ import {
   TriangleAlert,
   Users,
   Gauge,
-  Brain,
 } from "../ui/icons";
 
 export default function Hero() {
-  const metrics = useLiveMetrics();
+  const { dashboardData, loading, error } = useDashboard();
+
+  const metrics = useLiveMetrics({
+    revenue: dashboardData?.revenueForecast ?? 18,
+    customers: dashboardData?.customerGrowth ?? 24381,
+    efficiency: dashboardData?.operationalEfficiency ?? 91,
+    confidence: dashboardData?.aiConfidence ?? 97,
+  });
+
+  if (loading) {
+    return (
+      <section className="flex min-h-screen items-center justify-center">
+        <p className="text-lg text-slate-400">
+          Loading dashboard...
+        </p>
+      </section>
+    );
+  }
+
+  if (error || !dashboardData) {
+    return (
+      <section className="flex min-h-screen items-center justify-center">
+        <p className="text-lg text-red-400">
+          Failed to load dashboard.
+        </p>
+      </section>
+    );
+  }
+
+  {/*return (
+
+
+  if (loading) {
+  return (
+    <section className="flex min-h-screen items-center justify-center">
+      <p className="text-slate-400 text-lg">
+        Loading dashboard...
+      </p>
+    </section>
+  );
+}
+
+if (error || !dashboardData) {
+  return (
+    <section className="flex min-h-screen items-center justify-center">
+      <p className="text-red-400 text-lg">
+        Failed to load dashboard.
+      </p>
+    </section>
+  );
+ */}
+
+
   return (
     <section className="relative flex min-h-screen items-center overflow-hidden px-6 pt-20">
 
@@ -139,7 +193,7 @@ export default function Hero() {
 
 <KpiCard
   title="Inventory Risk"
-  value="Low"
+  value={dashboardData.inventoryRisk}
   icon={<TriangleAlert size={20} />}
   color="text-yellow-400"
   delay={0.1}
@@ -155,7 +209,7 @@ export default function Hero() {
 
 <KpiCard
   title="Operational Efficiency"
-  value={91}
+  value={metrics.efficiency}
   suffix="%"
   icon={<Gauge size={20} />}
   color="text-green-400"

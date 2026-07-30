@@ -4,6 +4,7 @@ export interface User {
   username: string;
   email: string;
   provider: "local" | "google";
+  picture: string | null;
   createdAt: string;
 }
 
@@ -11,3 +12,4 @@ export interface AuthResponse {
   user: User;
   token: string;
 }
+

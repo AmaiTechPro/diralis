@@ -10,11 +10,12 @@
     "preview": "vite preview"
   },
   "dependencies": {
+    "@headlessui/react": "^2.2.10",
     "@react-oauth/google": "^0.13.5",
     "@tailwindcss/vite": "^4.3.3",
     "clsx": "^2.1.1",
     "framer-motion": "^12.42.2",
-    "lucide-react": "^1.27.0",
+    "lucide-react": "^1.28.0",
     "next-themes": "^0.4.6",
     "react": "^19.2.7",
     "react-countup": "^6.5.3",

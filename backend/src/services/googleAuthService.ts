@@ -1,5 +1,8 @@
 import { OAuth2Client } from "google-auth-library";
 
+import prisma from "../lib/prisma";
+import { generateToken } from "../utils/jwt";
+
 const client = new OAuth2Client(
   process.env.GOOGLE_CLIENT_ID
 );
@@ -33,16 +36,6 @@ export async function verifyGoogleToken(
   };
 }
 
-import { randomUUID } from "crypto";
-
-import {
-  User,
-  addUser,
-  findUserByEmail,
-} from "../models/userModel";
-
-import { generateToken } from "../utils/jwt";
-
 export async function loginWithGoogle(
   credential: string
 ) {
@@ -50,41 +43,62 @@ export async function loginWithGoogle(
     await verifyGoogleToken(credential);
 
   let user =
-    findUserByEmail(googleUser.email);
+    await prisma.user.findUnique({
+      where: {
+        email: googleUser.email,
+      },
+    });
 
   if (!user) {
-    user = {
-      id: randomUUID(),
-      fullName: googleUser.fullName,
+    let username =
+      googleUser.email
+        .split("@")[0]
+        .toLowerCase();
 
-      username:
-        googleUser.email
+    // Ensure username is unique
+    let counter = 1;
+
+    while (
+      await prisma.user.findUnique({
+        where: { username },
+      })
+    ) {
+      username =
+        `${googleUser.email
           .split("@")[0]
-          .toLowerCase(),
+          .toLowerCase()}${counter}`;
 
-      email: googleUser.email,
+      counter++;
+    }
 
-      provider: "google",
-
-      googleId: googleUser.googleId,
-
-      picture: googleUser.picture,
-
-      createdAt:
-        new Date().toISOString(),
-    };
-
-    addUser(user);
+    user =
+      await prisma.user.create({
+        data: {
+          fullName: googleUser.fullName,
+          username,
+          email: googleUser.email,
+          provider: "google",
+          googleId: googleUser.googleId,
+          picture: googleUser.picture,
+        },
+      });
   }
 
   const token =
     generateToken(user.id);
 
   return {
-    user,
+    user: {
+      id: user.id,
+      fullName: user.fullName,
+      username: user.username,
+      email: user.email,
+      provider: user.provider,
+      picture: user.picture,
+      createdAt: user.createdAt,
+    },
     token,
   };
 }
-
 
 

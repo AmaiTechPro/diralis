@@ -1,18 +1,18 @@
 import bcrypt from "bcryptjs";
-import { randomUUID } from "crypto";
 
+import prisma from "../lib/prisma";
 import { generateToken } from "../utils/jwt";
 
-import {
-  addUser,
-  findUserByEmail,
-  findUserByUsername,
-  findUserByIdentifier,
-  User,
-} from "../models/userModel";
-
 type AuthResponse = {
-  user: Omit<User, "password">;
+  user: {
+    id: string;
+    fullName: string;
+    username: string;
+    email: string;
+    provider: string;
+    picture: string | null;
+    createdAt: Date;
+  };
   token: string;
 };
 
@@ -24,11 +24,20 @@ export async function registerUser(
   email: string,
   password: string
 ): Promise<AuthResponse> {
-  if (findUserByEmail(email)) {
+  const existingEmail = await prisma.user.findUnique({
+    where: { email },
+  });
+
+  if (existingEmail) {
     throw new Error("Email already registered.");
   }
 
-  if (findUserByUsername(username)) {
+  const existingUsername =
+    await prisma.user.findUnique({
+      where: { username },
+    });
+
+  if (existingUsername) {
     throw new Error("Username already taken.");
   }
 
@@ -37,22 +46,26 @@ export async function registerUser(
     SALT_ROUNDS
   );
 
-  const user: User = {
-    id: randomUUID(),
-    fullName,
-    username,
-    email,
-    password: hashedPassword,
-    provider: "local",
-    createdAt: new Date(),
-  };
-
-  addUser(user);
-
-  const { password: _, ...safeUser } = user;
+  const user = await prisma.user.create({
+    data: {
+      fullName,
+      username,
+      email,
+      password: hashedPassword,
+      provider: "local",
+    },
+  });
 
   return {
-    user: safeUser,
+    user: {
+      id: user.id,
+      fullName: user.fullName,
+      username: user.username,
+      email: user.email,
+      provider: user.provider,
+      picture: user.picture,
+      createdAt: user.createdAt,
+    },
     token: generateToken(user.id),
   };
 }
@@ -61,18 +74,27 @@ export async function loginUser(
   identifier: string,
   password: string
 ): Promise<AuthResponse> {
-  const user = findUserByIdentifier(identifier);
+  const user =
+    await prisma.user.findFirst({
+      where: {
+        OR: [
+          { email: identifier },
+          { username: identifier },
+        ],
+      },
+    });
 
-  if (!user) {
+  if (!user || !user.password) {
     throw new Error(
       "Invalid username/email or password."
     );
   }
 
-  const passwordMatches = await bcrypt.compare(
-    password,
-    user.password
-  );
+  const passwordMatches =
+    await bcrypt.compare(
+      password,
+      user.password
+    );
 
   if (!passwordMatches) {
     throw new Error(
@@ -80,10 +102,16 @@ export async function loginUser(
     );
   }
 
-  const { password: _, ...safeUser } = user;
-
   return {
-    user: safeUser,
+    user: {
+      id: user.id,
+      fullName: user.fullName,
+      username: user.username,
+      email: user.email,
+      provider: user.provider,
+      picture: user.picture,
+      createdAt: user.createdAt,
+    },
     token: generateToken(user.id),
   };
 }

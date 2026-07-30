@@ -1,80 +1,40 @@
 import { Request, Response } from "express";
 
-import prisma from "../config/prisma";
-
-import { profileDataset } from "../services/profiler/profileDataset";
-
-import { parseDataset } from "../services/parser/parseDataset";
-
-
+import { generateDatasetProfile } from "../services/analyticsService";
 
 export async function getDatasetProfile(
   req: Request,
   res: Response
 ) {
-
   try {
+    const id = Array.isArray(req.params.id)
+      ? req.params.id[0]
+      : req.params.id;
 
-    const { id } = req.params;
-
-
-
-    const dataset =
-      await prisma.dataset.findUnique({
-        where:{
-          id
-        }
+    if (!id) {
+      return res.status(400).json({
+        success: false,
+        message: "Dataset ID is required.",
       });
-
-
-
-    if(!dataset){
-
-      return res.status(404).json({
-        message:"Dataset not found"
-      });
-
     }
 
+    const result =
+      await generateDatasetProfile(id);
 
-
-    const rows =
-      await parseDataset(
-        dataset.filePath
-      );
-
-
-
-    const profile =
-      profileDataset(rows);
-
-
-
-    return res.json({
-
-      dataset:{
-        id:dataset.id,
-        name:dataset.name
-      },
-
-
-      profile
-
+    return res.status(200).json({
+      success: true,
+      data: result,
     });
 
-
-  } catch(error){
-
-
+  } catch (error) {
     console.error(error);
 
-
     return res.status(500).json({
-      message:"Failed to generate profile"
+      success: false,
+      message:
+        error instanceof Error
+          ? error.message
+          : "Failed to generate analytics profile.",
     });
-
-
   }
-
 }
-

@@ -14,17 +14,22 @@ interface RawPreview {
 }
 
 export async function previewDataset(
-  id: string
+  id: string,
+  userId: string
 ): Promise<PreviewResult> {
+
   const dataset =
-    await prisma.dataset.findUnique({
+    await prisma.dataset.findFirst({
       where: {
         id,
+        userId,
       },
     });
 
   if (!dataset) {
-    throw new Error("Dataset not found.");
+    throw new Error(
+      "Dataset not found."
+    );
   }
 
   const filePath = path.join(
@@ -39,38 +44,58 @@ export async function previewDataset(
   let preview: RawPreview;
 
   if (extension === ".csv") {
+
     preview =
       await previewCSV(filePath);
+
   } else if (
     extension === ".xlsx" ||
     extension === ".xls"
   ) {
+
     preview =
       previewExcel(filePath);
+
   } else {
+
     throw new Error(
       "Unsupported dataset format."
     );
+
   }
 
   return {
-    fileName: dataset.originalName,
-    fileType: extension.replace(".", ""),
-    fileSize: dataset.size,
 
-    columns: preview.columns,
-    rows: preview.rows,
+    fileName:
+      dataset.originalName,
 
-    rowCount: preview.rowCount,
+    fileType:
+      extension.replace(".", ""),
+
+    fileSize:
+      dataset.size,
+
+    columns:
+      preview.columns,
+
+    rows:
+      preview.rows,
+
+    rowCount:
+      preview.rowCount,
+
     columnCount:
       preview.columns.length,
+
   };
 }
 
 async function previewCSV(
   filePath: string
 ): Promise<RawPreview> {
+
   return new Promise((resolve, reject) => {
+
     const rows: Record<
       string,
       unknown
@@ -88,28 +113,35 @@ async function previewCSV(
       })
 
       .on("data", (row) => {
+
         totalRows++;
 
         if (rows.length < 50) {
           rows.push(row);
         }
+
       })
 
       .on("end", () => {
+
         resolve({
           columns,
           rows,
           rowCount: totalRows,
         });
+
       })
 
       .on("error", reject);
+
   });
+
 }
 
 function previewExcel(
   filePath: string
 ): RawPreview {
+
   const workbook =
     XLSX.readFile(filePath);
 
@@ -124,6 +156,7 @@ function previewExcel(
     >(sheet);
 
   return {
+
     columns:
       json.length > 0
         ? Object.keys(json[0])
@@ -134,6 +167,7 @@ function previewExcel(
 
     rowCount:
       json.length,
-  };
-}
 
+  };
+
+}

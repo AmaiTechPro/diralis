@@ -26,8 +26,12 @@ export async function login(
   });
 
   if (!response.ok) {
-    throw new Error("Invalid username/email or password.");
-  }
+  const error = await response.json();
+
+  throw new Error(
+    error.error || "Login failed."
+  );
+}
 
   return response.json();
 }
@@ -44,8 +48,12 @@ export async function register(
   });
 
   if (!response.ok) {
-    throw new Error("Registration failed.");
-  }
+  const error = await response.json();
+
+  throw new Error(
+    error.error || "Registration failed."
+  );
+}
 
   return response.json();
 }

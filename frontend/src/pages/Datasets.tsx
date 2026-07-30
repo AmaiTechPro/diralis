@@ -4,16 +4,21 @@ import AppLayout from "../components/layout/AppLayout";
 import UploadZone from "../components/upload/UploadZone";
 import UploadCard from "../components/upload/UploadCard";
 import UploadProgress from "../components/upload/UploadProgress";
+
 import DatasetCard from "../components/datasets/DatasetCard";
 import DatasetPreviewModal from "../components/datasets/DatasetPreviewModal";
+
+import AnalyticsModal from "../components/analytics/AnalyticsModal";
 
 import { uploadDataset } from "../api/upload";
 import { fetchDatasets } from "../api/dataset";
 import { deleteDataset } from "../api/deleteDataset";
 import { previewDataset } from "../api/previewDataset";
+import { getDatasetProfile } from "../api/profile";
 
 import type { Dataset } from "../types/dataset";
 import type { PreviewResult } from "../types/preview";
+import type { DatasetProfile } from "../types/profile";
 
 export default function Datasets() {
   const [selectedFile, setSelectedFile] =
@@ -40,13 +45,20 @@ export default function Datasets() {
   const [previewLoading, setPreviewLoading] =
     useState(false);
 
+  const [analyticsOpen, setAnalyticsOpen] =
+    useState(false);
+
+  const [analyticsLoading, setAnalyticsLoading] =
+    useState(false);
+
+  const [profile, setProfile] =
+    useState<DatasetProfile | null>(null);
+
   async function loadDatasets() {
     try {
-      const data =
-        await fetchDatasets();
+      const data = await fetchDatasets();
 
       setDatasets(data);
-
     } catch (err) {
       console.error(err);
     }
@@ -66,8 +78,9 @@ export default function Datasets() {
 
     const timer = setInterval(() => {
       setProgress((current) => {
-        if (current >= 90)
+        if (current >= 90) {
           return current;
+        }
 
         return current + 10;
       });
@@ -110,10 +123,9 @@ export default function Datasets() {
   async function handleDelete(
     id: string
   ) {
-    const confirmed =
-      window.confirm(
-        "Are you sure you want to delete this dataset?"
-      );
+    const confirmed = window.confirm(
+      "Are you sure you want to delete this dataset?"
+    );
 
     if (!confirmed) return;
 
@@ -155,6 +167,33 @@ export default function Datasets() {
 
     } finally {
       setPreviewLoading(false);
+    }
+  }
+
+  async function handleAnalyze(
+    id: string
+  ) {
+    try {
+      setAnalyticsOpen(true);
+
+      setAnalyticsLoading(true);
+
+      const result =
+        await getDatasetProfile(id);
+
+      setProfile(result);
+
+    } catch (err) {
+      console.error(err);
+
+      setProfile(null);
+
+      setError(
+        "Failed to generate dataset analytics."
+      );
+
+    } finally {
+      setAnalyticsLoading(false);
     }
   }
 
@@ -249,6 +288,7 @@ export default function Datasets() {
                 key={dataset.id}
                 dataset={dataset}
                 onPreview={handlePreview}
+                onAnalyze={handleAnalyze}
                 onDelete={handleDelete}
               />
 
@@ -268,6 +308,16 @@ export default function Datasets() {
           }
         />
       )}
+
+      <AnalyticsModal
+        open={analyticsOpen}
+        onClose={() => {
+          setAnalyticsOpen(false);
+          setProfile(null);
+        }}
+        loading={analyticsLoading}
+        profile={profile}
+      />
 
     </AppLayout>
   );

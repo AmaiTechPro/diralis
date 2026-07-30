@@ -1,6 +1,7 @@
 import { Router } from "express";
 
 import { upload } from "../middleware/uploadMiddleware";
+import { authenticate } from "../middleware/authMiddleware";
 
 import {
   uploadDataset,
@@ -10,6 +11,9 @@ import {
 } from "../controllers/datasetController";
 
 const router = Router();
+
+// All dataset routes require authentication
+router.use(authenticate);
 
 router.get("/", getDatasets);
 

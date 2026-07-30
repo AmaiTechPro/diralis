@@ -2,9 +2,7 @@ import { GoogleLogin } from "@react-oauth/google";
 import { useNavigate } from "react-router-dom";
 
 import { useAuth } from "../../context/AuthContext";
-
-const API_URL =
-  `${import.meta.env.VITE_API_URL}/auth/google`;
+import { googleLogin } from "../../api/googleAuth";
 
 export default function GoogleLoginButton() {
   const navigate = useNavigate();
@@ -15,42 +13,32 @@ export default function GoogleLoginButton() {
     credentialResponse: any
   ) {
     try {
-      const response = await fetch(API_URL, {
-        method: "POST",
-
-        headers: {
-          "Content-Type": "application/json",
-        },
-
-        body: JSON.stringify({
-          credential: credentialResponse.credential,
-        }),
-      });
-
-      if (!response.ok) {
-        throw new Error("Google login failed.");
+      if (!credentialResponse.credential) {
+        throw new Error("Google did not return a credential.");
       }
 
-      const result = await response.json();
+      const result = await googleLogin(
+        credentialResponse.credential
+      );
 
       login(result.user, result.token);
 
       navigate("/");
-
     } catch (error) {
-      console.error(error);
+      console.error("Google Login Error:", error);
     }
   }
 
   return (
     <GoogleLogin
       onSuccess={handleSuccess}
-      onError={() =>
-        console.log("Google Login Failed")
-      }
+      onError={() => {
+        console.error("Google Login Failed");
+      }}
       useOneTap={false}
     />
   );
 }
+
 
 

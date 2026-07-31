@@ -86,7 +86,7 @@ export default function Footer() {
           </p>
 
           <p>
-            Designed & Built by AmaiTechPro
+            Designed & Built by Brian David Amai
           </p>
 
         </div>

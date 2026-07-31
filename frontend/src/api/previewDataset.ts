@@ -1,20 +1,9 @@
-const API_URL =
-  "http://localhost:5000/api/datasets";
+import { apiFetch } from "./client";
+import type { PreviewResult } from "../types/preview";
 
 export async function previewDataset(
   id: string
-) {
-  const response = await fetch(
-    `${API_URL}/${id}/preview`
-  );
-
-  if (!response.ok) {
-    throw new Error(
-      "Failed to load dataset preview."
-    );
-  }
-
-  return response.json();
+): Promise<PreviewResult> {
+  return apiFetch(`/datasets/${id}/preview`);
 }
-
 

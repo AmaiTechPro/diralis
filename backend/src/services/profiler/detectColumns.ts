@@ -1,100 +1,79 @@
-import { ColumnProfile } from "../../types/profile";
-
-
-function detectType(value: unknown):
-"number" | "string" | "boolean" | "date" {
+function detectType(
+  value: unknown
+): "number" | "string" | "boolean" | "date" {
 
   if (typeof value === "number") {
     return "number";
   }
 
-
   if (typeof value === "boolean") {
     return "boolean";
   }
 
-
   if (typeof value === "string") {
 
-    const date = Date.parse(value);
+    const trimmed = value.trim();
 
-    if (!isNaN(date)) {
+    if (trimmed === "") {
+      return "string";
+    }
+
+    // Detect numeric strings
+    if (!isNaN(Number(trimmed))) {
+      return "number";
+    }
+
+    // Detect dates
+    if (!isNaN(Date.parse(trimmed))) {
       return "date";
     }
 
     return "string";
   }
 
-
   return "string";
 }
 
 
-export function detectColumns(
-  rows: Record<string, unknown>[]
-): ColumnProfile[] {
+export function detectColumns(rows: Record<string, unknown>[]) {
 
-
-  if (!rows.length) {
+  if (!rows || rows.length === 0) {
     return [];
   }
 
-
   const columns = Object.keys(rows[0]);
-
 
   return columns.map((column) => {
 
+    const sampleValues = rows
+      .slice(0, 100)
+      .map(row => row[column])
+      .filter(value => value !== null && value !== undefined);
 
-    const values = rows.map(
-      row => row[column]
+
+    const detectedTypes = sampleValues.map(detectType);
+
+    const typeFrequency = detectedTypes.reduce(
+      (acc, type) => {
+        acc[type] = (acc[type] || 0) + 1;
+        return acc;
+      },
+      {} as Record<string, number>
     );
 
 
-    const firstValidValue =
-      values.find(
-        value => value !== null &&
-                 value !== undefined &&
-                 value !== ""
-      );
-
-
-    const type = detectType(firstValidValue);
-
-
-    const uniqueValues =
-      new Set(
-        values.filter(
-          value =>
-            value !== null &&
-            value !== undefined
-        )
-      );
-
-
-    const missing =
-      values.filter(
-        value =>
-          value === null ||
-          value === undefined ||
-          value === ""
-      ).length;
-
+    const dominantType = Object.entries(typeFrequency)
+      .sort((a, b) => b[1] - a[1])[0]?.[0] ?? "string";
 
 
     return {
-
       name: column,
-
-      type,
-
-      missing,
-
-      unique: uniqueValues.size
-
+      type: dominantType,
+      samples: sampleValues.slice(0, 5),
+      uniqueValues: new Set(sampleValues.map(String)).size,
+      nullCount:
+        rows.length - sampleValues.length
     };
-
   });
-
 }
 

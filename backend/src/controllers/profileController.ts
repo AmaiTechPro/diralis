@@ -18,13 +18,31 @@ export async function getDatasetProfile(
       });
     }
 
-    const result =
+    {/*const result =
       await generateDatasetProfile(id);
 
     return res.status(200).json({
       success: true,
       data: result,
-    });
+    }); */}
+
+
+    {/* For testing purposes, we will return a mock response. */}
+
+    const result =
+  await generateDatasetProfile(id);
+
+console.log(
+  "GENERATED PROFILE:",
+  JSON.stringify(result, null, 2)
+);
+
+return res.status(200).json({
+  success: true,
+  data: result,
+});
+
+ {/* End of mock response. */}
 
   } catch (error) {
     console.error(error);

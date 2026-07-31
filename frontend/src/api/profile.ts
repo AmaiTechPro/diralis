@@ -1,16 +1,19 @@
-import axios from "axios";
+import { apiFetch } from "./client";
+import type { DatasetProfile } from "../types/profile";
 
-const API =
-  "http://localhost:5000/api";
+interface ProfileResponse {
+  success: boolean;
+  data: DatasetProfile;
+}
 
 export async function getDatasetProfile(
   datasetId: string
-) {
+): Promise<DatasetProfile> {
   const response =
-    await axios.get(
-      `${API}/datasets/${datasetId}/profile`
+    await apiFetch<ProfileResponse>(
+      `/datasets/${datasetId}/profile`
     );
 
-  return response.data.data;
+  return response.data;
 }
 

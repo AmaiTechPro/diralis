@@ -3,9 +3,16 @@ import { X } from "lucide-react";
 
 import type { DatasetProfile } from "../../types/profile";
 
+import KpiCard from "./KpiCard";
 import QualityScoreCard from "./QualityScoreCard";
 import DatasetStatistics from "./DatasetStatistics";
+import ColumnTypeChart from "./ColumnTypeChart";
+import MissingValuesChart from "./MissingValuesChart";
 import ChartRecommendationCard from "./ChartRecommendationCard";
+import AIInsightsCard from "./AIInsightsCard";
+import QualityBreakdownCard from "./QualityBreakdownCard";
+import AutoDashboard from "./AutoDashboard";
+
 
 interface Props {
   open: boolean;
@@ -74,6 +81,34 @@ export default function AnalyticsModal({
                   {profile.dataset.name}
                 </p>
 
+                {/* KPI Cards */}
+                <div className="mt-8 grid gap-5 md:grid-cols-4">
+                  <KpiCard
+                    title="Rows"
+                    value={profile.profile.rows}
+                    color="text-cyan-400"
+                  />
+
+                  <KpiCard
+                    title="Columns"
+                    value={profile.profile.columns}
+                    color="text-green-400"
+                  />
+
+                  <KpiCard
+                    title="Quality"
+                    value={`${profile.profile.quality.score}%`}
+                    color="text-yellow-400"
+                  />
+
+                  <KpiCard
+                    title="Duplicates"
+                    value={profile.profile.duplicateRows}
+                    color="text-red-400"
+                  />
+                </div>
+
+                {/* Top Analytics */}
                 <div className="mt-8 grid gap-6 lg:grid-cols-2">
                   <QualityScoreCard
                     score={profile.profile.quality.score}
@@ -97,6 +132,67 @@ export default function AnalyticsModal({
                   />
                 </div>
 
+                {/* Charts */}
+                <div className="mt-6 grid gap-6 lg:grid-cols-2">
+                  <ColumnTypeChart
+                    numeric={
+                      profile.profile.numericColumns.length
+                    }
+                    categorical={
+                      profile.profile.categoricalColumns.length
+                    }
+                    date={
+                      profile.profile.dateColumns.length
+                    }
+                  />
+
+                  <MissingValuesChart
+                    missing={
+                      profile.profile.missingValues
+                    }
+                  />
+                </div>
+
+                 {/* AI Insights */}
+                <div className="mt-6">
+                 <AIInsightsCard
+                  quality={profile.profile.quality.score}
+                  duplicateRows={profile.profile.duplicateRows}
+                   numericColumns={
+                 profile.profile.numericColumns.length
+                  }
+                 categoricalColumns={
+                 profile.profile.categoricalColumns.length
+                 }
+                 dateColumns={
+                 profile.profile.dateColumns.length
+               }
+               />
+              </div>
+
+               {/* Quality Breakdown */}
+              <div className="mt-6">
+
+               <QualityBreakdownCard
+               score={profile.profile.quality.score}
+               duplicates={profile.profile.duplicateRows}
+               missing={profile.profile.missingValues}
+              />
+
+              </div>
+
+              {/* Auto Dashboard */}
+              <div className="mt-6">
+
+             <AutoDashboard
+             visualizations={
+             profile.visualizations
+           }
+           />
+
+             </div>
+
+                {/* AI Recommendations */}
                 <div className="mt-6">
                   <ChartRecommendationCard
                     charts={

@@ -1,29 +1,18 @@
 export interface DatasetProfile {
-
   dataset: {
-
     id: string;
-
     name: string;
-
     filename: string;
-
     size: number;
-
     uploadedAt: string;
-
   };
 
   profile: {
-
     rows: number;
-
     columns: number;
 
     quality: {
-
       score: number;
-
     };
 
     numericColumns: string[];
@@ -45,8 +34,22 @@ export interface DatasetProfile {
       string,
       unknown
     >;
-
   };
 
-}
+  visualizations: {
+    barChart?: {
+      labels: string[];
+      values: number[];
+    };
 
+    pieChart?: {
+      labels: string[];
+      values: number[];
+    };
+
+    lineChart?: {
+      labels: string[];
+      values: number[];
+    };
+  };
+}

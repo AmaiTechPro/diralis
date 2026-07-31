@@ -9,7 +9,7 @@ import { recommendCharts } from "./recommendCharts";
 import { calculateQualityScore } 
 from "./calculateQualityScore";
 
-
+import { detectCorrelations } from "./detectCorrelations";
 
 
 export function profileDataset(
@@ -48,6 +48,8 @@ calculateQualityScore(
   duplicateRows
 );
 
+const correlations =
+  detectCorrelations(rows);
 
 
   return {
@@ -109,6 +111,8 @@ calculateQualityScore(
 
 
     statistics,
+
+   correlations,
 
 
     recommendedCharts

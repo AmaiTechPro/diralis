@@ -1,3 +1,5 @@
+import { ColumnProfile } from "../../types/profile";
+
 function detectType(
   value: unknown
 ): "number" | "string" | "boolean" | "date" {
@@ -19,12 +21,12 @@ function detectType(
     }
 
     // Detect numeric strings
-    if (!isNaN(Number(trimmed))) {
+    if (!Number.isNaN(Number(trimmed))) {
       return "number";
     }
 
     // Detect dates
-    if (!isNaN(Date.parse(trimmed))) {
+    if (!Number.isNaN(Date.parse(trimmed))) {
       return "date";
     }
 
@@ -34,10 +36,11 @@ function detectType(
   return "string";
 }
 
+export function detectColumns(
+  rows: Record<string, unknown>[]
+): ColumnProfile[] {
 
-export function detectColumns(rows: Record<string, unknown>[]) {
-
-  if (!rows || rows.length === 0) {
+  if (!rows.length) {
     return [];
   }
 
@@ -48,32 +51,41 @@ export function detectColumns(rows: Record<string, unknown>[]) {
     const sampleValues = rows
       .slice(0, 100)
       .map(row => row[column])
-      .filter(value => value !== null && value !== undefined);
+      .filter(
+        value =>
+          value !== null &&
+          value !== undefined &&
+          value !== ""
+      );
 
+    const detectedTypes =
+      sampleValues.map(detectType);
 
-    const detectedTypes = sampleValues.map(detectType);
+    const typeFrequency =
+      detectedTypes.reduce(
+        (acc, type) => {
+          acc[type] = (acc[type] || 0) + 1;
+          return acc;
+        },
+        {} as Record<string, number>
+      );
 
-    const typeFrequency = detectedTypes.reduce(
-      (acc, type) => {
-        acc[type] = (acc[type] || 0) + 1;
-        return acc;
-      },
-      {} as Record<string, number>
-    );
-
-
-    const dominantType = Object.entries(typeFrequency)
-      .sort((a, b) => b[1] - a[1])[0]?.[0] ?? "string";
-
+    const dominantType =
+      (
+        Object.entries(typeFrequency)
+          .sort((a, b) => b[1] - a[1])[0]?.[0] ??
+        "string"
+      ) as ColumnProfile["type"];
 
     return {
       name: column,
       type: dominantType,
-      samples: sampleValues.slice(0, 5),
-      uniqueValues: new Set(sampleValues.map(String)).size,
-      nullCount:
-        rows.length - sampleValues.length
+      missing:
+        rows.length - sampleValues.length,
+      unique:
+        new Set(sampleValues.map(String)).size,
     };
-  });
-}
 
+  });
+
+}

@@ -14,6 +14,12 @@ export interface NumericStatistics {
   standardDeviation: number;
 }
 
+export interface CorrelationResult {
+  columnA: string;
+  columnB: string;
+  coefficient: number;
+}
+
 
 export interface DataQualityReport {
 
@@ -43,6 +49,8 @@ export interface DatasetProfile {
   duplicateRows: number;
 
   statistics: Record<string, NumericStatistics>;
+
+  correlations: CorrelationResult[];
 
   recommendedCharts: string[];
 

@@ -46,7 +46,7 @@ export default function AutoDashboard({
           <div className="rounded-xl bg-slate-950 p-4">
 
             <h3 className="mb-4 font-semibold">
-              Bar Chart
+              {visualizations.barChart.title}
             </h3>
 
             <div className="h-72">
@@ -55,7 +55,7 @@ export default function AutoDashboard({
 
                 <BarChart
                   data={visualizations.barChart.labels.map(
-                    (label, i) => ({
+                    (label: string, i: number) => ({
                       label,
                       value:
                         visualizations.barChart!.values[i],
@@ -87,7 +87,7 @@ export default function AutoDashboard({
           <div className="rounded-xl bg-slate-950 p-4">
 
             <h3 className="mb-4 font-semibold">
-              Pie Chart
+              {visualizations.pieChart.title}
             </h3>
 
             <div className="h-72">
@@ -98,7 +98,7 @@ export default function AutoDashboard({
 
                   <Pie
                     data={visualizations.pieChart.labels.map(
-                      (label, i) => ({
+                      (label: string, i: number) => ({
                         name: label,
                         value:
                           visualizations.pieChart!.values[i],
@@ -110,7 +110,7 @@ export default function AutoDashboard({
                     label
                   >
                     {visualizations.pieChart.labels.map(
-                      (_, i) => (
+                      (_: string, i: number) => (
                         <Cell
                           key={i}
                           fill={
@@ -140,7 +140,7 @@ export default function AutoDashboard({
           <div className="rounded-xl bg-slate-950 p-4 lg:col-span-2">
 
             <h3 className="mb-4 font-semibold">
-              Line Chart
+              {visualizations.lineChart.title}
             </h3>
 
             <div className="h-80">
@@ -149,7 +149,7 @@ export default function AutoDashboard({
 
                 <LineChart
                   data={visualizations.lineChart.labels.map(
-                    (label, i) => ({
+                    (label: string, i: number) => ({
                       label,
                       value:
                         visualizations.lineChart!.values[i],

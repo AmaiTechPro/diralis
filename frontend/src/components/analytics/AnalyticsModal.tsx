@@ -27,6 +27,7 @@ export default function AnalyticsModal({
   profile,
   loading,
 }: Props) {
+  console.log(profile);
   return (
     <AnimatePresence>
       {open && (
@@ -155,20 +156,17 @@ export default function AnalyticsModal({
 
                  {/* AI Insights */}
                 <div className="mt-6">
-                 <AIInsightsCard
-                  quality={profile.profile.quality.score}
-                  duplicateRows={profile.profile.duplicateRows}
-                   numericColumns={
-                 profile.profile.numericColumns.length
-                  }
-                 categoricalColumns={
-                 profile.profile.categoricalColumns.length
-                 }
-                 dateColumns={
-                 profile.profile.dateColumns.length
-               }
-               />
-              </div>
+              <AIInsightsCard
+               summary={profile.insights.summary}
+               quality={profile.insights.quality ?? []}
+               statistics={profile.insights.statistics ?? []}
+               anomalies={profile.insights.anomalies ?? []}
+               business={profile.insights.business ?? []}
+               forecast={profile.insights.forecast ?? []}
+               kpis={profile.insights.kpis ?? []}
+               rootCauses={profile.insights.rootCauses ?? []}
+              />
+            </div>
 
                {/* Quality Breakdown */}
               <div className="mt-6">

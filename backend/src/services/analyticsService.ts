@@ -3,6 +3,8 @@ import prisma from "../lib/prisma";
 import { parseDataset } from "./datasetFileService";
 import { profileDataset } from "./profiler/profileDataset";
 import { generateVisualizations } from "./visualizationService";
+import { generateInsights } from "./insights/generateInsights";
+
 
 export async function generateDatasetProfile(
   datasetId: string
@@ -25,6 +27,8 @@ export async function generateDatasetProfile(
 
   const profile =
     profileDataset(rows);
+    const insights =
+  generateInsights(profile);
 
   const visualizations =
     generateVisualizations(
@@ -46,6 +50,7 @@ export async function generateDatasetProfile(
     profile,
 
     visualizations,
+    insights,
   };
 }
 

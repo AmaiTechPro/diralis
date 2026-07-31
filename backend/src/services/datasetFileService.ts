@@ -51,16 +51,41 @@ async function parseCSV(
 
   return new Promise((resolve, reject) => {
 
-    const rows: Record<
-      string,
-      unknown
-    >[] = [];
+    const rows: Record<string, unknown>[] = [];
 
     fs.createReadStream(filePath)
       .pipe(csv())
 
       .on("data", (row) => {
-        rows.push(row);
+
+        const parsedRow: Record<string, unknown> = {};
+
+        Object.entries(row).forEach(([key, value]) => {
+
+          if (typeof value !== "string") {
+            parsedRow[key] = value;
+            return;
+          }
+
+          const trimmed = value.trim();
+
+          if (trimmed === "") {
+            parsedRow[key] = "";
+            return;
+          }
+
+          const number = Number(trimmed);
+
+          if (!Number.isNaN(number)) {
+            parsedRow[key] = number;
+          } else {
+            parsedRow[key] = trimmed;
+          }
+
+        });
+
+        rows.push(parsedRow);
+
       })
 
       .on("end", () => {
@@ -85,9 +110,43 @@ function parseExcel(
       workbook.SheetNames[0]
     ];
 
-  return XLSX.utils.sheet_to_json<
-    Record<string, unknown>
-  >(sheet);
+  const rows =
+    XLSX.utils.sheet_to_json<Record<string, unknown>>(sheet);
+
+  return rows.map(row => {
+
+    const parsedRow: Record<string, unknown> = {};
+
+    Object.entries(row).forEach(([key, value]) => {
+
+      if (typeof value === "string") {
+
+        const trimmed = value.trim();
+
+        if (trimmed === "") {
+          parsedRow[key] = "";
+          return;
+        }
+
+        const number = Number(trimmed);
+
+        if (!Number.isNaN(number)) {
+          parsedRow[key] = number;
+        } else {
+          parsedRow[key] = trimmed;
+        }
+
+      } else {
+
+        parsedRow[key] = value;
+
+      }
+
+    });
+
+    return parsedRow;
+
+  });
 
 }
 

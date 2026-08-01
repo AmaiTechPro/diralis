@@ -1,5 +1,4 @@
 import { profileDataset } from "../profiler/profileDataset";
-import { calculateQualityScore } from "../profiler/calculateQualityScore";
 import { generateInsights } from "../insights/generateInsights";
 
 
@@ -15,12 +14,14 @@ export async function buildReportData(
 
 
   const qualityScore =
-    calculateQualityScore(profile);
+    profile.quality.score;
 
 
 
   const insights =
-    await generateInsights(profile);
+    await generateInsights(
+      profile
+    );
 
 
 
@@ -57,14 +58,18 @@ export async function buildReportData(
 
 
     warnings:
-      profile.warnings || [],
+      profile.quality.issues ?? [],
 
 
     recommendations:
-      profile.recommendations || [],
+      [
+        "Improve datasets containing missing values.",
+        "Monitor KPI performance regularly.",
+        "Review detected anomalies.",
+        "Use forecasting for future planning.",
+      ],
 
 
   };
 
 }
-

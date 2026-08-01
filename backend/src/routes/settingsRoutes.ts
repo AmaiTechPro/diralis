@@ -3,11 +3,11 @@ import { Router } from "express";
 import {
   getSettings,
   updateSettings,
+  updateProfile,
+  changePassword,
 } from "../controllers/settingsController";
 
-import {
-  authenticate,
-} from "../middleware/authMiddleware";
+import { authenticate } from "../middleware/authMiddleware";
 
 
 const router = Router();
@@ -30,5 +30,20 @@ router.patch(
 
 
 
-export default router;
+router.patch(
+  "/profile",
+  authenticate,
+  updateProfile
+);
 
+
+
+router.put(
+  "/password",
+  authenticate,
+  changePassword
+);
+
+
+
+export default router;

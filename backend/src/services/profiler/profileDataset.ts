@@ -6,10 +6,10 @@ import { detectDuplicates } from "./detectDuplicates";
 import { detectStatistics } from "./detectStatistics";
 import { recommendCharts } from "./recommendCharts";
 
-import { calculateQualityScore } 
-from "./calculateQualityScore";
+import { calculateQualityScore } from "./calculateQualityScore";
 
 import { detectCorrelations } from "./detectCorrelations";
+
 
 
 export function profileDataset(
@@ -41,28 +41,45 @@ export function profileDataset(
     recommendCharts(columnProfiles);
 
 
-  const quality =
-calculateQualityScore(
-  rows.length,
-  missingValues,
-  duplicateRows
-);
 
-const correlations =
-  detectCorrelations(rows);
+  const quality =
+    calculateQualityScore(
+      rows.length,
+      missingValues,
+      duplicateRows
+    );
+
+
+
+  const correlations =
+    detectCorrelations(rows);
+
 
 
   return {
 
     quality,
 
-    rows: rows.length,
+
+    qualityScore:
+      quality.score,
+
+
+    totalRows:
+      rows.length,
+
+
+    rows:
+      rows.length,
+
 
     columns:
       columnProfiles.length,
 
 
+
     columnProfiles,
+
 
 
     numericColumns:
@@ -112,10 +129,11 @@ const correlations =
 
     statistics,
 
-   correlations,
+
+    correlations,
 
 
-    recommendedCharts
+    recommendedCharts,
 
   };
 

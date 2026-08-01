@@ -1,15 +1,16 @@
 import { DatasetProfile } from "../../types/profile";
 
 
+
 export interface ReportData {
+
+  executiveSummary: string;
 
   title: string;
 
   generatedAt: string;
 
-
   summary: string;
-
 
 
   dataset?: {
@@ -23,23 +24,19 @@ export interface ReportData {
   };
 
 
-
   businessHealth: number;
 
 
   qualityIssues: string[];
 
 
-
   aiScore: string;
-
 
 
   insights: string[];
 
 
   warnings: string[];
-
 
 
   recommendations: string[];
@@ -82,6 +79,7 @@ export function generateReport(
 
   return {
 
+
     title:
       "Diralis Executive Business Report",
 
@@ -89,6 +87,11 @@ export function generateReport(
 
     generatedAt:
       new Date().toISOString(),
+
+
+
+    executiveSummary:
+      `Diralis analyzed ${profile.rows} records across ${profile.columns} columns. The dataset achieved an AI business health score of ${score}%.`,
 
 
 
@@ -172,4 +175,3 @@ export function generateReport(
   };
 
 }
-

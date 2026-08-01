@@ -14,6 +14,7 @@ export interface NumericStatistics {
   standardDeviation: number;
 }
 
+
 export interface CorrelationResult {
   columnA: string;
   columnB: string;
@@ -55,5 +56,9 @@ export interface DatasetProfile {
   recommendedCharts: string[];
 
   quality: DataQualityReport;
+
+  qualityScore: number;
+
+  totalRows: number;
 
 }

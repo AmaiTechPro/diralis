@@ -2,6 +2,7 @@ import {
   LayoutDashboard,
   Database,
   BrainCircuit,
+  Bot,
   BarChart3,
   UserCircle,
   Settings,
@@ -51,6 +52,12 @@ export default function Sidebar() {
           to="/ai-insights"
           icon={<BrainCircuit size={20} />}
           title="AI Insights"
+        />
+
+        <SidebarLink
+        to="/chat"
+        icon={<Bot size={20} />}
+        title="AI Chat"
         />
 
         <SidebarLink

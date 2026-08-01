@@ -9,6 +9,7 @@ import ReportsPage from "./pages/ReportsPage";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import AIInsightsPage from "./pages/AIInsightsPage";
+import AIChat from "./pages/AIChat";
 
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
@@ -40,7 +41,8 @@ function App() {
           </ProtectedRoute>
         }
       />
-
+     
+     {/* AI   Insights Route */}
       <Route
   path="/ai-insights"
   element={
@@ -48,8 +50,20 @@ function App() {
       <AIInsightsPage />
     </ProtectedRoute>
   }
-/>
+  />
 
+    {/* AI Chat Route */}
+
+    <Route
+    path="/chat"
+    element={
+    <ProtectedRoute>
+      <AIChat />
+    </ProtectedRoute>
+    }
+     />
+      
+      {/* Reports Route */}
       <Route
         path="/reports"
         element={

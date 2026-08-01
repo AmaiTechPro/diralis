@@ -25,6 +25,25 @@ app.use(
  settingsRoutes
 );
 
+import chatRoutes from "./routes/chatRoutes";
+
+app.use("/api/chat", chatRoutes);
+
+import chatHistoryRoutes from "./routes/chatHistoryRoutes";
+
+app.use(
+  "/api/chat-history",
+  chatHistoryRoutes
+);
+
+import predictionRoutes
+from "./routes/predictionRoutes";
+
+app.use(
+  "/api/predictions",
+  predictionRoutes
+);
+
 const PORT = Number(process.env.PORT) || 5000;
 
 app.listen(PORT, () => {

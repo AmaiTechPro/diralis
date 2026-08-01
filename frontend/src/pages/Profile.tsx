@@ -1,7 +1,5 @@
 import { useEffect, useState } from "react";
 
-import AppLayout from "../components/layout/AppLayout";
-
 import {
   User,
   Mail,
@@ -99,23 +97,21 @@ export default function Profile() {
 
 
 
+
   if(loading){
 
     return (
 
-      <AppLayout>
+      <div className="p-8 text-slate-400">
 
-        <div className="p-8 text-slate-400">
+        Loading profile...
 
-          Loading profile...
-
-        </div>
-
-      </AppLayout>
+      </div>
 
     );
 
   }
+
 
 
 
@@ -123,15 +119,11 @@ export default function Profile() {
 
     return (
 
-      <AppLayout>
+      <div className="p-8">
 
-        <div className="p-8">
+        Unable to load profile.
 
-          Unable to load profile.
-
-        </div>
-
-      </AppLayout>
+      </div>
 
     );
 
@@ -139,86 +131,85 @@ export default function Profile() {
 
 
 
+
+
   return (
 
-    <AppLayout>
-
-      <div className="space-y-8">
+    <div className="space-y-8">
 
 
-        <div>
+      <div>
 
-          <h1 className="text-4xl font-bold">
+        <h1 className="text-4xl font-bold">
 
-            Profile
+          Profile
 
-          </h1>
+        </h1>
 
 
-          <p className="mt-2 text-slate-400">
+        <p className="mt-2 text-slate-400">
 
-            Manage your Diralis account information
+          Manage your Diralis account information
 
-          </p>
+        </p>
 
-        </div>
+      </div>
 
 
 
 
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+
+      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
 
 
-          <div className="flex items-center gap-5">
+        <div className="flex items-center gap-5">
 
 
-            <div className="rounded-full bg-cyan-500/20 p-5">
+          <div className="rounded-full bg-cyan-500/20 p-5">
 
-              {
-                profile.user.picture ?
+            {
+              profile.user.picture ?
 
-                <img
+              <img
 
-                  src={profile.user.picture}
+                src={profile.user.picture}
 
-                  className="h-16 w-16 rounded-full"
+                className="h-16 w-16 rounded-full"
 
-                />
+              />
 
-                :
+              :
 
-                <User
+              <User
 
-                  size={40}
+                size={40}
 
-                  className="text-cyan-400"
+                className="text-cyan-400"
 
-                />
+              />
 
-              }
+            }
 
-            </div>
-
-
-
-            <div>
-
-              <h2 className="text-2xl font-bold">
-
-                {profile.user.fullName}
-
-              </h2>
+          </div>
 
 
-              <p className="text-slate-400">
-
-                @{profile.user.username}
-
-              </p>
 
 
-            </div>
+          <div>
+
+            <h2 className="text-2xl font-bold">
+
+              {profile.user.fullName}
+
+            </h2>
+
+
+            <p className="text-slate-400">
+
+              @{profile.user.username}
+
+            </p>
 
 
           </div>
@@ -227,102 +218,112 @@ export default function Profile() {
         </div>
 
 
-
-
-
-        <div className="grid gap-5 md:grid-cols-3">
-
-
-          <Card
-
-            icon={<Database size={22}/>}
-
-            title="Datasets"
-
-            value={profile.stats.datasets}
-
-          />
-
-
-          <Card
-
-            icon={<FileText size={22}/>}
-
-            title="Reports"
-
-            value={profile.stats.reports}
-
-          />
-
-
-          <Card
-
-            icon={<BarChart3 size={22}/>}
-
-            title="Analyses"
-
-            value={profile.stats.analyses}
-
-          />
-
-
-        </div>
+      </div>
 
 
 
 
 
-        <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-5">
+
+      <div className="grid gap-5 md:grid-cols-3">
 
 
-          <Info
+        <Card
 
-            icon={<Mail/>}
+          icon={<Database size={22}/>}
 
-            label="Email"
+          title="Datasets"
 
-            value={profile.user.email}
+          value={profile.stats.datasets}
 
-          />
-
-
-          <Info
-
-            icon={<Calendar/>}
-
-            label="Joined"
-
-            value={
-              new Date(
-                profile.user.createdAt
-              ).toLocaleDateString()
-            }
-
-          />
+        />
 
 
-          <Info
 
-            icon={<User/>}
+        <Card
 
-            label="Provider"
+          icon={<FileText size={22}/>}
 
-            value={profile.user.provider}
+          title="Reports"
 
-          />
+          value={profile.stats.reports}
+
+        />
 
 
-        </div>
+
+        <Card
+
+          icon={<BarChart3 size={22}/>}
+
+          title="Analyses"
+
+          value={profile.stats.analyses}
+
+        />
 
 
       </div>
 
 
-    </AppLayout>
+
+
+
+
+
+      <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6 space-y-5">
+
+
+        <Info
+
+          icon={<Mail/>}
+
+          label="Email"
+
+          value={profile.user.email}
+
+        />
+
+
+
+        <Info
+
+          icon={<Calendar/>}
+
+          label="Joined"
+
+          value={
+            new Date(
+              profile.user.createdAt
+            ).toLocaleDateString()
+          }
+
+        />
+
+
+
+        <Info
+
+          icon={<User/>}
+
+          label="Provider"
+
+          value={profile.user.provider}
+
+        />
+
+
+      </div>
+
+
+
+    </div>
 
   );
 
 }
+
+
 
 
 
@@ -372,6 +373,8 @@ return (
 
 
 
+
+
 function Info(
 {
  icon,
@@ -416,3 +419,4 @@ return (
 );
 
 }
+

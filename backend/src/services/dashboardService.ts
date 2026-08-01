@@ -1,5 +1,16 @@
-export function getDashboardData() {
+import prisma from "../lib/prisma";
+
+export async function getDashboardData() {
+  const datasets = await prisma.dataset.count();
+
   return {
+    stats: {
+      datasets,
+      reports: datasets,
+      dashboards: datasets > 0 ? 1 : 0,
+      account: "Active",
+    },
+
     revenueForecast: 18,
     customerGrowth: 24381,
     operationalEfficiency: 91,
@@ -8,10 +19,17 @@ export function getDashboardData() {
     aiConfidence: 97,
 
     recommendation: {
-      priority: "High",
-      title: "Increase stock of Product A",
+      priority: datasets > 0 ? "High" : "Info",
+
+      title:
+        datasets > 0
+          ? `${datasets} dataset${datasets > 1 ? "s" : ""} successfully analyzed`
+          : "Upload your first dataset",
+
       description:
-        "Predicted stock-out within the next 5 days based on recent sales trends.",
+        datasets > 0
+          ? `Diralis has analyzed your ${datasets} uploaded dataset${datasets > 1 ? "s" : ""}. AI insights, dashboards, reports and forecasting are now available.`
+          : "Upload a dataset to unlock AI-powered insights, dashboards, reports and forecasting.",
     },
 
     chart: [
@@ -24,5 +42,4 @@ export function getDashboardData() {
     ],
   };
 }
-
 

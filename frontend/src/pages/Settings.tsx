@@ -1,7 +1,6 @@
 import { useEffect, useState } from "react";
 import { useTheme } from "next-themes";
 
-import AppLayout from "../components/layout/AppLayout";
 import { useAuth } from "../context/AuthContext";
 
 import {
@@ -54,6 +53,7 @@ export default function Settings() {
     useState("");
 
 
+
   useEffect(() => {
 
     if (user) {
@@ -67,6 +67,7 @@ export default function Settings() {
   }, [user]);
 
 
+
   useEffect(() => {
 
     async function loadSettings() {
@@ -75,15 +76,23 @@ export default function Settings() {
 
         const data = await getSettings();
 
-        setTheme(data.theme ?? "dark");
+
+        setTheme(
+          data.theme ?? "dark"
+        );
+
 
         setEmailNotifications(
           data.emailNotifications ?? true
         );
 
-        applyTheme(data.theme ?? "dark");
 
-      } catch (error) {
+        applyTheme(
+          data.theme ?? "dark"
+        );
+
+
+      } catch(error){
 
         console.error(error);
 
@@ -91,18 +100,22 @@ export default function Settings() {
 
     }
 
+
     loadSettings();
+
 
   }, [applyTheme]);
 
 
 
+
+
   async function handleSettingsUpdate(
-    updates: {
+    updates:{
       theme?: string;
       emailNotifications?: boolean;
     }
-  ) {
+  ){
 
     try {
 
@@ -119,19 +132,30 @@ export default function Settings() {
         });
 
 
+
       setTheme(updated.theme);
+
 
       setEmailNotifications(
         updated.emailNotifications
       );
 
-      applyTheme(updated.theme);
 
-      setMessage("Settings updated.");
+      applyTheme(
+        updated.theme
+      );
+
+
+      setMessage(
+        "Settings updated."
+      );
+
 
     } catch {
 
-      setMessage("Failed to update settings.");
+      setMessage(
+        "Failed to update settings."
+      );
 
     }
 
@@ -139,7 +163,10 @@ export default function Settings() {
 
 
 
-  async function handleProfileSave() {
+
+
+
+  async function handleProfileSave(){
 
     try {
 
@@ -151,11 +178,17 @@ export default function Settings() {
 
       });
 
-      setMessage("Profile updated.");
+
+      setMessage(
+        "Profile updated."
+      );
+
 
     } catch {
 
-      setMessage("Failed to update profile.");
+      setMessage(
+        "Failed to update profile."
+      );
 
     }
 
@@ -163,11 +196,17 @@ export default function Settings() {
 
 
 
-  async function handlePasswordChange() {
 
-    if (newPassword !== confirmPassword) {
 
-      setMessage("Passwords do not match.");
+
+
+  async function handlePasswordChange(){
+
+    if(newPassword !== confirmPassword){
+
+      setMessage(
+        "Passwords do not match."
+      );
 
       return;
 
@@ -184,17 +223,24 @@ export default function Settings() {
 
       });
 
+
       setCurrentPassword("");
 
       setNewPassword("");
 
       setConfirmPassword("");
 
-      setMessage("Password updated.");
+
+      setMessage(
+        "Password updated."
+      );
+
 
     } catch {
 
-      setMessage("Failed to change password.");
+      setMessage(
+        "Failed to change password."
+      );
 
     }
 
@@ -202,22 +248,30 @@ export default function Settings() {
 
 
 
+
+
+
+
   return (
 
-    <AppLayout>
+    <div>
+
 
       <h1 className="text-4xl font-bold">
         Settings
       </h1>
+
 
       <p className="mt-3 text-slate-400">
         Configure your Diralis preferences.
       </p>
 
 
+
+
       {message && (
 
-        <div className="mt-6 rounded-lg bg-cyan-500/20 border border-cyan-500 p-3 text-cyan-300">
+        <div className="mt-6 rounded-lg border border-cyan-500 bg-cyan-500/20 p-3 text-cyan-300">
 
           {message}
 
@@ -226,12 +280,16 @@ export default function Settings() {
       )}
 
 
+
+
+
+
       <div className="mt-8 grid gap-6 md:grid-cols-2">
 
 
-        {/* Account */}
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+
 
           <div className="flex items-center gap-3">
 
@@ -247,7 +305,9 @@ export default function Settings() {
           </div>
 
 
+
           <div className="mt-5 space-y-4">
+
 
             <input
               value={fullName}
@@ -258,11 +318,15 @@ export default function Settings() {
               placeholder="Full Name"
             />
 
+
+
             <input
               value={user?.username}
               readOnly
-              className="w-full rounded-lg bg-slate-700 p-3 cursor-not-allowed"
+              className="w-full cursor-not-allowed rounded-lg bg-slate-700 p-3"
             />
+
+
 
             <input
               value={email}
@@ -273,6 +337,8 @@ export default function Settings() {
               placeholder="Email"
             />
 
+
+
             <button
               onClick={handleProfileSave}
               className="rounded-lg bg-cyan-500 px-4 py-2 text-black hover:bg-cyan-400"
@@ -280,15 +346,20 @@ export default function Settings() {
               Save Profile
             </button>
 
+
           </div>
+
 
         </div>
 
 
 
-        {/* Notifications */}
+
+
+
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+
 
           <div className="flex items-center gap-3">
 
@@ -304,50 +375,72 @@ export default function Settings() {
           </div>
 
 
+
           <label className="mt-5 flex items-center justify-between">
+
 
             <span>
               Enable alerts
             </span>
 
+
+
             <input
+
               type="checkbox"
+
               checked={emailNotifications}
+
               onChange={(e)=>
+
                 handleSettingsUpdate({
 
                   emailNotifications:
                     e.target.checked,
 
                 })
+
               }
+
             />
 
+
           </label>
+
 
         </div>
 
 
 
-        {/* Security */}
+
+
+
+
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
 
+
           <div className="flex items-center gap-3">
+
 
             <Shield
               className="text-cyan-400"
               size={22}
             />
 
+
             <h2 className="text-xl font-semibold">
               Security
             </h2>
 
+
           </div>
 
 
+
+
           <div className="mt-5 space-y-3">
+
 
             <input
               type="password"
@@ -359,6 +452,8 @@ export default function Settings() {
               className="w-full rounded-lg bg-slate-800 p-3"
             />
 
+
+
             <input
               type="password"
               placeholder="New Password"
@@ -368,6 +463,8 @@ export default function Settings() {
               }
               className="w-full rounded-lg bg-slate-800 p-3"
             />
+
+
 
             <input
               type="password"
@@ -379,6 +476,8 @@ export default function Settings() {
               className="w-full rounded-lg bg-slate-800 p-3"
             />
 
+
+
             <button
               onClick={handlePasswordChange}
               className="rounded-lg bg-cyan-500 px-4 py-2 text-black hover:bg-cyan-400"
@@ -386,28 +485,40 @@ export default function Settings() {
               Change Password
             </button>
 
+
           </div>
+
 
         </div>
 
 
 
-        {/* Appearance */}
+
+
+
+
 
         <div className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
 
+
           <div className="flex items-center gap-3">
+
 
             <Palette
               className="text-cyan-400"
               size={22}
             />
 
+
             <h2 className="text-xl font-semibold">
               Appearance
             </h2>
 
+
           </div>
+
+
+
 
 
           <select
@@ -420,6 +531,7 @@ export default function Settings() {
 
               applyTheme(e.target.value);
 
+
               handleSettingsUpdate({
 
                 theme:
@@ -429,6 +541,7 @@ export default function Settings() {
 
             }}
 
+
             className="mt-5 w-full rounded-lg bg-slate-800 p-3"
 
           >
@@ -437,17 +550,24 @@ export default function Settings() {
               Dark Mode
             </option>
 
+
             <option value="light">
               Light Mode
             </option>
 
+
           </select>
+
+
 
         </div>
 
+
+
       </div>
 
-    </AppLayout>
+
+    </div>
 
   );
 

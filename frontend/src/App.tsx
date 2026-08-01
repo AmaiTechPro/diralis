@@ -12,94 +12,178 @@ import AIInsightsPage from "./pages/AIInsightsPage";
 import AIChat from "./pages/AIChat";
 
 import ProtectedRoute from "./components/auth/ProtectedRoute";
+import AppLayout from "./components/layout/AppLayout";
+
 
 function App() {
+
   return (
+
     <Routes>
+
+
       {/* Public Routes */}
-      <Route path="/" element={<HomePage />} />
 
-      <Route path="/login" element={<Login />} />
+      <Route
+        path="/"
+        element={<HomePage />}
+      />
 
-      <Route path="/register" element={<Register />} />
 
-      {/* Protected Routes */}
+      <Route
+        path="/login"
+        element={<Login />}
+      />
+
+
+      <Route
+        path="/register"
+        element={<Register />}
+      />
+
+
+
+      {/* Protected Application Routes */}
+
+
       <Route
         path="/dashboard"
         element={
           <ProtectedRoute>
-            <Dashboard />
+
+            <AppLayout>
+
+              <Dashboard />
+
+            </AppLayout>
+
           </ProtectedRoute>
         }
       />
+
+
 
       <Route
         path="/datasets"
         element={
           <ProtectedRoute>
-            <Datasets />
+
+            <AppLayout>
+
+              <Datasets />
+
+            </AppLayout>
+
           </ProtectedRoute>
         }
       />
-     
-     {/* AI   Insights Route */}
+
+
+
       <Route
-  path="/ai-insights"
-  element={
-    <ProtectedRoute>
-      <AIInsightsPage />
-    </ProtectedRoute>
-  }
-  />
+        path="/ai-insights"
+        element={
+          <ProtectedRoute>
 
-    {/* AI Chat Route */}
+            <AppLayout>
 
-    <Route
-    path="/chat"
-    element={
-    <ProtectedRoute>
-      <AIChat />
-    </ProtectedRoute>
-    }
-     />
-      
-      {/* Reports Route */}
+              <AIInsightsPage />
+
+            </AppLayout>
+
+          </ProtectedRoute>
+        }
+      />
+
+
+
+      <Route
+        path="/chat"
+        element={
+          <ProtectedRoute>
+
+            <AppLayout>
+
+              <AIChat />
+
+            </AppLayout>
+
+          </ProtectedRoute>
+        }
+      />
+
+
+
       <Route
         path="/reports"
         element={
           <ProtectedRoute>
-            <ReportsPage />
+
+            <AppLayout>
+
+              <ReportsPage />
+
+            </AppLayout>
+
           </ProtectedRoute>
         }
       />
+
+
 
       <Route
         path="/profile"
         element={
           <ProtectedRoute>
-            <Profile />
+
+            <AppLayout>
+
+              <Profile />
+
+            </AppLayout>
+
           </ProtectedRoute>
         }
       />
+
+
 
       <Route
         path="/settings"
         element={
           <ProtectedRoute>
-            <Settings />
+
+            <AppLayout>
+
+              <Settings />
+
+            </AppLayout>
+
           </ProtectedRoute>
         }
       />
 
 
-      {/* Catch all unknown routes */}
+
+      {/* Unknown Routes */}
+
       <Route
         path="*"
-        element={<Navigate to="/" replace />}
+        element={
+          <Navigate
+            to="/"
+            replace
+          />
+        }
       />
+
+
     </Routes>
+
   );
+
 }
+
 
 export default App;
 

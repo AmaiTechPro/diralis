@@ -1,3 +1,4 @@
+import { useNavigate } from "react-router-dom";
 import KpiCard from "../ui/KpiCard";
 import { motion } from "framer-motion";
 import FadeIn from "../ui/FadeIn";
@@ -6,8 +7,6 @@ import LiveStatus from "../ui/LiveStatus";
 import AIRecommendation from "../dashboard/AIRecommendation";
 import useLiveMetrics from "../../hooks/useLiveMetrics";
 import { useDashboard } from "../../hooks/useDashboard";
-
-
 
 import {
   Sparkles,
@@ -19,216 +18,388 @@ import {
   Gauge,
 } from "../ui/icons";
 
+
 export default function Hero() {
+
+  const navigate = useNavigate();
+
+
   const { dashboardData, loading, error } = useDashboard();
 
+
   const metrics = useLiveMetrics({
+
     revenue: dashboardData?.revenueForecast ?? 18,
+
     customers: dashboardData?.customerGrowth ?? 24381,
+
     efficiency: dashboardData?.operationalEfficiency ?? 91,
+
     confidence: dashboardData?.aiConfidence ?? 97,
+
   });
 
+
+
   if (loading) {
+
     return (
+
       <section className="flex min-h-screen items-center justify-center">
+
         <p className="text-lg text-slate-400">
+
           Loading dashboard...
+
         </p>
+
       </section>
+
     );
+
   }
+
+
 
   if (error || !dashboardData) {
+
     return (
+
       <section className="flex min-h-screen items-center justify-center">
+
         <p className="text-lg text-red-400">
+
           Failed to load dashboard.
+
         </p>
+
       </section>
+
     );
+
   }
 
-  {/*return (
-
-
-  if (loading) {
-  return (
-    <section className="flex min-h-screen items-center justify-center">
-      <p className="text-slate-400 text-lg">
-        Loading dashboard...
-      </p>
-    </section>
-  );
-}
-
-if (error || !dashboardData) {
-  return (
-    <section className="flex min-h-screen items-center justify-center">
-      <p className="text-red-400 text-lg">
-        Failed to load dashboard.
-      </p>
-    </section>
-  );
- */}
 
 
   return (
+
     <section className="relative flex min-h-screen items-center overflow-hidden px-6 pt-20">
 
-      {/* Background Glow */}
+
       <div className="absolute inset-0 -z-10">
+
         <div className="absolute left-1/2 top-20 h-[500px] w-[500px] -translate-x-1/2 rounded-full bg-cyan-500/10 blur-3xl" />
+
         <div className="absolute bottom-0 left-0 h-80 w-80 rounded-full bg-blue-600/10 blur-3xl" />
+
         <div className="absolute right-0 top-0 h-96 w-96 rounded-full bg-purple-600/10 blur-3xl" />
+
       </div>
 
-      
+
+
       <div className="mx-auto grid max-w-7xl items-center gap-14 md:gap-16 lg:grid-cols-2">
-        {/* Left */}
+
+
+
+        {/* Left Content */}
+
         <FadeIn>
+
           <div className="flex flex-col justify-center">
 
+
             <div className="inline-flex w-fit items-center gap-2 rounded-full border border-cyan-500/30 bg-cyan-500/10 px-4 py-2 text-sm font-medium text-cyan-400 shadow-lg shadow-cyan-500/10">
+
               <Sparkles size={16} />
+
               Powered by AI Decision Intelligence
+
             </div>
 
+
+
             <h1 className="mt-8 text-4xl font-extrabold leading-tight sm:text-5xl lg:text-7xl">
+
               Stop Guessing.
+
               <br />
+
               Start
-              <span className="text-cyan-400"> Growing Smarter.</span>
+
+              <span className="text-cyan-400">
+
+                Growing Smarter.
+
+              </span>
+
             </h1>
 
+
+
             <p className="mt-8 max-w-lg text-lg leading-8 text-slate-400 lg:max-w-xl">
+
               Diralis transforms spreadsheets, operational metrics,
+
               sales reports, and inventory data into AI-powered
+
               recommendations, predictive forecasts, and actionable
+
               business insights—helping you make confident decisions
+
               in minutes.
+
             </p>
+
+
 
             <div className="mt-10 flex flex-col gap-4 sm:flex-row">
 
-              <motion.button
-                whileHover={{ scale: 1.05, y: -3 }}
-                whileTap={{ scale: 0.97 }}
-                className="rounded-xl bg-cyan-500 px-8 py-4 font-semibold text-slate-950 shadow-lg shadow-cyan-500/30"
-              >
-                Join Beta
-              </motion.button>
 
               <motion.button
-                whileHover={{ scale: 1.05 }}
-                whileTap={{ scale: 0.97 }}
-                className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-8 py-4 transition hover:border-cyan-400 hover:bg-slate-800"
+
+                whileHover={{
+                  scale: 1.05,
+                  y: -3,
+                }}
+
+                whileTap={{
+                  scale: 0.97,
+                }}
+
+                onClick={() => navigate("/register")}
+
+                className="rounded-xl bg-cyan-500 px-8 py-4 font-semibold text-slate-950 shadow-lg shadow-cyan-500/30"
+
               >
-                Watch Demo
-                <ArrowRight size={18} />
+
+                Get Started
+
               </motion.button>
+
+
+
+
+
+              <motion.button
+
+                whileHover={{
+                  scale: 1.05,
+                }}
+
+                whileTap={{
+                  scale: 0.97,
+                }}
+
+                className="flex items-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-8 py-4 transition hover:border-cyan-400 hover:bg-slate-800"
+
+              >
+
+                Watch Demo
+
+                <ArrowRight size={18} />
+
+              </motion.button>
+
 
             </div>
 
+
+
             <p className="mt-8 text-sm text-slate-500">
+
               Built for startups, SMEs, retailers, and operations teams.
+
             </p>
+
+
+
 
             <div className="mt-8 flex flex-wrap gap-5 text-sm">
 
+
               <div className="flex items-center gap-2 text-slate-300">
+
                 <CheckCircle2 size={18} className="text-cyan-400" />
+
                 AI Recommendations
+
               </div>
 
+
+
               <div className="flex items-center gap-2 text-slate-300">
+
                 <CheckCircle2 size={18} className="text-cyan-400" />
+
                 Forecasting
+
               </div>
 
+
+
               <div className="flex items-center gap-2 text-slate-300">
+
                 <CheckCircle2 size={18} className="text-cyan-400" />
+
                 CSV Uploads
+
               </div>
 
+
+
               <div className="flex items-center gap-2 text-slate-300">
+
                 <CheckCircle2 size={18} className="text-cyan-400" />
+
                 Business Insights
+
               </div>
+
 
             </div>
 
+
           </div>
+
+
         </FadeIn>
 
-        {/* Right */}
+
+
+
+
+        {/* Dashboard Preview */}
+
         <FadeIn delay={0.25}>
+
+
           <div className="flex items-center justify-center">
 
+
             <motion.div
-              animate={{ y: [0, -8, 0] }}
+
+              animate={{
+                y: [0, -8, 0],
+              }}
+
               transition={{
                 repeat: Infinity,
                 duration: 6,
                 ease: "easeInOut",
               }}
+
               className="w-full max-w-md rounded-3xl border border-slate-800 bg-slate-900 p-8 shadow-2xl transition hover:border-cyan-500"
+
             >
 
-              
 
               <div className="space-y-5">
 
-  <LiveStatus />
 
-  <KpiCard
-  title="Revenue Forecast"
-  value={metrics.revenue}
-  prefix="+"
-  suffix="%"
-  icon={<TrendingUp size={20} />}
-  color="text-green-400"
-  delay={0}
-/>
+                <LiveStatus />
 
-<KpiCard
-  title="Inventory Risk"
-  value={dashboardData.inventoryRisk}
-  icon={<TriangleAlert size={20} />}
-  color="text-yellow-400"
-  delay={0.1}
-/>
 
-<KpiCard
-  title="Active Customers"
-  value={metrics.customers}
-  icon={<Users size={20} />}
-  color="text-cyan-400"
-  delay={0.2}
-/>
 
-<KpiCard
-  title="Operational Efficiency"
-  value={metrics.efficiency}
-  suffix="%"
-  icon={<Gauge size={20} />}
-  color="text-green-400"
-  delay={0.3}
-/>
-<AIRecommendation confidence={metrics.confidence} />
+                <KpiCard
 
-<RevenueChart
-  revenueHistory={metrics.revenueHistory}
-        />            {/* End Revenue Chart */}
-</div> {/* End space-y-5 */}
+                  title="Revenue Forecast"
 
-</motion.div> {/* End floating dashboard */}
+                  value={metrics.revenue}
 
-</div> {/* End flex items-center */}
+                  prefix="+"
+
+                  suffix="%"
+
+                  icon={<TrendingUp size={20}/>}
+
+                  color="text-green-400"
+
+                  delay={0}
+
+                />
+
+
+
+                <KpiCard
+
+                  title="Inventory Risk"
+
+                  value={dashboardData.inventoryRisk}
+
+                  icon={<TriangleAlert size={20}/>}
+
+                  color="text-yellow-400"
+
+                  delay={0.1}
+
+                />
+
+
+
+                <KpiCard
+
+                  title="Active Customers"
+
+                  value={metrics.customers}
+
+                  icon={<Users size={20}/>}
+
+                  color="text-cyan-400"
+
+                  delay={0.2}
+
+                />
+
+
+
+                <KpiCard
+
+                  title="Operational Efficiency"
+
+                  value={metrics.efficiency}
+
+                  suffix="%"
+
+                  icon={<Gauge size={20}/>}
+
+                  color="text-green-400"
+
+                  delay={0.3}
+
+                />
+
+
+
+                <AIRecommendation
+                  confidence={metrics.confidence}
+                />
+
+
+
+                <RevenueChart
+                  revenueHistory={metrics.revenueHistory}
+                />
+
+
+              </div>
+
+
+            </motion.div>
+
+
+          </div>
+
 
         </FadeIn>
 
+
+
       </div>
+
+
     </section>
+
   );
+
 }

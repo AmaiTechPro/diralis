@@ -1,11 +1,11 @@
 import { Request, Response } from "express";
 import { getDashboardData } from "../services/dashboardService";
 
-export function dashboardController(
+export async function dashboardController(
   req: Request,
   res: Response
 ) {
-  const dashboard = getDashboardData();
+  const dashboard = await getDashboardData();
 
   res.json(dashboard);
 }

@@ -4,8 +4,6 @@ import {
   useState,
 } from "react";
 
-import AppLayout from "../components/layout/AppLayout";
-
 import { sendMessage } from "../services/chatService";
 
 import {
@@ -115,7 +113,6 @@ export default function AIChat() {
 
 
 
-
   async function handleSend(
     question?: string
   ) {
@@ -175,9 +172,7 @@ export default function AIChat() {
     } catch(error){
 
 
-      console.error(
-        error
-      );
+      console.error(error);
 
 
       setMessages((prev)=>[
@@ -205,8 +200,6 @@ export default function AIChat() {
 
 
 
-
-
   const prompts = [
 
     "Summarize my dataset",
@@ -228,7 +221,7 @@ export default function AIChat() {
 
   return (
 
-    <AppLayout>
+    <div>
 
 
       <h1 className="text-4xl font-bold">
@@ -274,8 +267,6 @@ export default function AIChat() {
 
 
 
-
-
       <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900">
 
 
@@ -311,9 +302,6 @@ export default function AIChat() {
 
 
 
-
-
-
               <div
 
                 className={`max-w-[70%] rounded-xl px-4 py-3 ${
@@ -323,7 +311,6 @@ export default function AIChat() {
                 }`}
 
               >
-
 
                 <p className="whitespace-pre-line">
 
@@ -365,7 +352,6 @@ export default function AIChat() {
 
 
 
-
           {loading && (
 
             <div className="flex gap-3">
@@ -400,7 +386,6 @@ export default function AIChat() {
 
 
 
-
         <div className="flex gap-3 border-t border-slate-800 p-5">
 
 
@@ -425,6 +410,7 @@ export default function AIChat() {
 
 
             placeholder="Ask about your dataset..."
+
 
             className="flex-1 rounded-lg bg-slate-800 px-4 py-3 outline-none focus:ring-2 focus:ring-cyan-500"
 
@@ -460,7 +446,7 @@ export default function AIChat() {
 
 
 
-    </AppLayout>
+    </div>
 
   );
 

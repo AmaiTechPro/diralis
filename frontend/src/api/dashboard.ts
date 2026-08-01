@@ -1,6 +1,13 @@
 import { apiFetch } from "./apiClient";
 
 export interface DashboardData {
+  stats: {
+    datasets: number;
+    reports: number;
+    dashboards: number;
+    account: string;
+  };
+
   revenueForecast: number;
   customerGrowth: number;
   operationalEfficiency: number;

@@ -11,6 +11,20 @@ app.use(
   overallInsightsRoutes
 );
 
+import userProfileRoutes from "./routes/userProfileRoutes";
+
+app.use(
+  "/api/profile",
+  userProfileRoutes
+);
+
+import settingsRoutes from "./routes/settingsRoutes";
+
+app.use(
+ "/api/settings",
+ settingsRoutes
+);
+
 const PORT = Number(process.env.PORT) || 5000;
 
 app.listen(PORT, () => {

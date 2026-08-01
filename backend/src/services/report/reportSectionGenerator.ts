@@ -1,4 +1,7 @@
-import { generateReport } from "./reportGenerator";
+import {
+  ReportData,
+} from "./reportGenerator";
+
 
 import {
   buildExecutiveReport,
@@ -10,22 +13,22 @@ import {
 } from "./reportSectionBuilder";
 
 
+
 export function generateSectionReport(
-  section: string
+  section: string,
+  report: ReportData
 ) {
-
-  const report =
-    generateReport();
-
 
 
   switch (section) {
+
 
     case "executive":
 
       return buildExecutiveReport(
         report
       );
+
 
 
     case "health":
@@ -35,11 +38,13 @@ export function generateSectionReport(
       );
 
 
+
     case "ai-score":
 
       return buildAIScoreReport(
         report
       );
+
 
 
     case "insights":
@@ -49,11 +54,13 @@ export function generateSectionReport(
       );
 
 
+
     case "warnings":
 
       return buildWarningsReport(
         report
       );
+
 
 
     case "recommendations":
@@ -63,9 +70,11 @@ export function generateSectionReport(
       );
 
 
+
     case "full":
 
       return report;
+
 
 
     default:

@@ -1,37 +1,60 @@
-
-{/* eslint-disable @typescript-eslint/no-unused-vars }
-
-const API = "http://localhost:5000/api";
-
-
 export async function downloadReport(
-  section: string = "full"
+  section: string,
+  datasetId?: string
 ) {
 
-  const response = await fetch(
-    `${API}/reports/generate/${section}`
-  );
+  let url =
+    `http://localhost:5000/api/reports/generate/${section}`;
 
 
-  if (!response.ok) {
-    throw new Error(
-      "Failed to generate report"
-    );
+  if(datasetId){
+    url += `?datasetId=${datasetId}`;
   }
 
 
-  const blob = await response.blob();
+  const token =
+    localStorage.getItem("token");
 
 
-  const url =
-    window.URL.createObjectURL(blob);
+  const response =
+    await fetch(
+      url,
+      {
+        headers:{
+          Authorization:
+          `Bearer ${token}`
+        }
+      }
+    );
+
+
+  if(!response.ok){
+
+    throw new Error(
+      "Failed to generate report"
+    );
+
+  }
+
+
+  const blob =
+    await response.blob();
+
+
+  const downloadUrl =
+    window.URL.createObjectURL(
+      blob
+    );
 
 
   const link =
-    document.createElement("a");
+    document.createElement(
+      "a"
+    );
 
 
-  link.href = url;
+  link.href =
+    downloadUrl;
 
 
   link.download =
@@ -47,59 +70,9 @@ export async function downloadReport(
   link.remove();
 
 
-  window.URL.revokeObjectURL(url);
-
-}   */}
-
-
-{/* eslint-disable @typescript-eslint/no-unused-vars */}
-
-const API = "http://localhost:5000/api";
-
-
-export async function downloadReport(
-  section: string = "full"
-) {
-
-  const response = await fetch(
-    `${API}/reports/generate/${section}`
+  window.URL.revokeObjectURL(
+    downloadUrl
   );
-
-
-  if (!response.ok) {
-    throw new Error(
-      "Failed to generate report"
-    );
-  }
-
-
-  const blob = await response.blob();
-
-
-  const url =
-    window.URL.createObjectURL(blob);
-
-
-  const link =
-    document.createElement("a");
-
-
-  link.href = url;
-
-
-  link.download =
-    `Diralis_${section}_Report.pdf`;
-
-
-  document.body.appendChild(link);
-
-
-  link.click();
-
-
-  link.remove();
-
-
-  window.URL.revokeObjectURL(url);
 
 }
+

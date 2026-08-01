@@ -4,6 +4,13 @@ dotenv.config();
 
 import app from "./app";
 
+import overallInsightsRoutes from "./routes/overallInsightsRoutes";
+
+app.use(
+  "/api/overall-insights",
+  overallInsightsRoutes
+);
+
 const PORT = Number(process.env.PORT) || 5000;
 
 app.listen(PORT, () => {

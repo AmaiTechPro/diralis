@@ -5,10 +5,10 @@ import Login from "./pages/Login";
 import Register from "./pages/Register";
 import Dashboard from "./pages/Dashboard";
 import Datasets from "./pages/Datasets";
-import AIInsights from "./pages/AIInsights";
-import Reports from "./pages/Reports";
+import ReportsPage from "./pages/ReportsPage";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
+import AIInsightsPage from "./pages/AIInsightsPage";
 
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 
@@ -42,19 +42,19 @@ function App() {
       />
 
       <Route
-        path="/ai-insights"
-        element={
-          <ProtectedRoute>
-            <AIInsights />
-          </ProtectedRoute>
-        }
-      />
+  path="/ai-insights"
+  element={
+    <ProtectedRoute>
+      <AIInsightsPage />
+    </ProtectedRoute>
+  }
+/>
 
       <Route
         path="/reports"
         element={
           <ProtectedRoute>
-            <Reports />
+            <ReportsPage />
           </ProtectedRoute>
         }
       />
@@ -76,6 +76,7 @@ function App() {
           </ProtectedRoute>
         }
       />
+
 
       {/* Catch all unknown routes */}
       <Route

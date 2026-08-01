@@ -1,27 +1,45 @@
+import type { ReactNode } from "react";
+
+
+
+import Card from "./Card";
+
 interface StatCardProps {
+  icon?: ReactNode;
   label: string;
-  value: string;
+  value: number | string;
+  suffix?: string;
   color?: string;
 }
 
 export default function StatCard({
+  icon,
   label,
   value,
+  suffix = "",
   color = "text-cyan-400",
 }: StatCardProps) {
   return (
-    <div className="rounded-2xl bg-slate-800 p-6">
+    <Card>
 
-      <p className="text-sm text-slate-400">
+      {icon && (
+        <div className={color}>
+          {icon}
+        </div>
+      )}
+
+      <p className="mt-4 text-sm text-slate-400">
         {label}
       </p>
 
-      <h3 className={`mt-3 text-3xl font-bold ${color}`}>
-        {value}
-      </h3>
+      <h2 className={`mt-2 text-4xl font-bold ${color}`}>
 
-    </div>
+        {value}
+        {suffix}
+
+      </h2>
+
+    </Card>
   );
 }
-
 

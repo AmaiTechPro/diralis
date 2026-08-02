@@ -62,6 +62,13 @@ app.use(
   adminRoutes
 );
 
+import dashboardRoutes from "./routes/dashboardRoutes";
+
+app.use(
+  "/api/dashboard",
+  dashboardRoutes
+);
+
 
 
 const PORT = Number(process.env.PORT) || 5000;

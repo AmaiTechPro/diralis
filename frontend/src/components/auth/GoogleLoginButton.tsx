@@ -14,18 +14,32 @@ export default function GoogleLoginButton() {
   ) {
     try {
       if (!credentialResponse.credential) {
-        throw new Error("Google did not return a credential.");
+        throw new Error(
+          "Google did not return a credential."
+        );
       }
 
-      const result = await googleLogin(
-        credentialResponse.credential
+      const result =
+        await googleLogin(
+          credentialResponse.credential
+        );
+
+      login(
+        result.user,
+        result.token
       );
 
-      login(result.user, result.token);
-
-      navigate("/");
+      navigate(
+        "/dashboard",
+        {
+          replace: true,
+        }
+      );
     } catch (error) {
-      console.error("Google Login Error:", error);
+      console.error(
+        "Google Login Error:",
+        error
+      );
     }
   }
 
@@ -33,12 +47,12 @@ export default function GoogleLoginButton() {
     <GoogleLogin
       onSuccess={handleSuccess}
       onError={() => {
-        console.error("Google Login Failed");
+        console.error(
+          "Google Login Failed"
+        );
       }}
       useOneTap={false}
     />
   );
 }
-
-
 

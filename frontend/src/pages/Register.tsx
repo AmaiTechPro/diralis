@@ -44,7 +44,9 @@ export default function Register() {
 
       login(result.user, result.token);
 
-      navigate("/dashboard");
+      navigate("/dashboard", {
+        replace: true,
+         });
     } catch {
       setError(
         "Registration failed. Please try again."

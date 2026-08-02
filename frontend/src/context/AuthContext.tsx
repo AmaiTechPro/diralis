@@ -12,6 +12,7 @@ interface AuthContextType {
   user: User | null;
   token: string | null;
   isAuthenticated: boolean;
+  loading: boolean;
 
   login: (user: User, token: string) => void;
   logout: () => void;
@@ -32,6 +33,9 @@ export function AuthProvider({
 
   const [token, setToken] =
     useState<string | null>(null);
+
+  const [loading, setLoading] =
+    useState(true);
 
   useEffect(() => {
     try {
@@ -56,6 +60,8 @@ export function AuthProvider({
 
       setUser(null);
       setToken(null);
+    } finally {
+      setLoading(false);
     }
   }, []);
 
@@ -101,6 +107,7 @@ export function AuthProvider({
       value={{
         user,
         token,
+        loading,
 
         isAuthenticated:
           !!user && !!token,
@@ -127,5 +134,4 @@ export function useAuth() {
 
   return context;
 }
-
 

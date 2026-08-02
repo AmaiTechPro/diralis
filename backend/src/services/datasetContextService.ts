@@ -2,46 +2,105 @@ import fs from "fs/promises";
 import path from "path";
 import prisma from "../lib/prisma";
 
+
 export async function getLatestDatasetContext() {
-  const dataset = await prisma.dataset.findFirst({
-    orderBy: {
-      uploadedAt: "desc",
-    },
-  });
+
+  const dataset =
+    await prisma.dataset.findFirst({
+
+      orderBy: {
+        uploadedAt: "desc",
+      },
+
+    });
+
+
 
   if (!dataset) {
-    return "No dataset has been uploaded.";
+
+    return `
+No dataset has been uploaded.
+`;
+
   }
+
+
 
   try {
-    const filePath = path.join(
-      process.cwd(),
-      "uploads",
-      dataset.filename
-    );
 
-    const content = await fs.readFile(
-      filePath,
-      "utf-8"
-    );
+    const filePath =
+      path.join(
+        process.cwd(),
+        "uploads",
+        dataset.filename
+      );
+
+
+    const content =
+      await fs.readFile(
+        filePath,
+        "utf-8"
+      );
+
+
+
+    const preview =
+      content.substring(0, 6000);
+
+
 
     return `
-Latest Dataset
 
-Name: ${dataset.originalName}
+LATEST BUSINESS DATASET
 
-Rows Preview:
+Name:
+${dataset.originalName}
 
-${content.substring(0, 6000)}
+
+File Type:
+${dataset.mimetype}
+
+
+Uploaded:
+${dataset.uploadedAt.toLocaleString()}
+
+
+DATA PREVIEW:
+
+${preview}
+
+
+Instructions:
+
+Analyze this dataset when answering user questions.
+
+Look for:
+- trends
+- patterns
+- anomalies
+- business opportunities
+- risks
+
+Provide actionable recommendations.
+
 `;
+
   } catch {
+
     return `
-Dataset metadata
 
-Name: ${dataset.originalName}
+DATASET INFORMATION
 
-File could not be read.
+Name:
+${dataset.originalName}
+
+
+The dataset file exists,
+but could not be loaded.
+
 `;
+
   }
+
 }
 

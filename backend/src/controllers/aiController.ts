@@ -19,12 +19,27 @@ export async function aiController(
     res.json({
       reply,
     });
-  } catch (error) {
+    } catch (error: any) {
     console.error(error);
 
+
+    if (
+      error?.code === "credit_balance_exhausted"
+    ) {
+
+      return res.status(503).json({
+        message:
+          "Diralis AI is temporarily unavailable. AI credits need to be updated.",
+      });
+
+    }
+
+
     res.status(500).json({
-      message: "AI request failed.",
+      message:
+        "AI request failed. Please try again.",
     });
+
   }
 }
 

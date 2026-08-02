@@ -18,12 +18,12 @@ export default function Dashboard() {
   }
 
   if (error || !dashboardData) {
-    return (
-      <div className="p-8 text-red-400">
-        Failed to load dashboard.
-      </div>
-    );
-  }
+  return (
+    <div className="p-8 text-red-400">
+      {error}
+    </div>
+  );
+}
 
   return (
     <div>

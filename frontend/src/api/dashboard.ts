@@ -27,6 +27,6 @@ export interface DashboardData {
 }
 
 export function getDashboardData() {
-  return apiFetch<DashboardData>("/dashboard");
+  return apiFetch<DashboardData>("/api/dashboard");
 }
 

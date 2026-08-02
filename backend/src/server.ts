@@ -44,6 +44,10 @@ app.use(
   predictionRoutes
 );
 
+import aiRoutes from "./routes/aiRoutes";
+
+app.use("/api/ai", aiRoutes);
+
 const PORT = Number(process.env.PORT) || 5000;
 
 app.listen(PORT, () => {

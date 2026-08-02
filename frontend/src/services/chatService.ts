@@ -3,25 +3,16 @@ import api from "./api";
 export async function sendMessage(
   message: string
 ) {
-
-  const response =
-    await api.post(
-      "/chat",
-      {
-        message,
-      }
-    );
-
+  const response = await api.post(
+    "/ai",
+    {
+      message,
+    }
+  );
 
   return {
-    reply:
-      response.data.reply.reply ??
-      response.data.reply,
-
-    timestamp:
-      response.data.reply.timestamp ??
-      new Date().toISOString(),
+    reply: response.data.reply,
+    timestamp: new Date().toISOString(),
   };
-
 }
 

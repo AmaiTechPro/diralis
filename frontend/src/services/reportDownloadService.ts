@@ -4,7 +4,7 @@ export async function downloadReport(
 ) {
 
   let url =
-    `http://localhost:5000/api/reports/generate/${section}`;
+    `${import.meta.env.VITE_API_URL}/reports/generate/${section}`
 
 
   if(datasetId){

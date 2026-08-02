@@ -2,7 +2,7 @@ export async function getOverallInsights() {
   const token = localStorage.getItem("token");
 
   const response = await fetch(
-    "http://localhost:5000/api/overall-insights",
+    `${import.meta.env.VITE_API_URL}/overall-insights`,
     {
       headers: {
         Authorization: `Bearer ${token}`,

@@ -1,8 +1,16 @@
-node_modules
-dist
+node_modules/
+dist/
+
 .env
-.env.local
-.env.production
+.env.*
 frontend/.env
 backend/.env
+
+uploads/
+
+*.db
+*.sqlite
+*.sqlite3
+
+.DS_Store
 

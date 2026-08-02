@@ -59,7 +59,7 @@ export default function AIChat() {
 
 
 
-  const [sessions, setSessions] =
+  const [, setSessions] =
     useState<ChatSession[]>([]);
 
 

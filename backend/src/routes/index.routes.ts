@@ -5,12 +5,14 @@ import authRoutes from "./auth.routes";
 import datasetRoutes from "./datasetRoutes";
 import profileRoutes from "./profileRoutes";
 import reportRoutes from "./reportRoutes";
-
+import adminRoutes from "./admin.routes";
 
 const router = Router();
 
 router.use("/dashboard", dashboardRoutes);
 router.use("/reports", reportRoutes);
+
+router.use("/admin", adminRoutes);
 
 router.use("/auth", authRoutes);
 

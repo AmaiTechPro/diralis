@@ -85,7 +85,10 @@ export async function loginWithGoogle(
   }
 
   const token =
-    generateToken(user.id);
+    generateToken(
+    user.id,
+   user.role
+   )
 
   return {
     user: {

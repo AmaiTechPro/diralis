@@ -16,13 +16,17 @@ model User {
   provider String  @default("local")
   picture  String?
 
+  role   String @default("USER")
+  status String @default("ACTIVE")
+
   theme              String  @default("dark")
   emailNotifications Boolean @default(true)
 
   createdAt DateTime @default(now())
 
-  datasets     Dataset[]
-  chatSessions ChatSession[]
+  datasets            Dataset[]
+  chatSessions        ChatSession[]
+  passwordResetTokens PasswordResetToken[]
 }
 
 model Dataset {
@@ -57,4 +61,14 @@ model ChatMessage {
 
   sessionId String
   session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+}
+
+model PasswordResetToken {
+  id        String   @id @default(cuid())
+  tokenHash String   @unique
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }

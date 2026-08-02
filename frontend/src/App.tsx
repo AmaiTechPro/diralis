@@ -14,6 +14,15 @@ import AIChat from "./pages/AIChat";
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";
 
+import ForgotPassword from "./pages/ForgotPassword";
+
+import ResetPassword from "./pages/ResetPassword";
+
+import AdminDashboard from "./pages/AdminDashboard";
+
+
+
+
 
 function App() {
 
@@ -41,9 +50,36 @@ function App() {
         element={<Register />}
       />
 
+      <Route
+     path="/forgot-password"
+     element={<ForgotPassword />}
+    />
+
+    <Route
+   path="/reset-password"
+   element={<ResetPassword />}
+   />
 
 
-      {/* Protected Application Routes */}
+
+      {/* Protected Application Routes  */}
+
+
+         {/* Admin Dashboard Route */}
+        <Route
+       path="/admin"
+         element={
+          <ProtectedRoute>
+
+         <AppLayout>
+
+         <AdminDashboard />
+
+        </AppLayout>
+
+      </ProtectedRoute>
+      }
+            />
 
 
       <Route

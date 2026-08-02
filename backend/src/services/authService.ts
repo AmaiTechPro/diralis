@@ -4,15 +4,17 @@ import prisma from "../lib/prisma";
 import { generateToken } from "../utils/jwt";
 
 type AuthResponse = {
-  user: {
-    id: string;
-    fullName: string;
-    username: string;
-    email: string;
-    provider: string;
-    picture: string | null;
-    createdAt: Date;
-  };
+ user: {
+  id: string;
+  fullName: string;
+  username: string;
+  email: string;
+  provider: string;
+  picture: string | null;
+  role: string;
+  status: string;
+  createdAt: Date;
+};
   token: string;
 };
 
@@ -64,11 +66,16 @@ export async function registerUser(
       email: user.email,
       provider: user.provider,
       picture: user.picture,
+      role: user.role,
+      status: user.status,
       createdAt: user.createdAt,
     },
-    token: generateToken(user.id),
-  };
-}
+    token: generateToken(
+    user.id,
+    user.role
+   ),
+    };
+   }
 
 export async function loginUser(
   identifier: string,
@@ -110,9 +117,14 @@ export async function loginUser(
       email: user.email,
       provider: user.provider,
       picture: user.picture,
+      role: user.role,
+      status: user.status,
       createdAt: user.createdAt,
     },
-    token: generateToken(user.id),
+    token: generateToken(
+  user.id,
+  user.role
+   ),
   };
 }
 

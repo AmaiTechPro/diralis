@@ -47,10 +47,13 @@ export default function Register() {
       navigate("/dashboard", {
         replace: true,
          });
-    } catch {
-      setError(
-        "Registration failed. Please try again."
-      );
+    } catch (error: any) {
+    setError(
+    error.response?.data?.error ??
+    error.response?.data?.message ??
+    "Registration failed."
+    );
+
     } finally {
       setLoading(false);
     }

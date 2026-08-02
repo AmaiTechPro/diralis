@@ -5,9 +5,20 @@ const JWT_SECRET =
 
 const EXPIRES_IN = "7d";
 
-export function generateToken(userId: string): string {
+interface TokenPayload {
+  userId: string;
+  role: string;
+}
+
+export function generateToken(
+  userId: string,
+  role: string
+): string {
   return jwt.sign(
-    { userId },
+    {
+      userId,
+      role,
+    },
     JWT_SECRET,
     {
       expiresIn: EXPIRES_IN,
@@ -18,5 +29,4 @@ export function generateToken(userId: string): string {
 export function verifyToken(token: string) {
   return jwt.verify(token, JWT_SECRET);
 }
-
 

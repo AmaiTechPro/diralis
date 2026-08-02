@@ -1,6 +1,6 @@
-import type { AuthResponse } from "../types/auth";
+import api from "../services/api";
 
-const API_URL = import.meta.env.VITE_API_URL;
+import type { AuthResponse } from "../types/auth";
 
 interface LoginRequest {
   identifier: string;
@@ -14,47 +14,60 @@ interface RegisterRequest {
   password: string;
 }
 
+interface ForgotPasswordRequest {
+  email: string;
+}
+
+interface ResetPasswordRequest {
+  token: string;
+  password: string;
+}
+
 export async function login(
   credentials: LoginRequest
 ): Promise<AuthResponse> {
-  const response = await fetch(`${API_URL}/auth/login`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(credentials),
-  });
+  const response =
+    await api.post<AuthResponse>(
+      "/auth/login",
+      credentials
+    );
 
-  if (!response.ok) {
-  const error = await response.json();
-
-  throw new Error(
-    error.error || "Login failed."
-  );
-}
-
-  return response.json();
+  return response.data;
 }
 
 export async function register(
   user: RegisterRequest
 ): Promise<AuthResponse> {
-  const response = await fetch(`${API_URL}/auth/register`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-    },
-    body: JSON.stringify(user),
-  });
+  const response =
+    await api.post<AuthResponse>(
+      "/auth/register",
+      user
+    );
 
-  if (!response.ok) {
-  const error = await response.json();
-
-  throw new Error(
-    error.error || "Registration failed."
-  );
+  return response.data;
 }
 
-  return response.json();
+export async function forgotPassword(
+  data: ForgotPasswordRequest
+): Promise<{ message: string }> {
+  const response =
+    await api.post(
+      "/auth/forgot-password",
+      data
+    );
+
+  return response.data;
+}
+
+export async function resetPassword(
+  data: ResetPasswordRequest
+): Promise<{ message: string }> {
+  const response =
+    await api.post(
+      "/auth/reset-password",
+      data
+    );
+
+  return response.data;
 }
 

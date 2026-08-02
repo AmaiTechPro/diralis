@@ -48,6 +48,22 @@ import aiRoutes from "./routes/aiRoutes";
 
 app.use("/api/ai", aiRoutes);
 
+import passwordResetRoutes from "./routes/passwordReset.routes";
+
+app.use(
+  "/api/auth",
+  passwordResetRoutes
+);
+
+import adminRoutes from "./routes/admin.routes";
+
+app.use(
+  "/api/admin",
+  adminRoutes
+);
+
+
+
 const PORT = Number(process.env.PORT) || 5000;
 
 app.listen(PORT, () => {

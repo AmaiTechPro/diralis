@@ -31,12 +31,23 @@ export default function Login() {
 
       login(result.user, result.token);
 
-      navigate("/dashboard");
-    } catch {
-      setError("Invalid username/email or password.");
-    } finally {
-      setLoading(false);
-    }
+if (result.user.role === "ADMIN") {
+
+  navigate("/admin");
+
+} else {
+
+  navigate("/dashboard");
+
+}
+
+    } catch (error: any) {
+    setError(
+    error.response?.data?.error ??
+    error.response?.data?.message ??
+    "Invalid username/email or password."
+    );
+   }
   }
 
   return (
@@ -99,12 +110,12 @@ export default function Login() {
         </div>
 
         <div className="mt-8 flex justify-between text-sm text-slate-400">
-          <button
-            type="button"
-            className="hover:text-cyan-400"
-          >
-            Forgot Password?
-          </button>
+          <Link
+         to="/forgot-password"
+      className="hover:text-cyan-400"
+      >
+      Forgot Password?
+     </Link>
 
           <Link
             to="/register"

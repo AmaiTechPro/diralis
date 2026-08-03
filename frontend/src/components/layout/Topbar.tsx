@@ -89,7 +89,7 @@ export default function Topbar({
 
 
 
-        <nav className="flex items-center gap-2">
+        <nav className="hidden lg:flex items-center gap-2">
 
 
           {
@@ -147,7 +147,8 @@ export default function Topbar({
 
 
 
-        <div className="flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900 px-4 py-3">
+        <div className="hidden md:flex items-center gap-3 rounded-xl border border-slate-800 bg-slate-900 px-4 py-3">
+          
 
 
           <Search size={18}/>

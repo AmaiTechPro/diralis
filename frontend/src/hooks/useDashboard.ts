@@ -18,16 +18,10 @@ export function useDashboard() {
         const data = await getDashboardData();
         setDashboardData(data);
       } 
-      
       catch (err) {
-  console.error("Dashboard Error:", err);
-
-  if (err instanceof Error) {
-    setError(err.message);
-  } else {
-    setError("Unknown error");
-  }
-} 
+        console.error(err);
+        setError("Failed to load dashboard.");
+      } 
       
       finally {
         setLoading(false);

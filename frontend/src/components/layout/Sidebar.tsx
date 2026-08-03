@@ -15,12 +15,16 @@ import { useAuth } from "../../context/AuthContext";
 
 interface SidebarProps {
   collapsed: boolean;
+  mobileOpen: boolean;
+  closeMobileSidebar: () => void;
 }
 
 
 
 export default function Sidebar({
   collapsed,
+  mobileOpen,
+  closeMobileSidebar,
 }: SidebarProps) {
 
 
@@ -43,12 +47,27 @@ export default function Sidebar({
   return (
 
     <aside
-      className={`
-        flex flex-col border-r border-slate-800 bg-slate-900
-        transition-all duration-300
-        ${collapsed ? "w-20" : "w-72"}
-      `}
-    >
+  className={`
+    fixed inset-y-0 left-0 z-50
+    flex flex-col border-r border-slate-800 bg-slate-900
+    transition-all duration-300
+
+    w-72
+
+    ${
+      mobileOpen
+        ? "translate-x-0"
+        : "-translate-x-full"
+    }
+
+    lg:translate-x-0
+    ${
+      collapsed
+        ? "lg:w-20"
+        : "lg:w-72"
+    }
+  `}
+>
 
 
 
@@ -92,11 +111,12 @@ export default function Sidebar({
 
 
         <SidebarLink
-          to="/dashboard"
-          icon={<LayoutDashboard size={20} />}
-          title="Dashboard"
-          collapsed={collapsed}
-        />
+       to="/dashboard"
+       icon={<LayoutDashboard size={20} />}
+       title="Dashboard"
+       collapsed={collapsed}
+       onClick={closeMobileSidebar}
+       />
 
 
         <SidebarLink
@@ -104,6 +124,7 @@ export default function Sidebar({
           icon={<Database size={20} />}
           title="Datasets"
           collapsed={collapsed}
+          onClick={closeMobileSidebar}
         />
 
 
@@ -112,6 +133,7 @@ export default function Sidebar({
           icon={<BrainCircuit size={20} />}
           title="AI Insights"
           collapsed={collapsed}
+          onClick={closeMobileSidebar}
         />
 
 
@@ -120,6 +142,7 @@ export default function Sidebar({
           icon={<Bot size={20} />}
           title="AI Chat"
           collapsed={collapsed}
+          onClick={closeMobileSidebar}
         />
 
 
@@ -128,6 +151,7 @@ export default function Sidebar({
           icon={<BarChart3 size={20} />}
           title="Reports"
           collapsed={collapsed}
+          onClick={closeMobileSidebar}
         />
 
 
@@ -136,6 +160,7 @@ export default function Sidebar({
           icon={<UserCircle size={20} />}
           title="Profile"
           collapsed={collapsed}
+          onClick={closeMobileSidebar}
         />
 
 
@@ -144,6 +169,7 @@ export default function Sidebar({
           icon={<Settings size={20} />}
           title="Settings"
           collapsed={collapsed}
+          onClick={closeMobileSidebar}
         />
 
 
@@ -224,24 +250,13 @@ export default function Sidebar({
 
 }
 
-
-
-
-
 interface SidebarLinkProps {
-
   to: string;
-
   icon: React.ReactNode;
-
   title: string;
-
   collapsed: boolean;
-
+  onClick: () => void;
 }
-
-
-
 
 
 function SidebarLink({
@@ -254,6 +269,8 @@ function SidebarLink({
 
   collapsed,
 
+  onClick,
+
 }: SidebarLinkProps) {
 
 
@@ -262,6 +279,7 @@ function SidebarLink({
     <NavLink
 
       to={to}
+      onClick={onClick}
 
       className={({ isActive }) =>
 

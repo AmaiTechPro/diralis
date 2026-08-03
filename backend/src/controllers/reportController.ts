@@ -179,11 +179,6 @@ export async function reportController(
 
 
 
-
-
-
-
-
 export async function generateReportPDF(
   req: Request,
   res: Response
@@ -232,30 +227,26 @@ export async function generateReportPDF(
 
 
 
-  } catch(error) {
+  } catch (error) {
 
+  console.error(error);
 
-    console.error(
-      error
-    );
-
-
-    res.status(500).json({
-
+  if (
+    error instanceof Error &&
+    error.message === "No datasets found"
+  ) {
+    return res.status(404).json({
       message:
-        "Failed to generate PDF report",
-
+        "No valid datasets found. Please upload a dataset to generate reports.",
     });
-
   }
 
+  res.status(500).json({
+    message: "Failed to generate report",
+  });
+
+  }
 }
-
-
-
-
-
-
 
 
 

@@ -22,29 +22,50 @@ export async function getDatasets(
 }
 
 
-
-
-
 export async function getLatestDataset(
   userId: string
 ) {
 
-  return prisma.dataset.findFirst({
+  const datasets =
+    await prisma.dataset.findMany({
 
-    where: {
-      userId,
-    },
+      where: {
+        userId,
+      },
 
-    orderBy: {
-      uploadedAt: "desc",
-    },
+      orderBy: {
+        uploadedAt: "desc",
+      },
 
-  });
+    });
+
+  for (const dataset of datasets) {
+
+    const filePath = path.join(
+      process.cwd(),
+      "uploads",
+      dataset.filename
+    );
+
+    try {
+
+      await fs.access(filePath);
+
+      return dataset;
+
+    } catch {
+
+      console.warn(
+        `Skipping missing dataset: ${dataset.originalName}`
+      );
+
+    }
+
+  }
+
+  return null;
 
 }
-
-
-
 
 
 export async function deleteDataset(

@@ -26,6 +26,12 @@ export async function parseDataset(
     dataset.filename
   );
 
+  if (!fs.existsSync(filePath)) {
+  throw new Error(
+    `Dataset file not found: ${dataset.filename}`
+  );
+}
+
   const extension =
     path.extname(filePath).toLowerCase();
 

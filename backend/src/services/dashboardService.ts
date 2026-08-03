@@ -1,7 +1,28 @@
 import prisma from "../lib/prisma";
 
-export async function getDashboardData() {
-  const datasets = await prisma.dataset.count();
+export async function getDashboardData(userId: string) {
+
+  const user = await prisma.user.findUnique({
+    where: {
+      id: userId,
+    },
+    select: {
+      role: true,
+    },
+  });
+
+  if (!user) {
+    throw new Error("User not found");
+  }
+
+  const datasets =
+    user.role === "ADMIN"
+      ? await prisma.dataset.count()
+      : await prisma.dataset.count({
+          where: {
+            userId,
+          },
+        });
 
   return {
     stats: {
@@ -42,4 +63,3 @@ export async function getDashboardData() {
     ],
   };
 }
-

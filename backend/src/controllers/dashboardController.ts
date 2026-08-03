@@ -5,7 +5,9 @@ export async function dashboardController(
   req: Request,
   res: Response
 ) {
-  const dashboard = await getDashboardData();
+  const dashboard = await getDashboardData(
+    req.user!.userId
+  );
 
   res.json(dashboard);
 }

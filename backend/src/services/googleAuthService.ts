@@ -28,6 +28,12 @@ export async function verifyGoogleToken(
     throw new Error("Invalid Google token.");
   }
 
+  if (!payload.email_verified) {
+  throw new Error(
+    "Google email is not verified."
+  );
+}
+
   return {
     googleId: payload.sub,
     email: payload.email!,
@@ -48,6 +54,19 @@ export async function loginWithGoogle(
         email: googleUser.email,
       },
     });
+
+  if (user && !user.googleId) {
+  user = await prisma.user.update({
+    where: {
+      id: user.id,
+    },
+    data: {
+      googleId: googleUser.googleId,
+      picture: googleUser.picture,
+      provider: "google",
+    },
+  });
+}
 
   if (!user) {
     let username =

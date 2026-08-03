@@ -15,22 +15,38 @@ export default function AppLayout({
 }: AppLayoutProps) {
 
   const [sidebarCollapsed, setSidebarCollapsed] =
-    useState(false);
+  useState(false);
+
+const [mobileSidebarOpen, setMobileSidebarOpen] =
+  useState(false);
 
   return (
     <div className="min-h-screen bg-slate-950 text-white lg:flex">
 
       <Sidebar
-        collapsed={sidebarCollapsed}
-      />
+  collapsed={sidebarCollapsed}
+  mobileOpen={mobileSidebarOpen}
+  onClose={() => setMobileSidebarOpen(false)}
+/>
+
+   {mobileSidebarOpen && (
+  <div
+    className="fixed inset-0 z-40 bg-black/60 lg:hidden"
+    onClick={() => setMobileSidebarOpen(false)}
+  />
+)}
 
       <div className="flex min-w-0 flex-1 flex-col">
 
         <Topbar
-          onMenuClick={() =>
-            setSidebarCollapsed(!sidebarCollapsed)
-          }
-        />
+  onMenuClick={() => {
+    if (window.innerWidth < 1024) {
+      setMobileSidebarOpen(!mobileSidebarOpen);
+    } else {
+      setSidebarCollapsed(!sidebarCollapsed);
+    }
+  }}
+/>
 
         <main className="flex-1 overflow-auto p-4 sm:p-6 lg:p-8">
           {children}

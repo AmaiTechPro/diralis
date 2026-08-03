@@ -15,12 +15,16 @@ import { useAuth } from "../../context/AuthContext";
 
 interface SidebarProps {
   collapsed: boolean;
+  mobileOpen: boolean;
+  onClose: () => void;
 }
 
 
 
 export default function Sidebar({
   collapsed,
+  mobileOpen,
+  onClose,
 }: SidebarProps) {
 
 
@@ -45,16 +49,20 @@ export default function Sidebar({
     <aside
   className={`
     fixed inset-y-0 left-0 z-50
-    flex flex-col border-r border-slate-800 bg-slate-900
+    flex flex-col bg-slate-900 border-r border-slate-800
     transition-transform duration-300
-
-    ${collapsed ? "-translate-x-full" : "translate-x-0"}
 
     w-72
 
+    ${
+      mobileOpen
+        ? "translate-x-0"
+        : "-translate-x-full"
+    }
+
     lg:static
     lg:translate-x-0
-    lg:${collapsed ? "w-20" : "w-72"}
+    ${collapsed ? "lg:w-20" : "lg:w-72"}
   `}
 >
 
@@ -104,6 +112,7 @@ export default function Sidebar({
           icon={<LayoutDashboard size={20} />}
           title="Dashboard"
           collapsed={collapsed}
+          onClick={onClose}
         />
 
 
@@ -112,6 +121,7 @@ export default function Sidebar({
           icon={<Database size={20} />}
           title="Datasets"
           collapsed={collapsed}
+          onClick={onClose}
         />
 
 
@@ -120,6 +130,7 @@ export default function Sidebar({
           icon={<BrainCircuit size={20} />}
           title="AI Insights"
           collapsed={collapsed}
+          onClick={onClose}
         />
 
 
@@ -128,6 +139,7 @@ export default function Sidebar({
           icon={<Bot size={20} />}
           title="AI Chat"
           collapsed={collapsed}
+          onClick={onClose}
         />
 
 
@@ -136,6 +148,7 @@ export default function Sidebar({
           icon={<BarChart3 size={20} />}
           title="Reports"
           collapsed={collapsed}
+          onClick={onClose}
         />
 
 
@@ -144,6 +157,7 @@ export default function Sidebar({
           icon={<UserCircle size={20} />}
           title="Profile"
           collapsed={collapsed}
+          onClick={onClose}
         />
 
 
@@ -152,6 +166,7 @@ export default function Sidebar({
           icon={<Settings size={20} />}
           title="Settings"
           collapsed={collapsed}
+          onClick={onClose}
         />
 
 
@@ -246,6 +261,8 @@ interface SidebarLinkProps {
 
   collapsed: boolean;
 
+  onClick?: () => void;
+
 }
 
 
@@ -262,6 +279,8 @@ function SidebarLink({
 
   collapsed,
 
+   onClick,
+
 }: SidebarLinkProps) {
 
 
@@ -270,6 +289,7 @@ function SidebarLink({
     <NavLink
 
       to={to}
+      onClick={onClick}
 
       className={({ isActive }) =>
 

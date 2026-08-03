@@ -1,4 +1,5 @@
 import { useEffect, useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 import PageHeader from "../components/ui/PageHeader";
 import ReportCard from "../components/reports/ReportCard";
@@ -6,34 +7,73 @@ import ReportCard from "../components/reports/ReportCard";
 import { getReport } from "../services/reportService";
 import { downloadReport } from "../services/reportDownloadService";
 
-
 export default function ReportsPage() {
+
+  const navigate = useNavigate();
 
   const [report, setReport] = useState<any>(null);
 
+  const [loading, setLoading] = useState(true);
+
   const [generating, setGenerating] = useState(false);
 
+  const [error, setError] = useState("");
 
   const datasetId =
-  new URLSearchParams(
-    window.location.search
-  ).get("datasetId") ?? undefined;
-
-
+    new URLSearchParams(
+      window.location.search
+    ).get("datasetId") ?? undefined;
 
   useEffect(() => {
 
-  getReport(datasetId ?? undefined)
-    .then(setReport)
-    .catch((error) => {
-      console.error(
-        "Report loading failed:",
-        error
-      );
-    });
+    async function loadReport() {
 
-}, [datasetId]);
+      try {
 
+        setLoading(true);
+
+        const data =
+          await getReport(datasetId);
+
+        setReport(data);
+
+        setError("");
+
+      } catch (error) {
+
+        console.error(
+          "Report loading failed:",
+          error
+        );
+
+        if (
+          error instanceof Error &&
+          error.message.includes("No valid datasets")
+        ) {
+
+          setError(
+            "NO_DATASET"
+          );
+
+        } else {
+
+          setError(
+            "FAILED"
+          );
+
+        }
+
+      } finally {
+
+        setLoading(false);
+
+      }
+
+    }
+
+    loadReport();
+
+  }, [datasetId]);
 
 
 
@@ -43,38 +83,48 @@ export default function ReportsPage() {
 
       setGenerating(true);
 
-
       await downloadReport(
-     "full",
-    datasetId ?? undefined
-   );
-
-
-    } catch (error) {
-
-      console.error(
-        "Report generation failed:",
-        error
+        "full",
+        datasetId
       );
 
+    } 
+    
+    catch (error) {
 
-    } finally {
+  console.error(
+    "Report loading failed:",
+    error
+  );
 
-      setGenerating(false);
+  if (
+    typeof error === "object" &&
+    error !== null &&
+    "status" in error &&
+    error.status === 404
+  ) {
 
-    }
+    setError("NO_DATASET");
+
+  } else {
+
+    setError("FAILED");
+
+  }
+
+}
 
   };
 
 
 
-  if (!report) {
+  if (loading) {
 
     return (
 
       <div className="flex h-64 items-center justify-center text-slate-400">
 
-        Loading Reports...
+        Loading report...
 
       </div>
 
@@ -84,14 +134,74 @@ export default function ReportsPage() {
 
 
 
+  if (error === "NO_DATASET") {
+
+    return (
+
+      <div className="flex min-h-[70vh] items-center justify-center">
+
+        <div className="max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-10 text-center shadow-lg">
+
+          <div className="mb-5 text-6xl">
+            📄
+          </div>
+
+          <h2 className="text-3xl font-bold text-white">
+
+            No Reports Yet
+
+          </h2>
+
+          <p className="mt-4 text-slate-400">
+
+            Upload a dataset to generate your first
+            AI-powered business report.
+
+          </p>
+
+          <button
+
+            onClick={() => navigate("/datasets")}
+
+            className="mt-8 rounded-lg bg-cyan-500 px-6 py-3 font-semibold text-slate-950 transition hover:bg-cyan-400"
+
+          >
+
+            Upload Dataset
+
+          </button>
+
+        </div>
+
+      </div>
+
+    );
+
+  }
+
+
+
+  if (error) {
+
+    return (
+
+      <div className="flex h-64 items-center justify-center text-red-400">
+
+        Failed to load report.
+
+      </div>
+
+    );
+
+  }
+
+
 
   return (
 
     <div className="space-y-8">
 
-
       <div className="flex items-center justify-between">
-
 
         <PageHeader
 
@@ -100,8 +210,6 @@ export default function ReportsPage() {
           subtitle="Generate professional AI-powered business reports."
 
         />
-
-
 
         <button
 
@@ -130,14 +238,9 @@ export default function ReportsPage() {
 
         </button>
 
-
       </div>
 
-
-
-
       <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-3">
-
 
         <ReportCard
           title="Executive Report"
@@ -147,8 +250,6 @@ export default function ReportsPage() {
           datasetId={datasetId}
         />
 
-
-
         <ReportCard
           title="Business Health"
           description={`Business Health: ${report.businessHealth}%`}
@@ -156,8 +257,6 @@ export default function ReportsPage() {
           section="health"
           datasetId={datasetId}
         />
-
-
 
         <ReportCard
           title="AI Score"
@@ -167,8 +266,6 @@ export default function ReportsPage() {
           datasetId={datasetId}
         />
 
-
-
         <ReportCard
           title="Insights"
           description={`${report.insights.length} AI insights generated`}
@@ -176,8 +273,6 @@ export default function ReportsPage() {
           section="insights"
           datasetId={datasetId}
         />
-
-
 
         <ReportCard
           title="Warnings"
@@ -187,8 +282,6 @@ export default function ReportsPage() {
           datasetId={datasetId}
         />
 
-
-
         <ReportCard
           title="Recommendations"
           description={`${report.recommendations.length} recommendations available`}
@@ -197,9 +290,7 @@ export default function ReportsPage() {
           datasetId={datasetId}
         />
 
-
       </div>
-
 
     </div>
 

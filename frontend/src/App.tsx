@@ -20,7 +20,20 @@ import ResetPassword from "./pages/ResetPassword";
 
 import AdminDashboard from "./pages/AdminDashboard";
 
+import PrivacyPolicy from "./pages/PrivacyPolicy";
 
+import TermsOfService from "./pages/TermsOfService";
+
+import Features from "./pages/Features";
+import HowItWorks from "./pages/HowItWorks";
+import Roadmap from "./pages/Roadmap";
+import About from "./pages/About";
+import Contact from "./pages/Contact";
+import CookiePolicy from "./pages/CookiePolicy";
+import Security from "./pages/Security";
+import Documentation from "./pages/Documentation";
+import Support from "./pages/Support";
+import Pricing from "./pages/Pricing";
 
 
 
@@ -59,6 +72,67 @@ function App() {
    path="/reset-password"
    element={<ResetPassword />}
    />
+
+    <Route
+  path="/privacy"
+  element={<PrivacyPolicy />}
+/>
+
+
+<Route
+  path="/terms"
+  element={<TermsOfService />}
+/>
+
+<Route
+  path="/features"
+  element={<Features />}
+/>
+
+<Route
+  path="/how-it-works"
+  element={<HowItWorks />}
+/>
+
+<Route
+  path="/roadmap"
+  element={<Roadmap />}
+/>
+
+<Route
+  path="/about"
+  element={<About />}
+/>
+
+<Route
+  path="/contact"
+  element={<Contact />}
+/>
+
+<Route
+  path="/cookies"
+  element={<CookiePolicy />}
+/>
+
+<Route
+  path="/security"
+  element={<Security />}
+/>
+
+<Route
+  path="/docs"
+  element={<Documentation />}
+/>
+
+<Route
+  path="/support"
+  element={<Support />}
+/>
+
+<Route
+  path="/pricing"
+  element={<Pricing />}
+/>
 
 
 

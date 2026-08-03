@@ -1,4 +1,4 @@
-import { apiFetch } from "./apiClient";
+import { apiFetch } from "./client";
 
 export interface DashboardData {
   stats: {

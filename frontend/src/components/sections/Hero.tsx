@@ -6,7 +6,6 @@ import RevenueChart from "../dashboard/RevenueChart";
 import LiveStatus from "../ui/LiveStatus";
 import AIRecommendation from "../dashboard/AIRecommendation";
 import useLiveMetrics from "../../hooks/useLiveMetrics";
-import { useDashboard } from "../../hooks/useDashboard";
 
 import {
   Sparkles,
@@ -24,60 +23,28 @@ export default function Hero() {
   const navigate = useNavigate();
 
 
-  const { dashboardData, loading, error } = useDashboard();
+  // Public homepage demo intelligence
+  // This is not connected to user datasets.
+  const demoMetrics = {
+    revenueForecast: 18,
+    customerGrowth: 24381,
+    operationalEfficiency: 91,
+    aiConfidence: 97,
+    inventoryRisk: 12,
+  };
 
 
   const metrics = useLiveMetrics({
 
-    revenue: dashboardData?.revenueForecast ?? 18,
+    revenue: demoMetrics.revenueForecast,
 
-    customers: dashboardData?.customerGrowth ?? 24381,
+    customers: demoMetrics.customerGrowth,
 
-    efficiency: dashboardData?.operationalEfficiency ?? 91,
+    efficiency: demoMetrics.operationalEfficiency,
 
-    confidence: dashboardData?.aiConfidence ?? 97,
+    confidence: demoMetrics.aiConfidence,
 
   });
-
-
-
-  if (loading) {
-
-    return (
-
-      <section className="flex min-h-screen items-center justify-center">
-
-        <p className="text-lg text-slate-400">
-
-          Loading dashboard...
-
-        </p>
-
-      </section>
-
-    );
-
-  }
-
-
-
-  if (error || !dashboardData) {
-
-    return (
-
-      <section className="flex min-h-screen items-center justify-center">
-
-        <p className="text-lg text-red-400">
-
-          Failed to load dashboard.
-
-        </p>
-
-      </section>
-
-    );
-
-  }
 
 
 
@@ -92,7 +59,7 @@ export default function Hero() {
 
         <div className="absolute bottom-0 left-0 h-80 w-80 rounded-full bg-blue-600/10 blur-3xl" />
 
-        <div className="absolute right-0 top-0 h-96 w-96 rounded-full bg-purple-600/10 blur-3xl" />
+        <div className="absolute right-0 top-0 h-96 h-96 rounded-full bg-purple-600/10 blur-3xl" />
 
       </div>
 
@@ -101,8 +68,6 @@ export default function Hero() {
       <div className="mx-auto grid max-w-7xl items-center gap-14 md:gap-16 lg:grid-cols-2">
 
 
-
-        {/* Left Content */}
 
         <FadeIn>
 
@@ -179,8 +144,6 @@ export default function Hero() {
 
 
 
-
-
               <motion.button
 
                 whileHover={{
@@ -214,47 +177,28 @@ export default function Hero() {
 
 
 
-
             <div className="mt-8 flex flex-wrap gap-5 text-sm">
 
 
-              <div className="flex items-center gap-2 text-slate-300">
+              {[
+                "AI Recommendations",
+                "Forecasting",
+                "CSV Uploads",
+                "Business Insights",
+              ].map((item) => (
 
-                <CheckCircle2 size={18} className="text-cyan-400" />
+                <div
+                  key={item}
+                  className="flex items-center gap-2 text-slate-300"
+                >
 
-                AI Recommendations
+                  <CheckCircle2 size={18} className="text-cyan-400" />
 
-              </div>
+                  {item}
 
+                </div>
 
-
-              <div className="flex items-center gap-2 text-slate-300">
-
-                <CheckCircle2 size={18} className="text-cyan-400" />
-
-                Forecasting
-
-              </div>
-
-
-
-              <div className="flex items-center gap-2 text-slate-300">
-
-                <CheckCircle2 size={18} className="text-cyan-400" />
-
-                CSV Uploads
-
-              </div>
-
-
-
-              <div className="flex items-center gap-2 text-slate-300">
-
-                <CheckCircle2 size={18} className="text-cyan-400" />
-
-                Business Insights
-
-              </div>
+              ))}
 
 
             </div>
@@ -268,8 +212,6 @@ export default function Hero() {
 
 
 
-
-        {/* Dashboard Preview */}
 
         <FadeIn delay={0.25}>
 
@@ -325,7 +267,7 @@ export default function Hero() {
 
                   title="Inventory Risk"
 
-                  value={dashboardData.inventoryRisk}
+                  value={demoMetrics.inventoryRisk}
 
                   icon={<TriangleAlert size={20}/>}
 
@@ -378,7 +320,9 @@ export default function Hero() {
 
 
                 <RevenueChart
+
                   revenueHistory={metrics.revenueHistory}
+
                 />
 
 

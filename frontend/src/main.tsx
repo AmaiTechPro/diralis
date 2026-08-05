@@ -10,6 +10,8 @@ import "./index.css";
 import ThemeProvider from "./components/theme/ThemeProvider";
 import { AuthProvider } from "./context/AuthContext";
 
+console.log(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+
 createRoot(document.getElementById("root")!).render(
   <StrictMode>
      {/* Debugging 
@@ -17,7 +19,7 @@ createRoot(document.getElementById("root")!).render(
       clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}
     > */}
 
-    console.log(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+    
 
 <GoogleOAuthProvider
   clientId={import.meta.env.VITE_GOOGLE_CLIENT_ID}

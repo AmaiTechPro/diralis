@@ -10,7 +10,7 @@ import "./index.css";
 import ThemeProvider from "./components/theme/ThemeProvider";
 import { AuthProvider } from "./context/AuthContext";
 
-alert(import.meta.env.VITE_GOOGLE_CLIENT_ID);
+console.log(import.meta.env.VITE_GOOGLE_CLIENT_ID);
 
 createRoot(document.getElementById("root")!).render(
   <StrictMode>

@@ -151,6 +151,16 @@ export async function loginUser(
     );
   }
 
+  if (
+  user.lockedUntil &&
+  user.lockedUntil > new Date()
+) {
+  throw new Error(
+    "Account temporarily locked. Please try again in 15 minutes."
+  );
+}
+
+
   if (!user.emailVerified) {
 
   throw new Error(
@@ -166,10 +176,86 @@ export async function loginUser(
     );
 
   if (!passwordMatches) {
-    throw new Error(
-      "Invalid username/email or password."
-    );
-  }
+
+  const attempts =
+    user.failedLoginAttempts + 1;
+
+  const shouldLock =
+    attempts >= 5;
+
+  await prisma.user.update({
+
+    where: {
+      id: user.id,
+    },
+
+    data: {
+
+      failedLoginAttempts: attempts,
+
+      lockedUntil: shouldLock
+        ? new Date(
+            Date.now() + 15 * 60 * 1000
+          )
+        : null,
+
+    },
+
+  });
+
+  await prisma.securityEvent.create({
+
+    data: {
+
+      userId: user.id,
+
+      action: "FAILED_LOGIN",
+
+      details: `Attempt ${attempts}`,
+
+    },
+
+  });
+
+  throw new Error(
+
+    shouldLock
+      ? "Too many failed login attempts. Your account has been locked for 15 minutes."
+      : "Invalid username/email or password."
+
+  );
+
+}
+
+await prisma.user.update({
+
+  where: {
+    id: user.id,
+  },
+
+  data: {
+
+    failedLoginAttempts: 0,
+
+    lockedUntil: null,
+
+    lastLogin: new Date(),
+
+  },
+
+});
+
+await prisma.securityEvent.create({
+
+  data: {
+
+    userId: user.id,
+
+    action: "LOGIN_SUCCESS",
+
+  },
+
+});
 
   return {
     user: {

@@ -4,31 +4,55 @@ import { useAuth } from "../context/AuthContext";
 
 
 import {
-  getAdminUsers,
-  getAdminMetrics,
-  changeUserRole,
-  toggleUserStatus,
-  deleteUser,
+getAdminUsers,
+getAdminMetrics,
+changeUserRole,
+toggleUserStatus,
+deleteUser,
+getSecurityEvents,
+getLockedAccounts,
 } from "../services/adminService";
 
 import {
   Users,
   Database,
-  FileText,
-  Bot,
+  ShieldAlert,
+  UserCheck,
+  Lock,
+  Activity,
 } from "lucide-react";
+
 
 import AdminMetricCard from "../components/admin/AdminMetricCard";
 
 interface User {
-  id: string;
-  fullName: string;
-  username: string;
-  email: string;
-  role: string;
-  status: string;
-  provider: string;
-  createdAt: string;
+
+id:string;
+
+fullName:string;
+
+username:string;
+
+email:string;
+
+role:string;
+
+status:string;
+
+provider:string;
+
+createdAt:string;
+
+emailVerified:boolean;
+
+failedLoginAttempts:number;
+
+lockedUntil:string | null;
+
+lastLogin:string | null;
+
+picture:string | null;
+
 }
 
 export default function AdminDashboard() {
@@ -38,16 +62,26 @@ export default function AdminDashboard() {
   const [users, setUsers] =
     useState<User[]>([]);
 
+  const [securityEvents,setSecurityEvents] =
+useState<any[]>([]);
+
+
+const [lockedAccounts,setLockedAccounts] =
+useState<any[]>([]);
+
+
   const [loading, setLoading] =
     useState(true);
 
-  const [metrics, setMetrics] =
-    useState({
-      totalUsers: 0,
-      totalDatasets: 0,
-      totalReports: 0,
-      totalAIRequests: 0,
-    });
+  const [metrics, setMetrics] = useState({
+  totalUsers: 0,
+  verifiedUsers: 0,
+  totalDatasets: 0,
+  securityEvents: 0,
+  lockedAccounts: 0,
+  activeSessions: 0,
+  chatSessions: 0,
+});
 
   const [search, setSearch] =
   useState("");
@@ -62,15 +96,26 @@ const [statusFilter, setStatusFilter] =
     async function loadUsers() {
       try {
         const [
-          usersData,
-          metricsData,
-        ] = await Promise.all([
-          getAdminUsers(),
-          getAdminMetrics(),
-        ]);
+              usersData,
+              metricsData,
+             eventsData,
+             lockedData,
+            ] = await Promise.all([
+
+            getAdminUsers(),
+
+           getAdminMetrics(),
+
+          getSecurityEvents(),
+
+            getLockedAccounts(),
+
+          ]);
 
         setUsers(usersData.users);
         setMetrics(metricsData);
+        setSecurityEvents(eventsData.events);
+        setLockedAccounts(lockedData.users);
       } catch (error) {
         console.error(
           "Failed to load admin dashboard:",
@@ -303,39 +348,196 @@ const filteredUsers = users.filter((user) => {
 
       {/* KPI Cards */}
       <div
-        className="
-          mt-8
-          grid
-          grid-cols-1
-          gap-6
-          md:grid-cols-2
-          xl:grid-cols-4
-        "
-      >
-        <AdminMetricCard
-          title="Users"
-          value={metrics.totalUsers}
-          icon={<Users size={30} />}
-        />
+className="
+mt-8
+grid
+grid-cols-1
+gap-6
+md:grid-cols-2
+xl:grid-cols-6
+"
+>
 
-        <AdminMetricCard
-          title="Datasets"
-          value={metrics.totalDatasets}
-          icon={<Database size={30} />}
-        />
+<AdminMetricCard
+title="Users"
+value={metrics.totalUsers}
+icon={<Users size={30}/>}
+/>
 
-        <AdminMetricCard
-          title="Reports"
-          value={metrics.totalReports}
-          icon={<FileText size={30} />}
-        />
+<AdminMetricCard
+title="Verified"
+value={metrics.verifiedUsers}
+icon={<UserCheck size={30}/>}
+/>
 
-        <AdminMetricCard
-          title="AI Requests"
-          value={metrics.totalAIRequests}
-          icon={<Bot size={30} />}
-        />
-      </div>
+<AdminMetricCard
+title="Datasets"
+value={metrics.totalDatasets}
+icon={<Database size={30}/>}
+/>
+
+<AdminMetricCard
+title="Security Events"
+value={metrics.securityEvents}
+icon={<ShieldAlert size={30}/>}
+/>
+
+<AdminMetricCard
+title="Locked Accounts"
+value={metrics.lockedAccounts}
+icon={<Lock size={30}/>}
+/>
+
+<AdminMetricCard
+title="Active Sessions"
+value={metrics.activeSessions}
+icon={<Activity size={30}/>}
+
+/>
+
+</div>
+
+
+
+      {/* Security Events UI */}
+
+      <div className="
+mt-8
+rounded-2xl
+border
+border-slate-800
+bg-slate-900
+p-6
+">
+
+<h2 className="text-xl font-semibold">
+Security Events
+</h2>
+
+
+<div className="mt-5 space-y-3">
+
+{securityEvents.length === 0 ? (
+
+<p className="text-slate-400">
+No security events yet.
+</p>
+
+) : (
+
+securityEvents.map((event)=>(
+<div
+key={event.id}
+className="
+rounded-xl
+border
+border-slate-700
+p-4
+"
+>
+
+<div className="font-medium">
+{event.action}
+</div>
+
+
+<div className="text-sm text-slate-400">
+
+{event.user?.username || "Unknown user"}
+
+</div>
+
+
+<div className="text-xs text-slate-500">
+
+{new Date(
+event.createdAt
+).toLocaleString()}
+
+</div>
+
+
+</div>
+))
+
+)}
+
+</div>
+
+</div>
+
+
+   {/* Locked Account Panel */}
+
+   <div className="
+mt-8
+rounded-2xl
+border
+border-red-900
+bg-slate-900
+p-6
+">
+
+<h2 className="text-xl font-semibold">
+Locked Accounts
+</h2>
+
+
+<div className="mt-5 space-y-3">
+
+{
+lockedAccounts.length === 0 ?
+
+<p className="text-slate-400">
+No locked accounts.
+</p>
+
+:
+
+lockedAccounts.map((user)=>(
+<div
+key={user.id}
+className="
+rounded-xl
+border
+border-slate-700
+p-4
+"
+>
+
+<div className="font-semibold">
+@{user.username}
+</div>
+
+
+<div className="text-sm text-slate-400">
+
+Failed attempts:
+{user.failedLoginAttempts}
+
+</div>
+
+
+<div className="text-sm text-red-400">
+
+Locked until:
+
+{new Date(
+user.lockedUntil
+).toLocaleString()}
+
+</div>
+
+
+</div>
+))
+
+}
+
+</div>
+
+</div>
+
 
       {/* Platform Users */}
       <div className="mt-8 rounded-2xl border border-slate-800 bg-slate-900 p-6">

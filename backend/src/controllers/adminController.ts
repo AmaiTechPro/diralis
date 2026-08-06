@@ -38,6 +38,16 @@ export async function getUsers(
 
         createdAt: true,
 
+        emailVerified: true,
+
+        failedLoginAttempts: true,
+
+        lockedUntil: true,
+
+       lastLogin: true,
+
+        picture: true,       
+
       },
 
     });
@@ -70,51 +80,95 @@ export async function getUsers(
 // =========================
 
 export async function getAdminMetrics(
-  req: Request,
-  res: Response
+req: Request,
+res: Response
 ) {
 
-  try {
+try {
 
-    const [
-
-      totalUsers,
-
-      totalDatasets,
-
-    ] = await Promise.all([
-
-      prisma.user.count(),
-
-      prisma.dataset.count(),
-
-    ]);
+const [
+  totalUsers,
+  verifiedUsers,
+  totalDatasets,
+  securityEvents,
+  lockedAccounts,
+  activeSessions,
+  chatSessions,
+] = await Promise.all([
 
 
-    res.json({
-
-      totalUsers,
-
-      totalDatasets,
-
-      totalReports: 0,
-
-      totalAIRequests: 0,
-
-    });
+  prisma.user.count(),
 
 
-  } catch (error) {
+  prisma.user.count({
+    where: {
+      emailVerified: true,
+    },
+  }),
 
-    console.error(error);
 
-    res.status(500).json({
+  prisma.dataset.count(),
 
-      message: "Failed to load admin metrics",
 
-    });
+  prisma.securityEvent.count(),
 
+
+  prisma.user.count({
+    where: {
+      lockedUntil: {
+        gt: new Date(),
+      },
+    },
+  }),
+
+
+  prisma.session.count({
+where:{
+  revokedAt:null,
+  expiresAt:{
+    gt:new Date()
   }
+}
+}),
+
+
+  prisma.chatSession.count(),
+
+]);
+
+
+res.json({
+
+  totalUsers,
+
+  verifiedUsers,
+
+  totalDatasets,
+
+  securityEvents,
+
+  lockedAccounts,
+
+  activeSessions,
+
+  chatSessions,
+
+});
+
+
+} catch (error) {
+
+console.error(error);
+
+
+res.status(500).json({
+
+message:
+"Failed to load admin metrics",
+
+});
+
+}
 
 }
 
@@ -310,4 +364,101 @@ if (adminId === id) {
   }
 
 }
+
+
+
+
+export async function getSecurityEvents(
+req: Request,
+res: Response
+){
+try {
+
+const events =
+await prisma.securityEvent.findMany({
+
+orderBy:{
+createdAt:"desc"
+},
+
+take:50,
+
+include:{
+user:{
+select:{
+username:true,
+email:true,
+fullName:true
+}
+}
+}
+
+});
+
+
+res.json({
+events
+});
+
+
+}catch(error){
+
+console.error(error);
+
+res.status(500).json({
+message:"Failed to load security events"
+});
+
+}
+
+}
+
+
+
+export async function getLockedAccounts(
+req:Request,
+res:Response
+){
+
+try{
+
+const users =
+await prisma.user.findMany({
+
+where:{
+lockedUntil:{
+gt:new Date()
+}
+},
+
+select:{
+id:true,
+username:true,
+email:true,
+failedLoginAttempts:true,
+lockedUntil:true,
+fullName:true
+}
+
+});
+
+
+res.json({
+users
+});
+
+
+}catch(error){
+
+console.error(error);
+
+res.status(500).json({
+message:"Failed to load locked accounts"
+});
+
+}
+
+}
+
+
 

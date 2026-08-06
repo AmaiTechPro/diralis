@@ -12,19 +12,50 @@ export async function getAdminUsers() {
 
 export async function getAdminMetrics() {
 
-  return apiFetch<{
+return apiFetch<{
 
-    totalUsers: number;
+totalUsers: number;
 
-    totalDatasets: number;
+verifiedUsers: number;
 
-    totalReports: number;
+totalDatasets: number;
 
-    totalAIRequests: number;
+securityEvents: number;
 
-  }>("/admin/metrics");
+lockedAccounts: number;
+
+activeSessions: number;
+
+chatSessions: number;
+
+}>("/admin/metrics");
 
 }
+
+
+export async function getSecurityEvents() {
+
+return apiFetch<{
+
+events: any[];
+
+}>("/admin/security-events");
+
+}
+
+
+export async function getLockedAccounts() {
+
+return apiFetch<{
+
+users: any[];
+
+}>("/admin/locked-accounts");
+
+}
+
+
+
 
 export async function changeUserRole(
   id: string,
@@ -74,6 +105,12 @@ export async function deleteUser(
   );
 
 }
+
+
+
+
+
+
 
 
 

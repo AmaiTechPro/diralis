@@ -3,11 +3,13 @@ import { Router } from "express";
 import { adminMiddleware } from "../middleware/adminMiddleware";
 
 import {
-  getUsers,
-  getAdminMetrics,
-  changeUserRole,
-  toggleUserStatus,
-  deleteUser,
+ getUsers,
+ getAdminMetrics,
+ changeUserRole,
+ toggleUserStatus,
+ deleteUser,
+ getSecurityEvents,
+ getLockedAccounts,
 } from "../controllers/adminController";
 
 
@@ -46,6 +48,19 @@ router.delete(
   "/users/:id",
   adminMiddleware,
   deleteUser
+);
+
+router.get(
+  "/security-events",
+  adminMiddleware,
+  getSecurityEvents
+);
+
+
+router.get(
+  "/locked-accounts",
+  adminMiddleware,
+  getLockedAccounts
 );
 
 export default router;

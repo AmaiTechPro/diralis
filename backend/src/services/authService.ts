@@ -3,19 +3,29 @@ import bcrypt from "bcryptjs";
 import prisma from "../lib/prisma";
 import { generateToken } from "../utils/jwt";
 
+import crypto from "crypto";
+
+import {
+  sendVerificationEmail,
+} from "./emailService";
+
+
 type AuthResponse = {
- user: {
-  id: string;
-  fullName: string;
-  username: string;
-  email: string;
-  provider: string;
-  picture: string | null;
-  role: string;
-  status: string;
-  createdAt: Date;
-};
-  token: string;
+  message?: string;
+
+  user?: {
+    id: string;
+    fullName: string;
+    username: string;
+    email: string;
+    provider: string;
+    picture: string | null;
+    role: string;
+    status: string;
+    createdAt: Date;
+  };
+
+  token?: string;
 };
 
 const SALT_ROUNDS = 10;
@@ -32,6 +42,14 @@ function validatePassword(password: string) {
     );
 
   }
+
+}
+
+function generateVerificationCode() {
+
+  return Math.floor(
+    100000 + Math.random() * 900000
+  ).toString();
 
 }
 
@@ -64,33 +82,53 @@ export async function registerUser(
     SALT_ROUNDS
   );
 
-  const user = await prisma.user.create({
-    data: {
-      fullName,
-      username,
-      email,
-      password: hashedPassword,
-      provider: "local",
+  const verificationCode =
+  generateVerificationCode();
+
+const codeHash =
+  crypto
+    .createHash("sha256")
+    .update(verificationCode)
+    .digest("hex");
+
+const expiresAt =
+  new Date(
+    Date.now() + 10 * 60 * 1000
+  );
+
+const user = await prisma.user.create({
+  data: {
+    fullName,
+    username,
+    email,
+    password: hashedPassword,
+    provider: "local",
+
+    emailVerified: false,
+
+    emailVerifications: {
+      create: {
+        codeHash,
+        expiresAt,
+      },
     },
-  });
+  },
+});
+
+await sendVerificationEmail(
+
+  user.email,
+
+  user.fullName,
+
+  verificationCode
+
+);
 
   return {
-    user: {
-      id: user.id,
-      fullName: user.fullName,
-      username: user.username,
-      email: user.email,
-      provider: user.provider,
-      picture: user.picture,
-      role: user.role,
-      status: user.status,
-      createdAt: user.createdAt,
-    },
-    token: generateToken(
-    user.id,
-    user.role
-   ),
-    };
+  message:
+    "Verification code sent to your email.",
+};
    }
 
 export async function loginUser(
@@ -112,6 +150,14 @@ export async function loginUser(
       "Invalid username/email or password."
     );
   }
+
+  if (!user.emailVerified) {
+
+  throw new Error(
+    "Please verify your email before signing in."
+  );
+
+}
 
   const passwordMatches =
     await bcrypt.compare(

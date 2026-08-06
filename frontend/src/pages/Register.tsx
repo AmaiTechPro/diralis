@@ -3,7 +3,7 @@ import { Eye, EyeOff } from "lucide-react";
 import { Link, useNavigate } from "react-router-dom";
 import GoogleLoginButton from "../components/auth/GoogleLoginButton";
 import { register as registerApi } from "../api/auth";
-import { useAuth } from "../context/AuthContext";
+
 
 
 function validatePassword(password: string) {
@@ -24,7 +24,7 @@ function validatePassword(password: string) {
 export default function Register() {
   const navigate = useNavigate();
 
-  const { login } = useAuth();
+  
 
   const [fullName, setFullName] = useState("");
   const [username, setUsername] = useState("");
@@ -91,18 +91,19 @@ const strengthColor = [
     setLoading(true);
 
     try {
-      const result = await registerApi({
-        fullName,
-        username,
-        email,
-        password,
-      });
+      await registerApi({
+  fullName,
+  username,
+  email,
+  password,
+});
 
-      login(result.user, result.token);
-
-      navigate("/dashboard", {
-        replace: true,
-         });
+navigate("/verify-email", {
+  replace: true,
+  state: {
+    email,
+  },
+});
     } catch (error: any) {
     setError(
     error.response?.data?.error ??

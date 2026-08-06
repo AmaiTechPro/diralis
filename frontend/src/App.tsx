@@ -35,6 +35,9 @@ import Documentation from "./pages/Documentation";
 import Support from "./pages/Support";
 import Pricing from "./pages/Pricing";
 
+import VerifyEmail from "./pages/VerifyEmail";
+
+
 
 
 function App() {
@@ -62,6 +65,12 @@ function App() {
         path="/register"
         element={<Register />}
       />
+
+      <Route
+     path="/verify-email"
+      element={<VerifyEmail />}
+    />
+
 
       <Route
      path="/forgot-password"

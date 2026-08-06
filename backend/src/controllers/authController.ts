@@ -5,6 +5,12 @@ import {
   loginUser,
 } from "../services/authService";
 
+import {
+  verifyEmailCode,
+} from "../services/auth/emailVerificationService";
+
+
+
 export async function register(
   req: Request,
   res: Response
@@ -24,7 +30,12 @@ export async function register(
       password
     );
 
-    res.status(201).json(result);
+    res.status(201).json({
+  message:
+    "Verification code sent to your email.",
+
+  user: result.user,
+});
   } catch (error) {
     res.status(400).json({
       error: (error as Error).message,
@@ -76,6 +87,49 @@ export async function googleLogin(
       error: (error as Error).message,
     });
   }
+}
+
+
+export async function verifyEmail(
+
+  req: Request,
+
+  res: Response
+
+) {
+
+  try {
+
+    const {
+
+      email,
+
+      code,
+
+    } = req.body;
+
+    const result =
+      await verifyEmailCode(
+
+        email,
+
+        code
+
+      );
+
+    res.json(result);
+
+  } catch (error) {
+
+    res.status(400).json({
+
+      error:
+        (error as Error).message,
+
+    });
+
+  }
+
 }
 
 

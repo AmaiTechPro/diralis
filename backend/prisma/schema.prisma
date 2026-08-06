@@ -18,7 +18,7 @@ model User {
   picture  String?
 
   role   String @default("USER")
-  status String @default("ACTIVE")
+  status String @default("PENDING_VERIFICATION")
 
   emailVerified Boolean @default(false)
 

@@ -4,6 +4,7 @@ import {
   register,
   login,
   googleLogin,
+  verifyEmail,
 } from "../controllers/authController";
 
 import {
@@ -29,6 +30,12 @@ router.post(
   "/reset-password",
   resetPassword
 );
+
+router.post(
+  "/verify-email",
+  verifyEmail
+);
+
 
 export default router;
 

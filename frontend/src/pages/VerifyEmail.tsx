@@ -19,6 +19,9 @@ const [email] = useState(
   location.state?.email ?? ""
 );
 
+const [success, setSuccess] =
+  useState("");
+
 if (!email) {
   navigate("/register", {
     replace: true,
@@ -26,6 +29,7 @@ if (!email) {
 
   return null;
 }
+
 
 
   const [code, setCode] = useState("");
@@ -70,27 +74,34 @@ if (!email) {
         );
 
       const data =
-        await response.json();
+  await response.json();
 
-      if (!response.ok) {
+if (!response.ok) {
+  throw new Error(
+    data.error
+  );
+}
 
-        throw new Error(
-          data.error
-        );
+setSuccess(
+  "Email verified successfully! Redirecting to login..."
+);
 
-      }
-
-     alert("Email verified successfully. Please sign in.");
-
-navigate("/login", {
-  replace: true,
-});
+setTimeout(() => {
+  navigate("/login", {
+    replace: true,
+  });
+}, 2000);
 
     } catch (error) {
 
       setError(
         (error as Error).message
       );
+      {success && (
+  <div className="mb-4 rounded-lg bg-green-500/10 p-3 text-green-400">
+    {success}
+  </div>
+)}
 
     } finally {
 

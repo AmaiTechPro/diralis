@@ -20,14 +20,25 @@ model User {
   role   String @default("USER")
   status String @default("ACTIVE")
 
+  emailVerified Boolean @default(false)
+
+  failedLoginAttempts Int @default(0)
+  lockedUntil DateTime?
+
+  lastLogin DateTime?
+
   theme              String  @default("dark")
   emailNotifications Boolean @default(true)
 
   createdAt DateTime @default(now())
 
-  datasets            Dataset[]
-  chatSessions        ChatSession[]
+  datasets Dataset[]
+  chatSessions ChatSession[]
   passwordResetTokens PasswordResetToken[]
+
+  emailVerifications EmailVerification[]
+  sessions Session[]
+  securityEvents SecurityEvent[]
 }
 
 model Dataset {
@@ -73,3 +84,66 @@ model PasswordResetToken {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
+
+
+model EmailVerification {
+  id String @id @default(cuid())
+
+  codeHash String
+
+  expiresAt DateTime
+
+  verifiedAt DateTime?
+
+  attempts Int @default(0)
+
+  createdAt DateTime @default(now())
+
+  userId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+
+model Session {
+  id String @id @default(cuid())
+
+  refreshTokenHash String
+
+  ipAddress String?
+
+  userAgent String?
+
+  createdAt DateTime @default(now())
+
+  expiresAt DateTime
+
+  lastActivity DateTime @default(now())
+
+  revokedAt DateTime?
+
+  userId String
+
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+
+model SecurityEvent {
+  id String @id @default(cuid())
+
+  action String
+
+  ipAddress String?
+
+  userAgent String?
+
+  details String?
+
+  createdAt DateTime @default(now())
+
+  userId String?
+
+  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+}
+
+

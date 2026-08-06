@@ -20,6 +20,21 @@ type AuthResponse = {
 
 const SALT_ROUNDS = 10;
 
+function validatePassword(password: string) {
+
+  const passwordRegex =
+    /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
+
+  if (!passwordRegex.test(password)) {
+
+    throw new Error(
+      "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character."
+    );
+
+  }
+
+}
+
 export async function registerUser(
   fullName: string,
   username: string,
@@ -42,6 +57,7 @@ export async function registerUser(
   if (existingUsername) {
     throw new Error("Username already taken.");
   }
+  validatePassword(password);
 
   const hashedPassword = await bcrypt.hash(
     password,

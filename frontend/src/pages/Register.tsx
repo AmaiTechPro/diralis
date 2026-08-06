@@ -5,6 +5,22 @@ import GoogleLoginButton from "../components/auth/GoogleLoginButton";
 import { register as registerApi } from "../api/auth";
 import { useAuth } from "../context/AuthContext";
 
+
+function validatePassword(password: string) {
+
+  return {
+    length: password.length >= 8,
+    uppercase: /[A-Z]/.test(password),
+    lowercase: /[a-z]/.test(password),
+    number: /\d/.test(password),
+    special: /[^A-Za-z0-9]/.test(password),
+  };
+
+}
+
+
+
+
 export default function Register() {
   const navigate = useNavigate();
 
@@ -23,12 +39,49 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
 
+  const passwordRules =
+  validatePassword(password);
+
+const passwordValid =
+  Object.values(passwordRules).every(Boolean);
+
+const strength =
+  Object.values(passwordRules).filter(Boolean).length;
+
+const strengthText = [
+  "Very Weak",
+  "Weak",
+  "Fair",
+  "Good",
+  "Strong",
+  "Excellent",
+][strength];
+
+const strengthColor = [
+  "bg-red-500",
+  "bg-orange-500",
+  "bg-yellow-500",
+  "bg-lime-500",
+  "bg-green-500",
+  "bg-emerald-500",
+][strength];
+
   async function handleSubmit(
     e: React.FormEvent
   ) {
     e.preventDefault();
 
     setError("");
+
+    if (!passwordValid) {
+
+  setError(
+    "Please choose a stronger password."
+  );
+
+  return;
+
+}
 
     if (password !== confirmPassword) {
       setError("Passwords do not match.");
@@ -135,8 +188,99 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   </button>
 </div>
 
+{/* Password stenght */}
 
-          <div className="relative">
+<div className="mt-2">
+
+  <div className="mb-1 flex justify-between text-sm">
+
+    <span className="text-slate-400">
+      Password Strength
+    </span>
+
+    <span
+      className={
+        strength >= 4
+          ? "text-green-400"
+          : "text-slate-400"
+      }
+    >
+      {strengthText}
+    </span>
+
+  </div>
+
+  <div className="h-2 overflow-hidden rounded-full bg-slate-700">
+
+    <div
+      className={`h-full transition-all duration-300 ${strengthColor}`}
+      style={{
+        width: `${(strength / 5) * 100}%`,
+      }}
+    />
+
+  </div>
+
+</div>
+
+
+{/* Password Live Check */}
+
+<div className="rounded-xl border border-slate-700 bg-slate-800/50 p-4 text-sm">
+
+  <p className="mb-2 font-semibold text-slate-300">
+    Password Requirements
+  </p>
+
+  <ul className="space-y-1">
+
+    <li className={
+      passwordRules.length
+        ? "text-green-400"
+        : "text-slate-500"
+    }>
+      ✓ At least 8 characters
+    </li>
+
+    <li className={
+      passwordRules.uppercase
+        ? "text-green-400"
+        : "text-slate-500"
+    }>
+      ✓ One uppercase letter
+    </li>
+
+    <li className={
+      passwordRules.lowercase
+        ? "text-green-400"
+        : "text-slate-500"
+    }>
+      ✓ One lowercase letter
+    </li>
+
+    <li className={
+      passwordRules.number
+        ? "text-green-400"
+        : "text-slate-500"
+    }>
+      ✓ One number
+    </li>
+
+    <li className={
+      passwordRules.special
+        ? "text-green-400"
+        : "text-slate-500"
+    }>
+      ✓ One special character
+    </li>
+
+  </ul>
+
+</div>
+
+
+
+    <div className="relative">
   <input
     type={showConfirmPassword ? "text" : "password"}
     placeholder="Confirm Password"
@@ -161,7 +305,7 @@ const [showConfirmPassword, setShowConfirmPassword] = useState(false);
 </div>
 
           <button
-            disabled={loading}
+            disabled={loading || !passwordValid}
             className="w-full rounded-xl bg-cyan-500 p-3 font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:opacity-60"
           >
             {loading

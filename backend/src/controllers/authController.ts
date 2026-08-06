@@ -9,6 +9,10 @@ import {
   verifyEmailCode,
 } from "../services/auth/emailVerificationService";
 
+import {
+  resendVerificationCode,
+} from "../services/auth/resendVerificationService";
+
 
 
 export async function register(
@@ -131,5 +135,30 @@ export async function verifyEmail(
   }
 
 }
+
+
+export async function resendVerification(
+  req: Request,
+  res: Response
+) {
+  try {
+    const { email } = req.body;
+
+    const result =
+      await resendVerificationCode(
+        email
+      );
+
+    res.json(result);
+  } catch (error) {
+    res.status(400).json({
+      error:
+        (error as Error).message,
+    });
+  }
+}
+
+
+
 
 

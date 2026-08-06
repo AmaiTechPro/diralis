@@ -4,6 +4,9 @@ import {
   useLocation,
 } from "react-router-dom";
 
+import { useEffect } from "react";
+
+
 
 const API = import.meta.env.VITE_API_URL;
 
@@ -22,6 +25,13 @@ const [email] = useState(
 const [success, setSuccess] =
   useState("");
 
+const [countdown, setCountdown] = useState(0);
+
+const [sending, setSending] =
+  useState(false);
+
+
+
 if (!email) {
   navigate("/register", {
     replace: true,
@@ -37,6 +47,74 @@ if (!email) {
   const [loading, setLoading] = useState(false);
 
   const [error, setError] = useState("");
+
+  useEffect(() => {
+  if (countdown <= 0) return;
+
+  const timer = setInterval(() => {
+    setCountdown((value) => value - 1);
+  }, 1000);
+
+  return () => clearInterval(timer);
+}, [countdown]);
+
+
+
+async function handleResend() {
+
+  setSending(true);
+
+  setError("");
+
+  setSuccess("");
+
+  try {
+
+    const response =
+      await fetch(
+        `${API}/auth/resend-verification`,
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json",
+          },
+
+          body: JSON.stringify({
+            email,
+          }),
+        }
+      );
+
+    const data =
+      await response.json();
+
+    if (!response.ok) {
+      throw new Error(
+        data.error
+      );
+    }
+
+    setSuccess(
+      "A new verification code has been sent."
+    );
+
+    setCountdown(60);
+
+  } catch (error) {
+
+    setError(
+      (error as Error).message
+    );
+
+  } finally {
+
+    setSending(false);
+
+  }
+
+}
 
   async function handleSubmit(
     e: React.FormEvent
@@ -192,17 +270,31 @@ setTimeout(() => {
 
       </button>
 
-      <p className="mt-6 text-center text-sm text-slate-500">
+      <div className="mt-6 text-center">
 
-        Didn't receive the code?
+  <p className="text-sm text-slate-500">
 
-        <span className="cursor-not-allowed font-medium text-slate-400">
+    Didn't receive the code?
 
-          {" "}Resend Code (Coming Soon)
+  </p>
 
-        </span>
+  <button
+    type="button"
+    onClick={handleResend}
+    disabled={
+      countdown > 0 ||
+      sending
+    }
+    className="mt-2 font-medium text-cyan-400 transition hover:text-cyan-300 disabled:cursor-not-allowed disabled:text-slate-500"
+  >
+    {countdown > 0
+      ? `Resend in ${countdown}s`
+      : sending
+      ? "Sending..."
+      : "Resend Code"}
+  </button>
 
-      </p>
+</div>
 
     </form>
 

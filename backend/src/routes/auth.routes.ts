@@ -5,6 +5,7 @@ import {
   login,
   googleLogin,
   verifyEmail,
+  resendVerification,
 } from "../controllers/authController";
 
 import {
@@ -35,6 +36,12 @@ router.post(
   "/verify-email",
   verifyEmail
 );
+
+router.post(
+  "/resend-verification",
+  resendVerification
+);
+
 
 
 export default router;

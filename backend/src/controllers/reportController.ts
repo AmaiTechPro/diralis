@@ -128,8 +128,6 @@ async function resolveDatasetId(
 
 
 
-
-
 export async function reportController(
   req: Request,
   res: Response
@@ -137,39 +135,30 @@ export async function reportController(
 
   try {
 
-
     const datasetId =
-      await resolveDatasetId(
-        req
-      );
-
-
+      await resolveDatasetId(req);
 
     const report =
-      await buildReport(
-        datasetId
-      );
+      await buildReport(datasetId);
 
+    res.json(report);
 
+  } catch (error) {
 
-    res.json(
-      report
-    );
+    console.error(error);
 
-
-  } catch(error) {
-
-
-    console.error(
-      error
-    );
-
+    if (
+      error instanceof Error &&
+      error.message === "No datasets found"
+    ) {
+      return res.status(404).json({
+        message:
+          "No valid datasets found. Please upload a dataset to generate reports.",
+      });
+    }
 
     res.status(500).json({
-
-      message:
-        "Failed to generate report",
-
+      message: "Failed to generate report",
     });
 
   }

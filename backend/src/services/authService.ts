@@ -176,6 +176,11 @@ export async function loginUser(
     );
 
   if (!passwordMatches) {
+    {/* For Debugging LoginAttempts */}
+    console.log("FAILED LOGIN:", {
+  userId: user.id,
+  attempts: user.failedLoginAttempts,
+});
 
   const attempts =
     user.failedLoginAttempts + 1;

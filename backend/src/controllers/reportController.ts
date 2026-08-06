@@ -245,8 +245,14 @@ export async function generateReportPDF(
     message: "Failed to generate report",
   });
 
-  }
 }
+
+  res.status(500).json({
+    message: "Failed to generate report",
+  });
+
+  }
+
 
 
 

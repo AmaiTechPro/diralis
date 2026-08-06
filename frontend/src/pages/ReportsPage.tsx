@@ -89,19 +89,26 @@ export default function ReportsPage() {
       );
 
     } 
-    
+     
     catch (error) {
 
-  console.error(
-    "Report loading failed:",
-    error
-  );
+  console.error("Report loading failed:", error);
+
+  if (
+    typeof error === "object" &&
+    error !== null
+  ) {
+
+    console.log("Status:", (error as any).status);
+    console.log("Message:", (error as any).message);
+
+  }
 
   if (
     typeof error === "object" &&
     error !== null &&
     "status" in error &&
-    error.status === 404
+    (error as any).status === 404
   ) {
 
     setError("NO_DATASET");

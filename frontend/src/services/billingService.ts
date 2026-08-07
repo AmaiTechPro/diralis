@@ -4,7 +4,7 @@ const API = import.meta.env.VITE_API_URL;
 
 export async function getPlans() {
   const response = await axios.get(
-    `${API}/api/billing/plans`
+    `${API}/billing/plans`
   );
 
   return response.data;
@@ -18,7 +18,7 @@ export async function createCheckout(
 ) {
 
   const response = await axios.post(
-    `${API}/api/billing/checkout`,
+    `${API}billing/checkout`,
     {
       planId,
       interval,
@@ -39,7 +39,7 @@ export async function getSubscription(
 ) {
 
   const response = await axios.get(
-    `${API}/api/billing/subscription`,
+    `${API}/billing/subscription`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -56,7 +56,7 @@ export async function getEntitlements(
 ) {
 
   const response = await axios.get(
-    `${API}/api/billing/entitlements`,
+    `${API}/billing/entitlements`,
     {
       headers: {
         Authorization: `Bearer ${token}`,
@@ -72,7 +72,7 @@ export async function verifyPayment(
   reference: string
 ) {
   const response = await axios.get(
-    `${API}/api/billing/verify`,
+    `${API}/billing/verify`,
     {
       params: {
         reference,

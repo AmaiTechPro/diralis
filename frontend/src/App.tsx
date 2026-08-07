@@ -37,6 +37,7 @@ import Pricing from "./pages/Pricing";
 
 import VerifyEmail from "./pages/VerifyEmail";
 
+import BillingVerify from "./pages/BillingVerify";
 
 
 
@@ -143,6 +144,11 @@ function App() {
   element={<Pricing />}
 />
 
+
+<Route
+  path="/billing/verify"
+  element={<BillingVerify />}
+/>
 
 
       {/* Protected Application Routes  */}

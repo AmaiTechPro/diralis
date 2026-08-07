@@ -1,346 +1,568 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import {
   Check,
   Sparkles,
   Rocket,
   Building2,
+  Crown,
+  Zap,
 } from "lucide-react";
 
-export default function Pricing() {
-  const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
+import { getPlans, createCheckout } from "../services/billingService";
+import { useAuth } from "../context/AuthContext";
 
-  const plans = [
-    {
-      icon: Sparkles,
-      name: "Starter",
-      description:
-        "Perfect for individuals and small teams exploring AI-powered business insights.",
-      monthlyPrice: "$19",
-      yearlyPrice: "$15",
-      features: [
-        "CSV Data Uploads",
-        "Basic Analytics",
-        "AI Recommendations",
-        "Email Support",
-      ],
-      button: "Start Free Trial",
-      popular: false,
-    },
-    {
-      icon: Rocket,
-      name: "Professional",
-      description:
-        "Advanced intelligence tools for growing businesses.",
-      monthlyPrice: "$49",
-      yearlyPrice: "$39",
-      features: [
-        "Everything in Starter",
-        "Advanced Forecasting",
-        "Live Dashboard",
-        "Priority Support",
-      ],
-      button: "Start Free Trial",
-      popular: true,
-    },
-    {
-      icon: Building2,
-      name: "Enterprise",
-      description:
-        "Custom solutions for organizations requiring scalable intelligence.",
-      monthlyPrice: "Custom",
-      yearlyPrice: "Custom",
-      features: [
-        "Custom AI Models",
-        "API Access",
-        "Dedicated Support",
-        "Advanced Security",
-      ],
-      button: "Contact Sales",
-      popular: false,
-    },
-  ];
+interface BillingPlan {
+  id: string;
+  code: string;
+  version: number;
+  name: string;
+  description: string | null;
+  monthlyPrice: number | null;
+  annualPrice: number | null;
+  currency: string;
+  limits: Record<string, number | null> | null;
+  features: Record<string, boolean> | null;
+  active: boolean;
+}
 
+const planIcons: Record<string, typeof Sparkles> = {
+  FREE: Sparkles,
+  STARTER: Zap,
+  PRO: Rocket,
+  BUSINESS: Building2,
+  CUSTOM: Crown,
+};
 
-  const comparison = [
-    {
-      feature: "CSV Data Uploads",
-      starter: true,
-      professional: true,
-      enterprise: true,
-    },
-    {
-      feature: "AI Recommendations",
-      starter: true,
-      professional: true,
-      enterprise: true,
-    },
-    {
-      feature: "Advanced Forecasting",
-      starter: false,
-      professional: true,
-      enterprise: true,
-    },
-    {
-      feature: "Live Analytics Dashboard",
-      starter: false,
-      professional: true,
-      enterprise: true,
-    },
-    {
-      feature: "API Access",
-      starter: false,
-      professional: false,
-      enterprise: true,
-    },
-    {
-      feature: "Custom AI Models",
-      starter: false,
-      professional: false,
-      enterprise: true,
-    },
-    {
-      feature: "Dedicated Support",
-      starter: false,
-      professional: false,
-      enterprise: true,
-    },
-  ];
+const popularPlans = new Set(["PRO"]);
 
+function formatPrice(
+  price: number | null,
+  currency: string
+) {
+  if (price === null) {
+    return "Custom";
+  }
+
+  const amount = price / 100;
+
+  return new Intl.NumberFormat("en-US", {
+    style: "currency",
+    currency,
+    maximumFractionDigits: 2,
+  }).format(amount);
+}
+
+function formatFeatureName(
+  key: string
+) {
+  const names: Record<string, string> = {
+    aiChat: "AI Chat",
+    aiAgent: "AI Agent",
+    reports: "Reports",
+    analytics: "Analytics",
+    forecasting: "Forecasting",
+    advancedAnalytics: "Advanced Analytics",
+    integrations: "Integrations",
+    prioritySupport: "Priority Support",
+    dedicatedSupport: "Dedicated Support",
+    customLimits: "Custom Limits",
+    customIntegrations: "Custom Integrations",
+  };
 
   return (
-    <div className="min-h-screen bg-slate-50 px-6 py-12">
+    names[key] ??
+    key
+      .replace(/([A-Z])/g, " $1")
+      .replace(/^./, (letter) =>
+        letter.toUpperCase()
+      )
+  );
+}
 
-      <div className="mx-auto max-w-6xl">
+function formatLimitName(
+  key: string
+) {
+  const names: Record<string, string> = {
+    datasets: "Datasets",
+    storageMb: "Storage",
+    reportsPerMonth: "Reports / month",
+    forecastsPerMonth: "Forecasts / month",
+    aiRequestsPerMonth: "AI requests / month",
+    teamMembers: "Team members",
+  };
 
-        <Link
-          to="/"
-          className="text-sm text-blue-600 hover:underline"
-        >
-          ← Back to Diralis
-        </Link>
+  return (
+    names[key] ??
+    key
+      .replace(/([A-Z])/g, " $1")
+      .replace(/^./, (letter) =>
+        letter.toUpperCase()
+      )
+  );
+}
 
+function formatLimitValue(
+  key: string,
+  value: number | null
+) {
+  if (value === null) {
+    return "Unlimited";
+  }
 
-        <div className="mt-8 text-center">
+  if (key === "storageMb") {
+    if (value >= 1000) {
+      return `${value / 1000} GB`;
+    }
 
-          <h1 className="text-4xl font-bold text-slate-900">
-            Simple Pricing That Scales With You
-          </h1>
+    return `${value} MB`;
+  }
 
+  return value.toLocaleString();
+}
 
-          <p className="mx-auto mt-4 max-w-3xl text-lg text-slate-600">
-            Choose a plan that fits your business intelligence needs.
-            Upgrade as your organization grows.
-          </p>
+export default function Pricing() {
+  const { token, isAuthenticated } = useAuth();
 
+  const [billing, setBilling] =
+    useState<"monthly" | "yearly">("monthly");
 
-          <div className="mt-6 inline-flex rounded-xl bg-white p-1 shadow-sm">
+  const [plans, setPlans] =
+    useState<BillingPlan[]>([]);
 
-            <button
-              onClick={() => setBilling("monthly")}
-              className={`rounded-lg px-5 py-2 ${
-                billing === "monthly"
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              Monthly
-            </button>
+  const [loading, setLoading] =
+    useState(true);
 
+  const [error, setError] =
+    useState<string | null>(null);
 
-            <button
-              onClick={() => setBilling("yearly")}
-              className={`rounded-lg px-5 py-2 ${
-                billing === "yearly"
-                  ? "bg-blue-600 text-white"
-                  : "text-slate-600 hover:bg-slate-100"
-              }`}
-            >
-              Yearly Save 20%
-            </button>
+  const [checkoutPlan, setCheckoutPlan] =
+    useState<string | null>(null);
 
-          </div>
+  useEffect(() => {
+    async function loadPlans() {
+      try {
+        setLoading(true);
+        setError(null);
+
+        const response = await getPlans();
+
+        setPlans(
+          Array.isArray(response)
+            ? response
+            : response.plans ?? []
+        );
+      } catch (err) {
+        console.error(
+          "Failed to load billing plans:",
+          err
+        );
+
+        setError(
+          "Unable to load pricing plans. Please try again."
+        );
+      } finally {
+        setLoading(false);
+      }
+    }
+
+    loadPlans();
+  }, []);
+
+  async function handlePlanAction(
+    plan: BillingPlan
+  ) {
+    if (plan.code === "CUSTOM") {
+      window.location.href = "/contact";
+      return;
+    }
+
+    if (plan.code === "FREE") {
+      window.location.href = isAuthenticated
+        ? "/dashboard"
+        : "/register";
+
+      return;
+    }
+
+    if (!isAuthenticated || !token) {
+      window.location.href = "/login";
+      return;
+    }
+
+    try {
+      setCheckoutPlan(plan.id);
+
+      const response = await createCheckout(
+        plan.id,
+        billing === "monthly"
+          ? "MONTHLY"
+          : "YEARLY",
+        token
+      );
+
+      if (response?.checkoutUrl) {
+        window.location.href =
+          response.checkoutUrl;
+        return;
+      }
+
+      if (response?.url) {
+        window.location.href = response.url;
+        return;
+      }
+
+      console.log(
+        "Checkout response:",
+        response
+      );
+    } catch (err) {
+      console.error(
+        "Checkout failed:",
+        err
+      );
+
+      alert(
+        "Unable to start checkout. Please try again."
+      );
+    } finally {
+      setCheckoutPlan(null);
+    }
+  }
+
+  return (
+    <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
+
+      <Link
+        to="/"
+        className="text-sm text-blue-600 hover:underline"
+      >
+        ← Back to Diralis
+      </Link>
+
+      {/* Header */}
+      <div className="mt-8 text-center">
+
+        <h1 className="text-4xl font-bold text-slate-900">
+          Simple Pricing That Scales With You
+        </h1>
+
+        <p className="mx-auto mt-4 max-w-3xl text-lg text-slate-600">
+          Choose the intelligence level that fits
+          your business. Upgrade as your organization
+          grows.
+        </p>
+
+        {/* Billing Toggle */}
+        <div className="mt-6 inline-flex rounded-xl bg-white p-1 shadow-sm">
+
+          <button
+            onClick={() =>
+              setBilling("monthly")
+            }
+            className={`rounded-lg px-5 py-2 ${
+              billing === "monthly"
+                ? "bg-blue-600 text-white"
+                : "text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            Monthly
+          </button>
+
+          <button
+            onClick={() =>
+              setBilling("yearly")
+            }
+            className={`rounded-lg px-5 py-2 ${
+              billing === "yearly"
+                ? "bg-blue-600 text-white"
+                : "text-slate-600 hover:bg-slate-100"
+            }`}
+          >
+            Yearly
+          </button>
 
         </div>
 
+      </div>
 
-        <div className="mt-12 grid gap-6 lg:grid-cols-3">
+      {/* Loading */}
+      {loading && (
+        <div className="mt-16 text-center text-slate-600">
+          Loading pricing plans...
+        </div>
+      )}
 
-          {plans.map((plan) => {
+      {/* Error */}
+      {!loading && error && (
+        <div className="mt-16 rounded-xl bg-red-50 p-6 text-center text-red-700">
+          {error}
+        </div>
+      )}
 
-            const Icon = plan.icon;
+      {/* Plans */}
+      {!loading && !error && (
+        <>
+          <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-5">
 
-            return (
+            {plans.map((plan) => {
+              const Icon =
+                planIcons[plan.code] ??
+                Sparkles;
 
-              <div
-                key={plan.name}
-                className={`rounded-2xl bg-white p-8 shadow-sm ${
-                  plan.popular
-                    ? "ring-2 ring-blue-600"
-                    : ""
-                }`}
-              >
+              const popular =
+                popularPlans.has(plan.code);
 
-                {plan.popular && (
-                  <div className="mb-4 inline-block rounded-full bg-blue-100 px-3 py-1 text-sm font-medium text-blue-700">
-                    Most Popular
+              const price =
+                billing === "monthly"
+                  ? plan.monthlyPrice
+                  : plan.annualPrice;
+
+              const isCustom =
+                plan.code === "CUSTOM";
+
+              const isFree =
+                plan.code === "FREE";
+
+              return (
+                <div
+                  key={plan.id}
+                  className={`relative rounded-2xl bg-white p-6 shadow-sm ${
+                    popular
+                      ? "ring-2 ring-blue-600"
+                      : ""
+                  }`}
+                >
+
+                  {popular && (
+                    <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white">
+                      Most Popular
+                    </div>
+                  )}
+
+                  <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50">
+                    <Icon className="h-6 w-6 text-blue-600" />
                   </div>
-                )}
 
+                  <h2 className="mt-5 text-2xl font-bold text-slate-900">
+                    {plan.name}
+                  </h2>
 
-                <div className="flex h-12 w-12 items-center justify-center rounded-xl bg-blue-50">
-                  <Icon className="h-6 w-6 text-blue-600" />
-                </div>
+                  <p className="mt-3 min-h-[72px] text-sm text-slate-600">
+                    {plan.description}
+                  </p>
 
+                  <div className="mt-6">
 
-                <h2 className="mt-5 text-2xl font-bold text-slate-900">
-                  {plan.name}
-                </h2>
-
-
-                <p className="mt-3 text-slate-600">
-                  {plan.description}
-                </p>
-
-
-                <div className="mt-6">
-
-                  <span className="text-4xl font-bold text-slate-900">
-                    {billing === "monthly"
-                      ? plan.monthlyPrice
-                      : plan.yearlyPrice}
-                  </span>
-
-
-                  {plan.name !== "Enterprise" && (
-                    <span className="text-slate-600">
-                      /month
+                    <span className="text-3xl font-bold text-slate-900">
+                      {formatPrice(
+                        price,
+                        plan.currency
+                      )}
                     </span>
+
+                    {!isCustom &&
+                      !isFree &&
+                      price !== null && (
+                        <span className="text-sm text-slate-500">
+                          {billing === "monthly"
+                            ? " / month"
+                            : " / year"}
+                        </span>
+                      )}
+
+                  </div>
+
+                  <button
+                    onClick={() =>
+                      handlePlanAction(plan)
+                    }
+                    disabled={
+                      checkoutPlan === plan.id
+                    }
+                    className={`mt-6 w-full rounded-xl px-5 py-3 font-medium transition ${
+                      popular
+                        ? "bg-blue-600 text-white hover:bg-blue-700"
+                        : "bg-slate-100 text-slate-900 hover:bg-slate-200"
+                    } disabled:cursor-not-allowed disabled:opacity-60`}
+                  >
+                    {checkoutPlan === plan.id
+                      ? "Starting checkout..."
+                      : isCustom
+                      ? "Contact Sales"
+                      : isFree
+                      ? "Get Started"
+                      : isAuthenticated
+                      ? "Upgrade Plan"
+                      : "Get Started"}
+                  </button>
+
+                  {/* Features */}
+                  <div className="mt-8 space-y-3">
+
+                    {plan.features &&
+                      Object.entries(
+                        plan.features
+                      )
+                        .filter(
+                          ([, enabled]) =>
+                            enabled === true
+                        )
+                        .map(([feature]) => (
+                          <div
+                            key={feature}
+                            className="flex gap-3 text-sm text-slate-700"
+                          >
+                            <Check className="h-5 w-5 shrink-0 text-blue-600" />
+
+                            <span>
+                              {formatFeatureName(
+                                feature
+                              )}
+                            </span>
+                          </div>
+                        ))}
+
+                  </div>
+
+                  {/* Limits */}
+                  {plan.limits && (
+                    <div className="mt-6 border-t pt-6">
+
+                      <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
+                        Plan limits
+                      </p>
+
+                      <div className="space-y-2">
+
+                        {Object.entries(
+                          plan.limits
+                        ).map(
+                          ([key, value]) => (
+                            <div
+                              key={key}
+                              className="flex justify-between gap-3 text-xs"
+                            >
+                              <span className="text-slate-500">
+                                {formatLimitName(
+                                  key
+                                )}
+                              </span>
+
+                              <span className="font-medium text-slate-700">
+                                {formatLimitValue(
+                                  key,
+                                  value
+                                )}
+                              </span>
+                            </div>
+                          )
+                        )}
+
+                      </div>
+
+                    </div>
                   )}
 
                 </div>
-
-
-                <button
-                  className={`mt-6 w-full rounded-xl px-5 py-3 font-medium ${
-                    plan.popular
-                      ? "bg-blue-600 text-white hover:bg-blue-700"
-                      : "bg-slate-100 text-slate-900 hover:bg-slate-200"
-                  }`}
-                >
-                  {plan.button}
-                </button>
-
-
-                <div className="mt-8 space-y-3">
-
-                  {plan.features.map((feature) => (
-
-                    <div
-                      key={feature}
-                      className="flex gap-3 text-slate-700"
-                    >
-
-                      <Check className="h-5 w-5 text-blue-600" />
-
-                      {feature}
-
-                    </div>
-
-                  ))}
-
-                </div>
-
-
-              </div>
-
-            );
-          })}
-
-        </div>
-
-
-        <div className="mt-16 rounded-2xl bg-white p-8 shadow-sm">
-
-          <h2 className="text-center text-2xl font-bold text-slate-900">
-            Compare Plans
-          </h2>
-
-
-          <p className="mt-3 text-center text-slate-600">
-            Choose the intelligence level your business needs.
-          </p>
-
-
-          <div className="mt-8 overflow-x-auto">
-
-            <table className="w-full text-left">
-
-              <thead>
-                <tr className="border-b">
-
-                  <th className="p-4">
-                    Feature
-                  </th>
-
-                  <th className="p-4">
-                    Starter
-                  </th>
-
-                  <th className="p-4">
-                    Professional
-                  </th>
-
-                  <th className="p-4">
-                    Enterprise
-                  </th>
-
-                </tr>
-              </thead>
-
-
-              <tbody>
-
-                {comparison.map((item)=>(
-
-                  <tr
-                    key={item.feature}
-                    className="border-b"
-                  >
-
-                    <td className="p-4 font-medium">
-                      {item.feature}
-                    </td>
-
-
-                    <td className="p-4">
-                      {item.starter ? "✓" : "—"}
-                    </td>
-
-
-                    <td className="p-4">
-                      {item.professional ? "✓" : "—"}
-                    </td>
-
-
-                    <td className="p-4">
-                      {item.enterprise ? "✓" : "—"}
-                    </td>
-
-                  </tr>
-
-                ))}
-
-              </tbody>
-
-            </table>
+              );
+            })}
 
           </div>
 
-        </div>
+          {/* Comparison */}
+          <div className="mt-16 rounded-2xl bg-white p-6 shadow-sm sm:p-8">
 
+            <h2 className="text-center text-2xl font-bold text-slate-900">
+              Compare Plans
+            </h2>
 
-      </div>
+            <p className="mt-3 text-center text-slate-600">
+              See exactly what each Diralis plan
+              provides.
+            </p>
+
+            <div className="mt-8 overflow-x-auto">
+
+              <table className="w-full min-w-[700px] text-left">
+
+                <thead>
+                  <tr className="border-b">
+
+                    <th className="p-4">
+                      Feature
+                    </th>
+
+                    {plans.map((plan) => (
+                      <th
+                        key={plan.id}
+                        className="p-4"
+                      >
+                        {plan.name}
+                      </th>
+                    ))}
+
+                  </tr>
+                </thead>
+
+                <tbody>
+
+                  {[
+                    "analytics",
+                    "forecasting",
+                    "reports",
+                    "aiChat",
+                    "aiAgent",
+                    "advancedAnalytics",
+                    "integrations",
+                    "prioritySupport",
+                    "dedicatedSupport",
+                  ].map((feature) => (
+
+                    <tr
+                      key={feature}
+                      className="border-b"
+                    >
+
+                      <td className="p-4 font-medium text-slate-700">
+                        {formatFeatureName(
+                          feature
+                        )}
+                      </td>
+
+                      {plans.map((plan) => (
+
+                        <td
+                          key={plan.id}
+                          className="p-4"
+                        >
+                          {plan.features?.[
+                            feature
+                          ] ? (
+                            <Check className="h-5 w-5 text-blue-600" />
+                          ) : (
+                            <span className="text-slate-300">
+                              —
+                            </span>
+                          )}
+                        </td>
+
+                      ))}
+
+                    </tr>
+
+                  ))}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          </div>
+
+        </>
+      )}
 
     </div>
   );

@@ -18,7 +18,7 @@ export async function createCheckout(
 ) {
 
   const response = await axios.post(
-    `${API}billing/checkout`,
+    `${API}/billing/checkout`,
     {
       planId,
       interval,

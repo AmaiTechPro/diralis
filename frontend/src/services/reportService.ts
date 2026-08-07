@@ -9,8 +9,8 @@ export async function getReport(
 
   const url =
   datasetId
-    ? `${API}/api/reports?datasetId=${datasetId}`
-    : `${API}/api/reports`;
+    ? `${API}/reports?datasetId=${datasetId}`
+    : `${API}/reports`;
 
   const response =
     await fetch(url, {

@@ -19,7 +19,7 @@ export async function apiFetch<T = unknown>(
   options: RequestInit = {}
 ): Promise<T> {
   const response = await fetch(
-    `${API_URL}/api${endpoint}`,
+    `${API_URL}${endpoint}`,
     {
       ...options,
 

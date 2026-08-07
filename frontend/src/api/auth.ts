@@ -28,7 +28,7 @@ export async function login(
 ): Promise<AuthResponse> {
   const response =
     await api.post<AuthResponse>(
-      "/api/auth/login",
+      "/auth/login",
       credentials
     );
 
@@ -40,7 +40,7 @@ export async function register(
 ): Promise<AuthResponse> {
   const response =
     await api.post<AuthResponse>(
-      "/api/auth/register",
+      "/auth/register",
       user
     );
 
@@ -52,7 +52,7 @@ export async function forgotPassword(
 ): Promise<{ message: string }> {
   const response =
     await api.post(
-      "/api/auth/forgot-password",
+      "/auth/forgot-password",
       data
     );
 
@@ -64,7 +64,7 @@ export async function resetPassword(
 ): Promise<{ message: string }> {
   const response =
     await api.post(
-      "/api/auth/reset-password",
+      "/auth/reset-password",
       data
     );
 

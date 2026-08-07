@@ -40,7 +40,6 @@ import VerifyEmail from "./pages/VerifyEmail";
 import BillingVerify from "./pages/BillingVerify";
 
 
-
 function App() {
 
   return (
@@ -143,7 +142,6 @@ function App() {
   path="/pricing"
   element={<Pricing />}
 />
-
 
 <Route
   path="/billing/verify"

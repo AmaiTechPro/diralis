@@ -20,6 +20,36 @@ enum SecurityAction {
   ACCOUNT_DISABLED
 }
 
+enum BillingProvider {
+  PAYSTACK
+  PAYPAL
+  FLUTTERWAVE
+  STRIPE
+  OTHER
+}
+
+enum SubscriptionStatus {
+  ACTIVE
+  TRIALING
+  PAST_DUE
+  CANCELLED
+  EXPIRED
+  INCOMPLETE
+}
+
+enum BillingInterval {
+  MONTHLY
+  YEARLY
+}
+
+enum PaymentStatus {
+  PENDING
+  SUCCESS
+  FAILED
+  REFUNDED
+  CANCELLED
+}
+
 model User {
   id       String  @id @default(cuid())
   fullName String
@@ -35,8 +65,8 @@ model User {
 
   emailVerified Boolean @default(false)
 
-  failedLoginAttempts Int @default(0)
-  lockedUntil DateTime?
+  failedLoginAttempts Int       @default(0)
+  lockedUntil         DateTime?
 
   lastLogin DateTime?
 
@@ -45,13 +75,15 @@ model User {
 
   createdAt DateTime @default(now())
 
-  datasets Dataset[]
-  chatSessions ChatSession[]
+  datasets            Dataset[]
+  chatSessions        ChatSession[]
   passwordResetTokens PasswordResetToken[]
 
   emailVerifications EmailVerification[]
-  sessions Session[]
-  securityEvents SecurityEvent[]
+  sessions           Session[]
+  securityEvents     SecurityEvent[]
+  subscriptions      Subscription[]
+  payments           Payment[]
 }
 
 model Dataset {
@@ -98,7 +130,6 @@ model PasswordResetToken {
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-
 model EmailVerification {
   id String @id @default(cuid())
 
@@ -116,7 +147,6 @@ model EmailVerification {
 
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
-
 
 model Session {
   id String @id @default(cuid())
@@ -140,7 +170,6 @@ model Session {
   user User @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
-
 model SecurityEvent {
   id String @id @default(cuid())
 
@@ -159,7 +188,139 @@ model SecurityEvent {
   user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
+model SubscriptionPlan {
+  id String @id @default(cuid())
 
+  code    String
+  version Int    @default(1)
 
+  name        String
+  description String?
 
+  monthlyPrice Int?
+  annualPrice  Int?
+  currency     String @default("USD")
 
+  limits   Json?
+  features Json?
+
+  active Boolean @default(true)
+
+  effectiveFrom DateTime  @default(now())
+  effectiveTo   DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  subscriptions Subscription[]
+
+  @@unique([code, version])
+  @@index([code])
+  @@index([active])
+}
+
+model Subscription {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  planId String
+  plan   SubscriptionPlan @relation(fields: [planId], references: [id])
+
+  currentKey String? @unique
+
+  status SubscriptionStatus @default(INCOMPLETE)
+
+  provider BillingProvider?
+
+  providerCustomerId     String?
+  providerSubscriptionId String?
+
+  interval BillingInterval?
+
+  currentPeriodStart DateTime?
+  currentPeriodEnd   DateTime?
+
+  cancelAtPeriodEnd Boolean   @default(false)
+  cancelledAt       DateTime?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  payments Payment[]
+
+  @@index([userId])
+  @@index([status])
+  @@index([providerSubscriptionId])
+}
+
+model Payment {
+  id String @id @default(cuid())
+
+  userId String
+  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  subscriptionId String?
+  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+
+  provider BillingProvider
+
+  providerReference String @unique
+
+  amount   Int
+  currency String
+
+  status PaymentStatus @default(PENDING)
+
+  paidAt DateTime?
+
+  metadata Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([userId])
+  @@index([subscriptionId])
+  @@index([status])
+}
+
+model BillingWebhookEvent {
+  id String @id @default(cuid())
+
+  provider BillingProvider
+
+  eventId String
+
+  eventType String
+
+  processed Boolean @default(false)
+
+  payload Json?
+
+  processedAt DateTime?
+
+  createdAt DateTime @default(now())
+
+  @@unique([provider, eventId])
+  @@index([processed])
+}
+
+model BillingProviderConfig {
+  id String @id @default(cuid())
+
+  provider BillingProvider @unique
+
+  enabled  Boolean @default(false)
+  priority Int     @default(0)
+
+  supportedCurrencies Json?
+  supportedIntervals  Json?
+  settings            Json?
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  @@index([enabled])
+  @@index([priority])
+}

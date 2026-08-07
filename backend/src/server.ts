@@ -69,6 +69,11 @@ app.use(
   dashboardRoutes
 );
 
+import billingRoutes from "./routes/billingRoutes";
+app.use(
+  "/api/billing",
+  billingRoutes
+);
 
 
 const PORT = Number(process.env.PORT) || 5000;

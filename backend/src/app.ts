@@ -20,7 +20,17 @@ app.use(
 
 app.use(helmet());
 app.use(morgan("dev"));
-app.use(express.json());
+
+app.use(
+  express.json({
+    verify: (req: express.Request, _res, buf) => {
+      if (req.originalUrl === "/api/billing/webhook") {
+        (req as express.Request & { rawBody?: Buffer }).rawBody = buf;
+      }
+    },
+  })
+);
+
 
 // Routes
 import routes from "./routes/index.routes";

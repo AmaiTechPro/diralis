@@ -1,23 +1,48 @@
-const BASE_URL = import.meta.env.VITE_API_URL;
+const API_URL = import.meta.env.VITE_API_URL;
 
-export async function apiFetch<T>(
-  endpoint: string,
-  options?: RequestInit
-): Promise<T> {
-  const response = await fetch(`${BASE_URL}${endpoint}`, {
-    headers: {
+function getHeaders(includeJson = true): HeadersInit {
+  const token = localStorage.getItem("token");
+
+  return {
+    ...(includeJson && {
       "Content-Type": "application/json",
-      ...options?.headers,
-    },
-    ...options,
-  });
+    }),
+
+    ...(token && {
+      Authorization: `Bearer ${token}`,
+    }),
+  };
+}
+
+export async function apiFetch<T = unknown>(
+  endpoint: string,
+  options: RequestInit = {}
+): Promise<T> {
+  const response = await fetch(
+    `${API_URL}/api${endpoint}`,
+    {
+      ...options,
+
+      headers: {
+        ...getHeaders(
+          !(options.body instanceof FormData)
+        ),
+
+        ...(options.headers || {}),
+      },
+    }
+  );
+
+  const data = await response.json().catch(() => null);
 
   if (!response.ok) {
     throw new Error(
-      `API Error ${response.status}: ${response.statusText}`
+      data?.error ||
+      data?.message ||
+      "Request failed."
     );
   }
 
-  return response.json() as Promise<T>;
+  return data as T;
 }
 

@@ -8,9 +8,9 @@ export async function getReport(
     localStorage.getItem("token");
 
   const url =
-    datasetId
-      ? `${API}/reports?datasetId=${datasetId}`
-      : `${API}/reports`;
+  datasetId
+    ? `${API}/api/reports?datasetId=${datasetId}`
+    : `${API}/api/reports`;
 
   const response =
     await fetch(url, {

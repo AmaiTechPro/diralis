@@ -1,21 +1,15 @@
 const API_URL = import.meta.env.VITE_API_URL;
 
-function getHeaders(
-  includeJson = true
-): HeadersInit {
-
-  const token =
-    localStorage.getItem("token");
+function getHeaders(includeJson = true): HeadersInit {
+  const token = localStorage.getItem("token");
 
   return {
     ...(includeJson && {
-      "Content-Type":
-        "application/json",
+      "Content-Type": "application/json",
     }),
 
     ...(token && {
-      Authorization:
-        `Bearer ${token}`,
+      Authorization: `Bearer ${token}`,
     }),
   };
 }
@@ -23,10 +17,9 @@ function getHeaders(
 export async function apiFetch<T = unknown>(
   endpoint: string,
   options: RequestInit = {}
-) {
-
+): Promise<T> {
   const response = await fetch(
-    `${API_URL}${endpoint}`,
+    `${API_URL}/api${endpoint}`,
     {
       ...options,
 
@@ -40,10 +33,7 @@ export async function apiFetch<T = unknown>(
     }
   );
 
-  const data =
-    await response.json().catch(
-      () => null
-    );
+  const data = await response.json().catch(() => null);
 
   if (!response.ok) {
     throw new Error(

@@ -37,6 +37,11 @@ const navItems = [
     path: "/reports",
   },
 
+  {
+  name: "Billing",
+  path: "/billing",
+},
+
 ];
 
 

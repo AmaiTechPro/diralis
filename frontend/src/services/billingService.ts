@@ -15,7 +15,9 @@ export async function createCheckout(
   planId: string,
   interval: "MONTHLY" | "YEARLY",
   token: string
-) {
+) 
+
+{
 
   const response = await axios.post(
     `${API}/billing/checkout`,
@@ -76,6 +78,20 @@ export async function verifyPayment(
     {
       params: {
         reference,
+      },
+    }
+  );
+
+  return response.data;
+}
+
+
+export async function getBillingHistory(token: string) {
+  const response = await axios.get(
+    `${API}/billing/history`,
+    {
+      headers: {
+        Authorization: `Bearer ${token}`,
       },
     }
   );

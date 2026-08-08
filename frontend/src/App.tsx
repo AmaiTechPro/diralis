@@ -39,6 +39,9 @@ import VerifyEmail from "./pages/VerifyEmail";
 
 import BillingVerify from "./pages/BillingVerify";
 
+import Billing from "./pages/Billing";
+
+
 
 function App() {
 
@@ -285,6 +288,18 @@ function App() {
           </ProtectedRoute>
         }
       />
+
+
+      <Route
+  path="/billing"
+  element={
+    <ProtectedRoute>
+      <AppLayout>
+        <Billing />
+      </AppLayout>
+    </ProtectedRoute>
+  }
+/>
 
 
 

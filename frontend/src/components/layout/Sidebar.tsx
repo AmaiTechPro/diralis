@@ -4,6 +4,7 @@
   BrainCircuit,
   Bot,
   BarChart3,
+  CreditCard,
   UserCircle,
   Settings,
   LogOut,
@@ -150,6 +151,15 @@ export default function Sidebar({
           collapsed={collapsed}
           onClick={onClose}
         />
+
+
+        <SidebarLink
+      to="/billing"
+      icon={<CreditCard size={20} />}
+      title="Billing"
+      collapsed={collapsed}
+     onClick={onClose}
+     />
 
 
         <SidebarLink

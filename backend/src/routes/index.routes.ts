@@ -6,6 +6,8 @@ import datasetRoutes from "./datasetRoutes";
 import profileRoutes from "./profileRoutes";
 import reportRoutes from "./reportRoutes";
 import adminRoutes from "./admin.routes";
+import billingRoutes from "./billingRoutes";
+
 
 const router = Router();
 
@@ -17,6 +19,8 @@ router.use("/admin", adminRoutes);
 router.use("/auth", authRoutes);
 
 router.use("/datasets", datasetRoutes);
+
+router.use("/billing", billingRoutes);
 
 /*
  * Analytics API

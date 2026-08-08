@@ -31,96 +31,144 @@ export class PaystackProvider implements PaymentProvider {
 
 
 
-  async createCheckout(
-    input: CreateCheckoutInput
-  ) {
-
-    const secretKey = this.getSecretKey();
-
-
-    const response = await fetch(
-      "https://api.paystack.co/transaction/initialize",
-      {
-        method: "POST",
-
-        headers: {
-          Authorization:
-            `Bearer ${secretKey}`,
-
-          "Content-Type":
-            "application/json",
-        },
+  //async createCheckout(
+   // input: CreateCheckoutInput
+ // ) {
+//
+  //  const secretKey = this.getSecretKey();
 
 
-        body: JSON.stringify({
+   // const response = await fetch(
+    //  "https://api.paystack.co/transaction/initialize",
+    //  {
+    //    method: "POST",
+//
+    //    headers: {
+     //     Authorization:
+     //       `Bearer ${secretKey}`,
+//
+       //   "Content-Type":
+       //     "application/json",
+       // },
 
-          email: input.email,
+     //   body: JSON.stringify({
+ // email: input.email,
+ // amount: input.amount,
+ // currency: input.currency,
+ // reference: `${input.userId}-${Date.now()}`,
+//}),
 
-          amount: input.amount,
+      //  {/* FOR TEMPORARY DEBUGGING BUT WILL BE UNCOMMENTED */}
+        //body: JSON.stringify({
 
-          currency: input.currency,
+         // email: input.email,
 
-          reference:
-            `${input.userId}-${Date.now()}`,
+         // amount: input.amount,
 
-          callback_url:
-            input.callbackUrl,
+         // currency: input.currency,
 
-
-          metadata: {
-
-            userId:
-              input.userId,
-
-            subscriptionId:
-              input.subscriptionId,
-
-            planId:
-              input.planId,
-
-            interval:
-              input.interval,
-
-          },
-
-        }),
-      }
-    );
-
-
-    const data =
-      await response.json() as any;
+         // reference:
+          //  `${input.userId}-${Date.now()}`,
+        
+          //callback_url:
+           // input.callbackUrl,
 
 
+         // metadata: {
 
-    if (
-      !response.ok ||
-      !data.status ||
-      !data.data
-    ) {
+           // userId:
+           //   input.userId,
 
-      throw new Error(
-        data.message ||
-        "Failed to initialize Paystack checkout."
-      );
+          //  subscriptionId:
+           //   input.subscriptionId,
 
+           // planId:
+           //   input.planId,
+
+           // interval:
+          //    input.interval,
+
+         // }, 
+
+    //    }),
+   //   }
+  
+
+
+   // const data =
+    //  await response.json() as any;
+//
+
+
+   // if (
+    //  !response.ok ||
+    //  !data.status ||
+    //  !data.data
+   // ) {
+
+    //  throw new Error(
+     //   data.message ||
+     //   "Failed to initialize Paystack checkout."
+    //  );
+
+   // }
+
+
+   // return {
+
+    //  checkoutUrl:
+    //    data.data.authorization_url,
+
+
+    //  providerReference:
+      //  data.data.reference,
+//
+   // };
+
+  //}
+
+   
+
+  //{/* FOR TESTING ONLY */}
+async createCheckout(input: CreateCheckoutInput) {
+  const secretKey = this.getSecretKey();
+
+  const response = await fetch(
+    "https://api.paystack.co/transaction/initialize",
+    {
+      method: "POST",
+
+      headers: {
+        Authorization: `Bearer ${secretKey}`,
+        "Content-Type": "application/json",
+      },
+
+      body: JSON.stringify({
+        email: input.email,
+        amount: input.amount,
+        currency: input.currency,
+        reference: `${input.userId}-${Date.now()}`,
+      }),
     }
+  );
 
+  const data = (await response.json()) as any;
 
-    return {
-
-      checkoutUrl:
-        data.data.authorization_url,
-
-
-      providerReference:
-        data.data.reference,
-
-    };
-
+  if (!response.ok || !data.status || !data.data) {
+    throw new Error(
+      data.message ||
+        "Failed to initialize Paystack checkout."
+    );
   }
 
+  return {
+    checkoutUrl: data.data.authorization_url,
+    providerReference: data.data.reference,
+  };
+}
 
+
+//END OF TEST! 
 
 
 

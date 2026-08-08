@@ -2,30 +2,30 @@ import type { ReactNode } from "react";
 
 interface AdminMetricCardProps {
   title: string;
-  value: number;
+  value: number | string;
   icon: ReactNode;
+  description?: string;
 }
 
 export default function AdminMetricCard({
   title,
   value,
   icon,
+  description,
 }: AdminMetricCardProps) {
   return (
     <div
       className="
+        flex
+        items-center
+        justify-between
         rounded-2xl
         border
         border-slate-800
         bg-slate-900
-        p-6
-        flex
-        items-center
-        justify-between
-        transition-all
-        duration-300
-        hover:border-cyan-500/40
-        hover:shadow-xl
+        p-5
+        transition
+        hover:border-cyan-500/30
       "
     >
       <div>
@@ -36,6 +36,12 @@ export default function AdminMetricCard({
         <h2 className="mt-2 text-3xl font-bold text-white">
           {value}
         </h2>
+
+        {description && (
+          <p className="mt-1 text-xs text-slate-500">
+            {description}
+          </p>
+        )}
       </div>
 
       <div
@@ -43,6 +49,7 @@ export default function AdminMetricCard({
           flex
           h-14
           w-14
+          shrink-0
           items-center
           justify-center
           rounded-xl
@@ -55,3 +62,4 @@ export default function AdminMetricCard({
     </div>
   );
 }
+

@@ -469,309 +469,97 @@ export default function Pricing() {
             })}
 
           </div>
-         {/* Compare Plan */}
-<table className="w-full min-w-[1000px] text-left">
-
-  <thead>
-    <tr className="border-b">
-
-      <th className="p-4 text-left text-sm font-semibold text-slate-700">
-        Feature
-      </th>
-
-      {/* Plan 1 — Free */}
-      <th className="p-4 text-center text-sm font-semibold text-slate-700">
-        <div>Free</div>
-        <div className="mt-2 text-sm font-bold text-slate-900">
-          $0
-        </div>
-        <div className="text-xs font-normal text-slate-500">
-          Forever
-        </div>
-      </th>
-
-      {/* Plan 2 — Starter */}
-      <th className="p-4 text-center text-sm font-semibold text-slate-700">
-        <div>Starter</div>
-        <div className="mt-2 text-sm font-bold text-slate-900">
-          {billing === "monthly" ? "$15" : "$144"}
-        </div>
-        <div className="text-xs font-normal text-slate-500">
-          /{billing === "monthly" ? "month" : "year"}
-        </div>
-      </th>
-
-      {/* Plan 3 — Pro */}
-      <th className="p-4 text-center text-sm font-semibold text-blue-600">
-        <div>Pro</div>
-
-        <div className="mt-1 text-xs font-medium text-blue-600">
-          Most Popular
-        </div>
-
-        <div className="mt-2 text-sm font-bold text-slate-900">
-          {billing === "monthly" ? "$39" : "$390"}
-        </div>
-
-        <div className="text-xs font-normal text-slate-500">
-          /{billing === "monthly" ? "month" : "year"}
-        </div>
-      </th>
-
-      {/* Plan 4 — Business */}
-      <th className="p-4 text-center text-sm font-semibold text-slate-700">
-        <div>Business</div>
-        <div className="mt-2 text-sm font-bold text-slate-900">
-          {billing === "monthly" ? "$99" : "$990"}
-        </div>
-        <div className="text-xs font-normal text-slate-500">
-          /{billing === "monthly" ? "month" : "year"}
-        </div>
-      </th>
-
-      {/* Plan 5 — Custom */}
-      <th className="p-4 text-center text-sm font-semibold text-slate-700">
-        <div>Custom</div>
-        <div className="mt-2 text-sm font-bold text-slate-900">
-          Contact Sales
-        </div>
-        <div className="text-xs font-normal text-slate-500">
-          Tailored pricing
-        </div>
-      </th>
-
-    </tr>
-  </thead>
-
-  <tbody>
-
-    {/* Analytics */}
-    <tr className="border-b">
-      <td className="p-4 font-medium text-slate-700">
-        Analytics
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-    </tr>
-
-    {/* Forecasting */}
-    <tr className="border-b">
-      <td className="p-4 font-medium text-slate-700">
-        Forecasting
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-    </tr>
-
-    {/* Reports */}
-    <tr className="border-b">
-      <td className="p-4 font-medium text-slate-700">
-        Reports
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-    </tr>
-
-    {/* AI Chat */}
-    <tr className="border-b">
-      <td className="p-4 font-medium text-slate-700">
-        AI Chat
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-    </tr>
-
-    {/* AI Agent */}
-    <tr className="border-b">
-      <td className="p-4 font-medium text-slate-700">
-        AI Agent
-      </td>
-
-      <td className="p-4 text-center text-slate-300">—</td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
 
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-    </tr>
-
-    {/* Advanced Analytics */}
-    <tr className="border-b">
-      <td className="p-4 font-medium text-slate-700">
-        Advanced Analytics
-      </td>
-
-      <td className="p-4 text-center text-slate-300">—</td>
-
-      <td className="p-4 text-center text-slate-300">—</td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-    </tr>
-
-    {/* Integrations */}
-    <tr className="border-b">
-      <td className="p-4 font-medium text-slate-700">
-        Integrations
-      </td>
-
-      <td className="p-4 text-center text-slate-300">—</td>
-
-      <td className="p-4 text-center text-slate-300">—</td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-    </tr>
-
-    {/* Priority Support */}
-    <tr className="border-b">
-      <td className="p-4 font-medium text-slate-700">
-        Priority Support
-      </td>
-
-      <td className="p-4 text-center text-slate-300">—</td>
-
-      <td className="p-4 text-center text-slate-300">—</td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-    </tr>
-
-    {/* Dedicated Support */}
-    <tr>
-      <td className="p-4 font-medium text-slate-700">
-        Dedicated Support
-      </td>
-
-      <td className="p-4 text-center text-slate-300">—</td>
-
-      <td className="p-4 text-center text-slate-300">—</td>
-
-      <td className="p-4 text-center text-slate-300">—</td>
-
-      <td className="p-4 text-center text-slate-300">—</td>
-
-      <td className="p-4 text-center">
-        <Check className="mx-auto h-5 w-5 text-blue-600" />
-      </td>
-    </tr>
-
-  </tbody>
-
-</table>
-
-
-      
+          {/* Comparison */}
+          <div className="mt-16 rounded-2xl bg-white p-6 shadow-sm sm:p-8">
+
+            <h2 className="text-center text-2xl font-bold text-slate-900">
+              Compare Plans
+            </h2>
+
+            <p className="mt-3 text-center text-slate-600">
+              See exactly what each Diralis plan
+              provides.
+            </p>
+
+            <div className="mt-8 overflow-x-auto">
+
+              <table className="w-full min-w-[700px] text-left">
+
+                <thead>
+                  <tr className="border-b">
+
+                    <th className="p-4">
+                      Feature
+                    </th>
+
+                    {plans.map((plan) => (
+                      <th
+                        key={plan.id}
+                        className="p-4"
+                      >
+                        {plan.name}
+                      </th>
+                    ))}
+
+                  </tr>
+                </thead>
+
+                <tbody>
+
+                  {[
+                    "analytics",
+                    "forecasting",
+                    "reports",
+                    "aiChat",
+                    "aiAgent",
+                    "advancedAnalytics",
+                    "integrations",
+                    "prioritySupport",
+                    "dedicatedSupport",
+                  ].map((feature) => (
+
+                    <tr
+                      key={feature}
+                      className="border-b"
+                    >
+
+                      <td className="p-4 font-medium text-slate-700">
+                        {formatFeatureName(
+                          feature
+                        )}
+                      </td>
+
+                      {plans.map((plan) => (
+
+                        <td
+                          key={plan.id}
+                          className="p-4"
+                        >
+                          {plan.features?.[
+                            feature
+                          ] ? (
+                            <Check className="h-5 w-5 text-blue-600" />
+                          ) : (
+                            <span className="text-slate-300">
+                              —
+                            </span>
+                          )}
+                        </td>
+
+                      ))}
+
+                    </tr>
+
+                  ))}
+
+                </tbody>
+
+              </table>
+
+            </div>
+
+          </div>
 
         </>
       )}

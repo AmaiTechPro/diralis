@@ -20,37 +20,34 @@ export default function Login() {
   const [loading, setLoading] = useState(false);
 
   async function handleSubmit(e: React.FormEvent) {
-    e.preventDefault();
+  e.preventDefault();
 
-    setError("");
-    setLoading(true);
+  setError("");
+  setLoading(true);
 
-    try {
-      const result = await loginApi({
-        identifier,
-        password,
-      });
+  try {
+    const result = await loginApi({
+      identifier,
+      password,
+    });
 
-      login(result.user, result.token);
+    login(result.user, result.token);
 
-if (result.user.role === "ADMIN") {
-
-  navigate("/admin");
-
-} else {
-
-  navigate("/dashboard");
-
-}
-
-    } catch (error: any) {
+    if (result.user.role === "ADMIN") {
+      navigate("/admin");
+    } else {
+      navigate("/dashboard");
+    }
+  } catch (error: any) {
     setError(
-    error.response?.data?.error ??
-    error.response?.data?.message ??
-    "Invalid username/email or password."
+      error.response?.data?.error ??
+      error.response?.data?.message ??
+      "Invalid username/email or password."
     );
-   }
+  } finally {
+    setLoading(false);
   }
+}
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6">

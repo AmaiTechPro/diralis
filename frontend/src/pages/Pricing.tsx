@@ -471,95 +471,160 @@ export default function Pricing() {
           </div>
 
           {/* Comparison */}
-          <div className="mt-16 rounded-2xl bg-white p-6 shadow-sm sm:p-8">
+<div className="mt-16 rounded-2xl bg-white p-6 shadow-sm sm:p-8">
 
-            <h2 className="text-center text-2xl font-bold text-slate-900">
-              Compare Plans
-            </h2>
+  <h2 className="text-center text-2xl font-bold text-slate-900">
+    Compare Plans
+  </h2>
 
-            <p className="mt-3 text-center text-slate-600">
-              See exactly what each Diralis plan
-              provides.
-            </p>
+  <p className="mt-3 text-center text-slate-600">
+    See exactly what each Diralis plan provides.
+  </p>
 
-            <div className="mt-8 overflow-x-auto">
+  <div className="mt-8 overflow-x-auto">
 
-              <table className="w-full min-w-[700px] text-left">
+    <table className="w-full min-w-[900px] text-left">
 
-                <thead>
-                  <tr className="border-b">
+      <thead>
+        <tr className="border-b">
 
-                    <th className="p-4">
-                      Feature
-                    </th>
+          <th className="p-4 text-left text-sm font-semibold text-slate-700">
+            Feature
+          </th>
 
-                    {plans.map((plan) => (
-                      <th
-                        key={plan.id}
-                        className="p-4"
-                      >
-                        {plan.name}
-                      </th>
-                    ))}
+          {[
+            "FREE",
+            "STARTER",
+            "PRO",
+            "BUSINESS",
+            "CUSTOM",
+          ].map((code) => {
+            const plan = plans.find(
+              (item) => item.code === code
+            );
 
-                  </tr>
-                </thead>
+            if (!plan) {
+              return (
+                <th
+                  key={code}
+                  className="p-4 text-center text-sm font-semibold text-slate-700"
+                >
+                  {code}
+                </th>
+              );
+            }
 
-                <tbody>
+            const price =
+              billing === "monthly"
+                ? plan.monthlyPrice
+                : plan.annualPrice;
 
-                  {[
-                    "analytics",
-                    "forecasting",
-                    "reports",
-                    "aiChat",
-                    "aiAgent",
-                    "advancedAnalytics",
-                    "integrations",
-                    "prioritySupport",
-                    "dedicatedSupport",
-                  ].map((feature) => (
+            return (
+              <th
+                key={plan.id}
+                className={`p-4 text-center ${
+                  code === "PRO"
+                    ? "text-blue-600"
+                    : "text-slate-700"
+                }`}
+              >
+                <div className="font-semibold">
+                  {plan.name}
+                </div>
 
-                    <tr
-                      key={feature}
-                      className="border-b"
-                    >
+                {code === "PRO" && (
+                  <div className="mt-1 text-xs font-medium text-blue-600">
+                    Most Popular
+                  </div>
+                )}
 
-                      <td className="p-4 font-medium text-slate-700">
-                        {formatFeatureName(
-                          feature
-                        )}
-                      </td>
+                <div className="mt-2 text-sm font-bold text-slate-900">
+                  {formatPrice(
+                    price,
+                    plan.currency
+                  )}
 
-                      {plans.map((plan) => (
+                  {code !== "CUSTOM" && (
+                    <span className="font-normal text-slate-500">
+                      {" "}
+                      /{" "}
+                      {billing === "monthly"
+                        ? "month"
+                        : "year"}
+                    </span>
+                  )}
+                </div>
+              </th>
+            );
+          })}
 
-                        <td
-                          key={plan.id}
-                          className="p-4"
-                        >
-                          {plan.features?.[
-                            feature
-                          ] ? (
-                            <Check className="h-5 w-5 text-blue-600" />
-                          ) : (
-                            <span className="text-slate-300">
-                              —
-                            </span>
-                          )}
-                        </td>
+        </tr>
+      </thead>
 
-                      ))}
+      <tbody>
 
-                    </tr>
+        {[
+          "analytics",
+          "forecasting",
+          "reports",
+          "aiChat",
+          "aiAgent",
+          "advancedAnalytics",
+          "integrations",
+          "prioritySupport",
+          "dedicatedSupport",
+        ].map((feature) => (
 
-                  ))}
+          <tr
+            key={feature}
+            className="border-b"
+          >
 
-                </tbody>
+            <td className="p-4 font-medium text-slate-700">
+              {formatFeatureName(feature)}
+            </td>
 
-              </table>
+            {[
+              "FREE",
+              "STARTER",
+              "PRO",
+              "BUSINESS",
+              "CUSTOM",
+            ].map((code) => {
 
-            </div>
+              const plan = plans.find(
+                (item) => item.code === code
+              );
 
-          </div>
+              return (
+                <td
+                  key={code}
+                  className="p-4 text-center"
+                >
+                  {plan?.features?.[feature] ? (
+                    <Check className="mx-auto h-5 w-5 text-blue-600" />
+                  ) : (
+                    <span className="text-slate-300">
+                      —
+                    </span>
+                  )}
+                </td>
+              );
+
+            })}
+
+          </tr>
+
+        ))}
+
+      </tbody>
+
+    </table>
+
+ 
+     </div></div>
+
+      
 
         </>
       )}

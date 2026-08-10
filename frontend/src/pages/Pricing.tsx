@@ -469,160 +469,307 @@ export default function Pricing() {
             })}
 
           </div>
+         {/* Compare Plan */}
+<table className="w-full min-w-[1000px] text-left">
 
-          {/* Comparison */}
-<div className="mt-16 rounded-2xl bg-white p-6 shadow-sm sm:p-8">
+  <thead>
+    <tr className="border-b">
 
-  <h2 className="text-center text-2xl font-bold text-slate-900">
-    Compare Plans
-  </h2>
+      <th className="p-4 text-left text-sm font-semibold text-slate-700">
+        Feature
+      </th>
 
-  <p className="mt-3 text-center text-slate-600">
-    See exactly what each Diralis plan provides.
-  </p>
+      {/* Plan 1 — Free */}
+      <th className="p-4 text-center text-sm font-semibold text-slate-700">
+        <div>Free</div>
+        <div className="mt-2 text-sm font-bold text-slate-900">
+          $0
+        </div>
+        <div className="text-xs font-normal text-slate-500">
+          Forever
+        </div>
+      </th>
 
-  <div className="mt-8 overflow-x-auto">
+      {/* Plan 2 — Starter */}
+      <th className="p-4 text-center text-sm font-semibold text-slate-700">
+        <div>Starter</div>
+        <div className="mt-2 text-sm font-bold text-slate-900">
+          {billing === "monthly" ? "$15" : "$144"}
+        </div>
+        <div className="text-xs font-normal text-slate-500">
+          /{billing === "monthly" ? "month" : "year"}
+        </div>
+      </th>
 
-    <table className="w-full min-w-[900px] text-left">
+      {/* Plan 3 — Pro */}
+      <th className="p-4 text-center text-sm font-semibold text-blue-600">
+        <div>Pro</div>
 
-      <thead>
-        <tr className="border-b">
+        <div className="mt-1 text-xs font-medium text-blue-600">
+          Most Popular
+        </div>
 
-          <th className="p-4 text-left text-sm font-semibold text-slate-700">
-            Feature
-          </th>
+        <div className="mt-2 text-sm font-bold text-slate-900">
+          {billing === "monthly" ? "$39" : "$390"}
+        </div>
 
-          {[
-            "FREE",
-            "STARTER",
-            "PRO",
-            "BUSINESS",
-            "CUSTOM",
-          ].map((code) => {
-            const plan = plans.find(
-              (item) => item.code === code
-            );
+        <div className="text-xs font-normal text-slate-500">
+          /{billing === "monthly" ? "month" : "year"}
+        </div>
+      </th>
 
-            if (!plan) {
-              return (
-                <th
-                  key={code}
-                  className="p-4 text-center text-sm font-semibold text-slate-700"
-                >
-                  {code}
-                </th>
-              );
-            }
+      {/* Plan 4 — Business */}
+      <th className="p-4 text-center text-sm font-semibold text-slate-700">
+        <div>Business</div>
+        <div className="mt-2 text-sm font-bold text-slate-900">
+          {billing === "monthly" ? "$99" : "$990"}
+        </div>
+        <div className="text-xs font-normal text-slate-500">
+          /{billing === "monthly" ? "month" : "year"}
+        </div>
+      </th>
 
-            const price =
-              billing === "monthly"
-                ? plan.monthlyPrice
-                : plan.annualPrice;
+      {/* Plan 5 — Custom */}
+      <th className="p-4 text-center text-sm font-semibold text-slate-700">
+        <div>Custom</div>
+        <div className="mt-2 text-sm font-bold text-slate-900">
+          Contact Sales
+        </div>
+        <div className="text-xs font-normal text-slate-500">
+          Tailored pricing
+        </div>
+      </th>
 
-            return (
-              <th
-                key={plan.id}
-                className={`p-4 text-center ${
-                  code === "PRO"
-                    ? "text-blue-600"
-                    : "text-slate-700"
-                }`}
-              >
-                <div className="font-semibold">
-                  {plan.name}
-                </div>
+    </tr>
+  </thead>
 
-                {code === "PRO" && (
-                  <div className="mt-1 text-xs font-medium text-blue-600">
-                    Most Popular
-                  </div>
-                )}
+  <tbody>
 
-                <div className="mt-2 text-sm font-bold text-slate-900">
-                  {formatPrice(
-                    price,
-                    plan.currency
-                  )}
+    {/* Analytics */}
+    <tr className="border-b">
+      <td className="p-4 font-medium text-slate-700">
+        Analytics
+      </td>
 
-                  {code !== "CUSTOM" && (
-                    <span className="font-normal text-slate-500">
-                      {" "}
-                      /{" "}
-                      {billing === "monthly"
-                        ? "month"
-                        : "year"}
-                    </span>
-                  )}
-                </div>
-              </th>
-            );
-          })}
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
 
-        </tr>
-      </thead>
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
 
-      <tbody>
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
 
-        {[
-          "analytics",
-          "forecasting",
-          "reports",
-          "aiChat",
-          "aiAgent",
-          "advancedAnalytics",
-          "integrations",
-          "prioritySupport",
-          "dedicatedSupport",
-        ].map((feature) => (
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
 
-          <tr
-            key={feature}
-            className="border-b"
-          >
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+    </tr>
 
-            <td className="p-4 font-medium text-slate-700">
-              {formatFeatureName(feature)}
-            </td>
+    {/* Forecasting */}
+    <tr className="border-b">
+      <td className="p-4 font-medium text-slate-700">
+        Forecasting
+      </td>
 
-            {[
-              "FREE",
-              "STARTER",
-              "PRO",
-              "BUSINESS",
-              "CUSTOM",
-            ].map((code) => {
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
 
-              const plan = plans.find(
-                (item) => item.code === code
-              );
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
 
-              return (
-                <td
-                  key={code}
-                  className="p-4 text-center"
-                >
-                  {plan?.features?.[feature] ? (
-                    <Check className="mx-auto h-5 w-5 text-blue-600" />
-                  ) : (
-                    <span className="text-slate-300">
-                      —
-                    </span>
-                  )}
-                </td>
-              );
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
 
-            })}
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
 
-          </tr>
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+    </tr>
 
-        ))}
+    {/* Reports */}
+    <tr className="border-b">
+      <td className="p-4 font-medium text-slate-700">
+        Reports
+      </td>
 
-      </tbody>
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
 
-    </table>
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
 
- 
-     </div></div>
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+    </tr>
+
+    {/* AI Chat */}
+    <tr className="border-b">
+      <td className="p-4 font-medium text-slate-700">
+        AI Chat
+      </td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+    </tr>
+
+    {/* AI Agent */}
+    <tr className="border-b">
+      <td className="p-4 font-medium text-slate-700">
+        AI Agent
+      </td>
+
+      <td className="p-4 text-center text-slate-300">—</td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+    </tr>
+
+    {/* Advanced Analytics */}
+    <tr className="border-b">
+      <td className="p-4 font-medium text-slate-700">
+        Advanced Analytics
+      </td>
+
+      <td className="p-4 text-center text-slate-300">—</td>
+
+      <td className="p-4 text-center text-slate-300">—</td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+    </tr>
+
+    {/* Integrations */}
+    <tr className="border-b">
+      <td className="p-4 font-medium text-slate-700">
+        Integrations
+      </td>
+
+      <td className="p-4 text-center text-slate-300">—</td>
+
+      <td className="p-4 text-center text-slate-300">—</td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+    </tr>
+
+    {/* Priority Support */}
+    <tr className="border-b">
+      <td className="p-4 font-medium text-slate-700">
+        Priority Support
+      </td>
+
+      <td className="p-4 text-center text-slate-300">—</td>
+
+      <td className="p-4 text-center text-slate-300">—</td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+    </tr>
+
+    {/* Dedicated Support */}
+    <tr>
+      <td className="p-4 font-medium text-slate-700">
+        Dedicated Support
+      </td>
+
+      <td className="p-4 text-center text-slate-300">—</td>
+
+      <td className="p-4 text-center text-slate-300">—</td>
+
+      <td className="p-4 text-center text-slate-300">—</td>
+
+      <td className="p-4 text-center text-slate-300">—</td>
+
+      <td className="p-4 text-center">
+        <Check className="mx-auto h-5 w-5 text-blue-600" />
+      </td>
+    </tr>
+
+  </tbody>
+
+</table>
+
 
       
 

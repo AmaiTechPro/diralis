@@ -1,10 +1,5 @@
 import prisma from "../lib/prisma";
-
-import { BillingInterval, BillingProvider } from "@prisma/client";
-import { getPaymentProvider } from "./billing/providerFactory";
-
-
-
+import { SubscriptionStatus } from "@prisma/client";
 
 /**
  * Get all active subscription plans.
@@ -28,15 +23,21 @@ export async function getActivePlans() {
 /**
  * Get the user's current subscription.
  *
- * Diralis keeps one current subscription per customer,
- * while historical subscriptions remain in the database.
+ * Diralis tracks the active subscription via the unique currentKey.
  */
 export async function getCurrentSubscription(userId: string) {
+  const currentKey = `${userId}_current`;
+
   return prisma.subscription.findFirst({
     where: {
       userId,
+      currentKey,
       status: {
-        in: ["ACTIVE", "TRIALING", "PAST_DUE", "INCOMPLETE"],
+        in: [
+          SubscriptionStatus.ACTIVE,
+          SubscriptionStatus.TRIALING,
+          SubscriptionStatus.PAST_DUE,
+        ],
       },
     },
     include: {
@@ -51,12 +52,12 @@ export async function getCurrentSubscription(userId: string) {
 /**
  * Get the user's current plan.
  *
- * Users without a subscription automatically fall back to FREE.
+ * Users without an active subscription automatically fall back to the FREE plan.
  */
 export async function getUserPlan(userId: string) {
   const subscription = await getCurrentSubscription(userId);
 
-  if (subscription) {
+  if (subscription && subscription.plan) {
     return subscription.plan;
   }
 
@@ -144,130 +145,43 @@ export async function getUsageLimit(
   return value;
 }
 
+/**
+ * Get complete billing overview for the user.
+ */
+export async function getBillingOverview(userId: string) {
+  const subscription = await getCurrentSubscription(userId);
+  const plan = await getUserPlan(userId);
+  const entitlements = await getUserEntitlements(userId);
 
-{/* Check out services */}
-
-export async function createCheckout(
-  userId: string,
-  planCode: string,
-  interval: BillingInterval
-) {
-  const user = await prisma.user.findUnique({
-    where: {
-      id: userId,
+  return {
+    hasActiveSubscription: !!subscription,
+    subscription: subscription
+      ? {
+          id: subscription.id,
+          status: subscription.status,
+          interval: subscription.interval,
+          provider: subscription.provider,
+          currentPeriodStart: subscription.currentPeriodStart,
+          currentPeriodEnd: subscription.currentPeriodEnd,
+          cancelAtPeriodEnd: subscription.cancelAtPeriodEnd,
+          cancelledAt: subscription.cancelledAt,
+        }
+      : null,
+    plan: plan
+      ? {
+          id: plan.id,
+          code: plan.code,
+          name: plan.name,
+          description: plan.description,
+          currency: plan.currency,
+          monthlyPrice: plan.monthlyPrice,
+          annualPrice: plan.annualPrice,
+        }
+      : null,
+    entitlements: {
+      limits: entitlements.limits,
+      features: entitlements.features,
     },
-    select: {
-      id: true,
-      email: true,
-    },
-  });
-
-  if (!user) {
-    throw new Error("User not found.");
-  }
-
-
-  const plan = await prisma.subscriptionPlan.findFirst({
-    where: {
-      code: planCode,
-      active: true,
-    },
-    orderBy: {
-      version: "desc",
-    },
-  });
-
-
-  if (!plan) {
-    throw new Error("Subscription plan not found.");
-  }
-
-
-  if (plan.code === "FREE") {
-    throw new Error(
-      "The FREE plan does not require checkout."
-    );
-  }
-
-
-  const amount =
-    interval === BillingInterval.MONTHLY
-      ? plan.monthlyPrice
-      : plan.annualPrice;
-
-
-  if (amount === null || amount === undefined) {
-    throw new Error(
-      `Pricing has not been configured for the ${plan.name} plan.`
-    );
-  }
-
-
-  if (amount <= 0) {
-    throw new Error(
-      "Checkout requires a valid positive amount."
-    );
-  }
-
-
-  const providerConfig =
-    await prisma.billingProviderConfig.findFirst({
-      where: {
-        enabled: true,
-      },
-      orderBy: [
-        {
-          priority: "asc",
-        },
-        {
-          createdAt: "asc",
-        },
-      ],
-    });
-
-
-  if (!providerConfig) {
-    throw new Error(
-      "No billing provider is currently enabled."
-    );
-  }
-
-
-  const provider = getPaymentProvider(
-    providerConfig.provider as BillingProvider
-  );
-
-
-  const callbackUrl =
-    process.env.BILLING_CALLBACK_URL ||
-    `${process.env.FRONTEND_URL}/billing/verify`;
-
-
-
-
-
-
-
-const subscription =
-  await prisma.subscription.create({
-    data: {
-      userId,
-      planId: plan.id,
-      status: "INCOMPLETE",
-      provider: provider.name,
-      interval,
-    },
-  });
-
-  return provider.createCheckout({
-  userId,
-  subscriptionId: subscription.id,
-  planId: plan.id,
-  interval,
-  email: user.email,
-  amount,
-  currency: plan.currency,
-  callbackUrl,
-});
+  };
 }
 

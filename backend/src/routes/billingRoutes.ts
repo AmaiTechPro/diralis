@@ -76,6 +76,7 @@ import {
   getPlans,
   getSubscription,
   getEntitlements,
+  getBillingOverviewController,
   checkout,
   cancelSubscriptionController,
   billingWebhook,
@@ -89,6 +90,8 @@ const router = Router();
 router.get("/plans", getPlans);
 
 // Protected billing information
+router.get("/overview", authenticate, getBillingOverviewController);
+
 router.get("/subscription", authenticate, getSubscription);
 
 router.get("/entitlements", authenticate, getEntitlements);

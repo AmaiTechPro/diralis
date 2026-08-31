@@ -120,22 +120,26 @@ export interface BillingPayment {
 }
 
 export interface PaymentReceipt {
-  payment: {
+  id: string;
+  provider: string;
+  reference: string;
+  amount: number;
+  currency: string;
+  status: string;
+  paidAt: string | null;
+  createdAt: string;
+  subscription: {
     id: string;
-    reference: string;
-    amount: number;
-    currency: string;
     status: string;
-    paidAt: string | null;
-    createdAt: string;
-  };
-  user: {
-    fullName: string;
-    email: string;
-  };
-  plan: {
-    name: string;
-    code: string;
+    interval: "MONTHLY" | "YEARLY";
+    currentPeriodStart: string | null;
+    currentPeriodEnd: string | null;
+    plan: {
+      id: string;
+      code: string;
+      name: string;
+      description: string | null;
+    };
   } | null;
 }
 
@@ -218,8 +222,8 @@ export async function getBillingHistory(): Promise<{
 
 export async function getPaymentReceipt(
   paymentId: string
-): Promise<PaymentReceipt> {
-  const response = await api.get<PaymentReceipt>(
+): Promise<{ receipt: PaymentReceipt }> {
+  const response = await api.get<{ receipt: PaymentReceipt }>(
     `/billing/receipt/${paymentId}`
   );
   return response.data;

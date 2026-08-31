@@ -17,17 +17,22 @@ import {
   HardDrive,
   Bot,
   Users,
+  Receipt,
+  Printer,
+  X,
 } from "lucide-react";
 
 import {
   getPlans,
   getBillingOverview,
   getBillingHistory,
+  getPaymentReceipt,
   createCheckout,
   cancelSubscription,
   type SubscriptionPlan,
   type BillingOverview,
   type BillingPayment,
+  type PaymentReceipt,
 } from "../services/billingService";
 
 import { useAuth } from "../context/AuthContext";
@@ -145,7 +150,7 @@ function UsageBar({ label, used, limit, unit = "", icon: Icon }: UsageMetricProp
 }
 
 export default function Billing() {
-  const { token } = useAuth();
+  const { token, user } = useAuth();
 
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
   const [overview, setOverview] = useState<BillingOverview | null>(null);
@@ -157,6 +162,10 @@ export default function Billing() {
   const [cancelling, setCancelling] = useState(false);
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [error, setError] = useState<string | null>(null);
+
+  // Receipt Modal State
+  const [selectedReceipt, setSelectedReceipt] = useState<PaymentReceipt | null>(null);
+  const [loadingReceiptId, setLoadingReceiptId] = useState<string | null>(null);
 
   async function loadBillingData() {
     if (!token) return;
@@ -242,6 +251,19 @@ export default function Billing() {
       alert(msg);
     } finally {
       setCancelling(false);
+    }
+  }
+
+  async function handleViewReceipt(paymentId: string) {
+    try {
+      setLoadingReceiptId(paymentId);
+      const res = await getPaymentReceipt(paymentId);
+      setSelectedReceipt(res.receipt);
+    } catch (err) {
+      console.error("Failed to fetch receipt:", err);
+      alert("Unable to load payment receipt. Please try again.");
+    } finally {
+      setLoadingReceiptId(null);
     }
   }
 
@@ -586,6 +608,7 @@ export default function Billing() {
                   <th className="pb-3 font-semibold">Amount</th>
                   <th className="pb-3 font-semibold">Reference</th>
                   <th className="pb-3 font-semibold">Status</th>
+                  <th className="pb-3 font-semibold text-right">Receipt</th>
                 </tr>
               </thead>
               <tbody className="divide-y divide-slate-100">
@@ -616,6 +639,20 @@ export default function Billing() {
                         {item.status}
                       </span>
                     </td>
+                    <td className="py-3.5 text-right">
+                      <button
+                        onClick={() => handleViewReceipt(item.id)}
+                        disabled={loadingReceiptId === item.id}
+                        className="inline-flex items-center gap-1.5 rounded-lg px-2.5 py-1 text-xs font-medium text-cyan-700 hover:bg-cyan-50 transition"
+                      >
+                        {loadingReceiptId === item.id ? (
+                          <Loader2 size={13} className="animate-spin" />
+                        ) : (
+                          <Receipt size={13} />
+                        )}
+                        View
+                      </button>
+                    </td>
                   </tr>
                 ))}
               </tbody>
@@ -623,6 +660,91 @@ export default function Billing() {
           )}
         </div>
       </section>
+
+      {/* Payment Receipt Modal */}
+      {selectedReceipt && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-slate-900/60 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl bg-white p-6 shadow-2xl">
+            <div className="flex items-center justify-between border-b border-slate-100 pb-4">
+              <div className="flex items-center gap-2">
+                <Receipt className="text-cyan-600" size={20} />
+                <h3 className="text-lg font-bold text-slate-900">Payment Receipt</h3>
+              </div>
+              <button
+                onClick={() => setSelectedReceipt(null)}
+                className="rounded-lg p-1.5 text-slate-400 hover:bg-slate-100 hover:text-slate-600"
+              >
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="mt-6 space-y-4 text-sm" id="printable-receipt">
+              <div className="flex items-center justify-between rounded-xl bg-slate-50 p-4">
+                <div>
+                  <p className="text-xs text-slate-500">Invoice Amount</p>
+                  <p className="text-2xl font-bold text-slate-900">
+                    {formatPrice(selectedReceipt.amount, selectedReceipt.currency)}
+                  </p>
+                </div>
+                <span className="rounded-full bg-emerald-50 px-3 py-1 text-xs font-semibold text-emerald-700">
+                  {selectedReceipt.status}
+                </span>
+              </div>
+
+              <div className="grid grid-cols-2 gap-4 text-xs">
+                <div>
+                  <span className="text-slate-400">Transaction Ref:</span>
+                  <p className="font-mono font-medium text-slate-800">{selectedReceipt.reference}</p>
+                </div>
+                <div>
+                  <span className="text-slate-400">Payment Date:</span>
+                  <p className="font-medium text-slate-800">{formatDate(selectedReceipt.paidAt ?? selectedReceipt.createdAt)}</p>
+                </div>
+                <div>
+                  <span className="text-slate-400">Customer:</span>
+                  <p className="font-medium text-slate-800">{user?.fullName ?? user?.email ?? "Diralis Customer"}</p>
+                </div>
+                <div>
+                  <span className="text-slate-400">Payment Gateway:</span>
+                  <p className="font-medium text-slate-800 uppercase">{selectedReceipt.provider}</p>
+                </div>
+              </div>
+
+              {selectedReceipt.subscription && (
+                <div className="rounded-xl border border-slate-100 p-4">
+                  <p className="text-xs font-semibold text-slate-700">Plan Details</p>
+                  <div className="mt-2 flex justify-between text-xs text-slate-600">
+                    <span>{selectedReceipt.subscription.plan.name} Tier ({selectedReceipt.subscription.interval.toLowerCase()})</span>
+                    <span className="font-semibold text-slate-900">
+                      {formatPrice(selectedReceipt.amount, selectedReceipt.currency)}
+                    </span>
+                  </div>
+                  {selectedReceipt.subscription.currentPeriodEnd && (
+                    <p className="mt-1 text-[11px] text-slate-400">
+                      Coverage: {formatDate(selectedReceipt.subscription.currentPeriodStart)} - {formatDate(selectedReceipt.subscription.currentPeriodEnd)}
+                    </p>
+                  )}
+                </div>
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end gap-3 border-t border-slate-100 pt-4">
+              <button
+                onClick={() => window.print()}
+                className="inline-flex items-center gap-2 rounded-xl border border-slate-200 px-4 py-2 text-xs font-medium text-slate-700 hover:bg-slate-50"
+              >
+                <Printer size={14} /> Print / Save
+              </button>
+              <button
+                onClick={() => setSelectedReceipt(null)}
+                className="rounded-xl bg-slate-900 px-4 py-2 text-xs font-medium text-white hover:bg-slate-800"
+              >
+                Close
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
 
       {/* Cancellation Confirmation Modal */}
       {showCancelModal && (
@@ -660,4 +782,5 @@ export default function Billing() {
     </div>
   );
 }
+
 

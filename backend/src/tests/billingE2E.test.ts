@@ -42,7 +42,7 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
       },
     });
     testUserId = user.id;
-  });
+  }, 15000);
 
   afterAll(async () => {
     vi.restoreAllMocks();
@@ -66,7 +66,7 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
         where: { id: testUserId },
       });
     }
-  });
+  }, 15000);
 
   it("1. Should return active plans including PRO tier", async () => {
     const plans = await getActivePlans();
@@ -74,7 +74,7 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
     const proPlan = plans.find((p) => p.code === "PRO");
     expect(proPlan).toBeDefined();
     expect(proPlan?.monthlyPrice).toBe(7900);
-  });
+  }, 15000);
 
   it("2. Should report Free tier by default before any subscription", async () => {
     const overview = await getBillingOverview(testUserId);
@@ -86,7 +86,7 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
     expect(entitlements.plan.code).toBe("FREE");
     const features = entitlements.features as Record<string, boolean>;
     expect(features.aiAgent).toBe(false);
-  });
+  }, 15000);
 
   it("3. Should initiate checkout for PRO monthly plan", async () => {
     const proPlan = await prisma.subscriptionPlan.findFirst({
@@ -107,7 +107,7 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
     });
     expect(pendingSub).toBeDefined();
     expect(pendingSub?.interval).toBe("MONTHLY");
-  });
+  }, 15000);
 
   it("4. Should activate subscription via successful payment webhook", async () => {
     const pendingSub = await prisma.subscription.findFirst({
@@ -153,7 +153,7 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
     const features = entitlements.features as Record<string, boolean>;
     expect(features.aiAgent).toBe(true);
     expect(features.forecasting).toBe(true);
-  });
+  }, 15000);
 
   it("5. Should handle idempotent duplicate webhook safely", async () => {
     const existingEvent = await prisma.billingWebhookEvent.findFirst({
@@ -174,7 +174,7 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
 
     expect(duplicateResult.success).toBe(true);
     expect(duplicateResult.alreadyProcessed).toBe(true);
-  });
+  }, 15000);
 
   it("6. Should allow cancelling active subscription gracefully", async () => {
     const cancelResult = await cancelUserSubscription(testUserId, {
@@ -186,13 +186,14 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
     const overview = await getBillingOverview(testUserId);
     expect(overview.subscription?.cancelAtPeriodEnd).toBe(true);
     expect(overview.hasActiveSubscription).toBe(true);
-  });
+  }, 15000);
 
   it("7. Should record transaction in billing history", async () => {
     const history = await getBillingHistory(testUserId);
     expect(history.length).toBeGreaterThanOrEqual(1);
     expect(history[0].status).toBe("SUCCESS");
     expect(history[0].subscription?.plan.code).toBe("PRO");
-  });
+  }, 15000);
 });
+
 

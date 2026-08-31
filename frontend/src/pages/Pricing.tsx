@@ -9,22 +9,12 @@ import {
   Zap,
 } from "lucide-react";
 
-import { getPlans, createCheckout } from "../services/billingService";
+import {
+  getPlans,
+  createCheckout,
+  type SubscriptionPlan,
+} from "../services/billingService";
 import { useAuth } from "../context/AuthContext";
-
-interface BillingPlan {
-  id: string;
-  code: string;
-  version: number;
-  name: string;
-  description: string | null;
-  monthlyPrice: number | null;
-  annualPrice: number | null;
-  currency: string;
-  limits: Record<string, number | null> | null;
-  features: Record<string, boolean> | null;
-  active: boolean;
-}
 
 const planIcons: Record<string, typeof Sparkles> = {
   FREE: Sparkles,
@@ -36,10 +26,7 @@ const planIcons: Record<string, typeof Sparkles> = {
 
 const popularPlans = new Set(["PRO"]);
 
-function formatPrice(
-  price: number | null,
-  currency: string
-) {
+function formatPrice(price: number | null, currency: string) {
   if (price === null) {
     return "Custom";
   }
@@ -53,9 +40,7 @@ function formatPrice(
   }).format(amount);
 }
 
-function formatFeatureName(
-  key: string
-) {
+function formatFeatureName(key: string) {
   const names: Record<string, string> = {
     aiChat: "AI Chat",
     aiAgent: "AI Agent",
@@ -74,15 +59,11 @@ function formatFeatureName(
     names[key] ??
     key
       .replace(/([A-Z])/g, " $1")
-      .replace(/^./, (letter) =>
-        letter.toUpperCase()
-      )
+      .replace(/^./, (letter) => letter.toUpperCase())
   );
 }
 
-function formatLimitName(
-  key: string
-) {
+function formatLimitName(key: string) {
   const names: Record<string, string> = {
     datasets: "Datasets",
     storageMb: "Storage",
@@ -96,48 +77,36 @@ function formatLimitName(
     names[key] ??
     key
       .replace(/([A-Z])/g, " $1")
-      .replace(/^./, (letter) =>
-        letter.toUpperCase()
-      )
+      .replace(/^./, (letter) => letter.toUpperCase())
   );
 }
 
-function formatLimitValue(
-  key: string,
-  value: number | null
-) {
-  if (value === null) {
+function formatLimitValue(key: string, value: unknown) {
+  if (value === null || value === undefined) {
     return "Unlimited";
   }
 
-  if (key === "storageMb") {
-    if (value >= 1000) {
-      return `${value / 1000} GB`;
+  if (typeof value === "number") {
+    if (key === "storageMb") {
+      if (value >= 1000) {
+        return `${value / 1000} GB`;
+      }
+      return `${value} MB`;
     }
-
-    return `${value} MB`;
+    return value.toLocaleString();
   }
 
-  return value.toLocaleString();
+  return String(value);
 }
 
 export default function Pricing() {
   const { token, isAuthenticated } = useAuth();
 
-  const [billing, setBilling] =
-    useState<"monthly" | "yearly">("monthly");
-
-  const [plans, setPlans] =
-    useState<BillingPlan[]>([]);
-
-  const [loading, setLoading] =
-    useState(true);
-
-  const [error, setError] =
-    useState<string | null>(null);
-
-  const [checkoutPlan, setCheckoutPlan] =
-    useState<string | null>(null);
+  const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
+  const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+  const [checkoutPlan, setCheckoutPlan] = useState<string | null>(null);
 
   useEffect(() => {
     async function loadPlans() {
@@ -148,19 +117,11 @@ export default function Pricing() {
         const response = await getPlans();
 
         setPlans(
-          Array.isArray(response)
-            ? response
-            : response.plans ?? []
+          Array.isArray(response) ? response : response.plans ?? []
         );
       } catch (err) {
-        console.error(
-          "Failed to load billing plans:",
-          err
-        );
-
-        setError(
-          "Unable to load pricing plans. Please try again."
-        );
+        console.error("Failed to load billing plans:", err);
+        setError("Unable to load pricing plans. Please try again.");
       } finally {
         setLoading(false);
       }
@@ -169,19 +130,14 @@ export default function Pricing() {
     loadPlans();
   }, []);
 
-  async function handlePlanAction(
-    plan: BillingPlan
-  ) {
+  async function handlePlanAction(plan: SubscriptionPlan) {
     if (plan.code === "CUSTOM") {
       window.location.href = "/contact";
       return;
     }
 
     if (plan.code === "FREE") {
-      window.location.href = isAuthenticated
-        ? "/dashboard"
-        : "/register";
-
+      window.location.href = isAuthenticated ? "/dashboard" : "/register";
       return;
     }
 
@@ -195,15 +151,12 @@ export default function Pricing() {
 
       const response = await createCheckout(
         plan.id,
-        billing === "monthly"
-          ? "MONTHLY"
-          : "YEARLY",
+        billing === "monthly" ? "MONTHLY" : "YEARLY",
         token
       );
 
       if (response?.checkoutUrl) {
-        window.location.href =
-          response.checkoutUrl;
+        window.location.href = response.checkoutUrl;
         return;
       }
 
@@ -212,19 +165,13 @@ export default function Pricing() {
         return;
       }
 
-      console.log(
-        "Checkout response:",
-        response
-      );
-    } catch (err) {
-      console.error(
-        "Checkout failed:",
-        err
-      );
-
-      alert(
-        "Unable to start checkout. Please try again."
-      );
+      console.log("Checkout response:", response);
+    } catch (err: any) {
+      console.error("Checkout failed:", err);
+      const msg =
+        err?.response?.data?.message ||
+        "Unable to start checkout. Please try again.";
+      alert(msg);
     } finally {
       setCheckoutPlan(null);
     }
@@ -232,7 +179,6 @@ export default function Pricing() {
 
   return (
     <div className="mx-auto max-w-7xl px-4 py-8 sm:px-6 lg:px-8">
-
       <Link
         to="/"
         className="text-sm text-blue-600 hover:underline"
@@ -242,24 +188,19 @@ export default function Pricing() {
 
       {/* Header */}
       <div className="mt-8 text-center">
-
         <h1 className="text-4xl font-bold text-slate-900">
           Simple Pricing That Scales With You
         </h1>
 
         <p className="mx-auto mt-4 max-w-3xl text-lg text-slate-600">
-          Choose the intelligence level that fits
-          your business. Upgrade as your organization
-          grows.
+          Choose the intelligence level that fits your business. Upgrade as
+          your organization grows.
         </p>
 
         {/* Billing Toggle */}
         <div className="mt-6 inline-flex rounded-xl bg-white p-1 shadow-sm">
-
           <button
-            onClick={() =>
-              setBilling("monthly")
-            }
+            onClick={() => setBilling("monthly")}
             className={`rounded-lg px-5 py-2 ${
               billing === "monthly"
                 ? "bg-blue-600 text-white"
@@ -270,9 +211,7 @@ export default function Pricing() {
           </button>
 
           <button
-            onClick={() =>
-              setBilling("yearly")
-            }
+            onClick={() => setBilling("yearly")}
             className={`rounded-lg px-5 py-2 ${
               billing === "yearly"
                 ? "bg-blue-600 text-white"
@@ -281,9 +220,7 @@ export default function Pricing() {
           >
             Yearly
           </button>
-
         </div>
-
       </div>
 
       {/* Loading */}
@@ -304,36 +241,21 @@ export default function Pricing() {
       {!loading && !error && (
         <>
           <div className="mt-12 grid gap-6 md:grid-cols-2 lg:grid-cols-5">
-
             {plans.map((plan) => {
-              const Icon =
-                planIcons[plan.code] ??
-                Sparkles;
-
-              const popular =
-                popularPlans.has(plan.code);
-
+              const Icon = planIcons[plan.code] ?? Sparkles;
+              const popular = popularPlans.has(plan.code);
               const price =
-                billing === "monthly"
-                  ? plan.monthlyPrice
-                  : plan.annualPrice;
-
-              const isCustom =
-                plan.code === "CUSTOM";
-
-              const isFree =
-                plan.code === "FREE";
+                billing === "monthly" ? plan.monthlyPrice : plan.annualPrice;
+              const isCustom = plan.code === "CUSTOM";
+              const isFree = plan.code === "FREE";
 
               return (
                 <div
                   key={plan.id}
                   className={`relative rounded-2xl bg-white p-6 shadow-sm ${
-                    popular
-                      ? "ring-2 ring-blue-600"
-                      : ""
+                    popular ? "ring-2 ring-blue-600" : ""
                   }`}
                 >
-
                   {popular && (
                     <div className="absolute -top-3 left-1/2 -translate-x-1/2 rounded-full bg-blue-600 px-3 py-1 text-xs font-semibold text-white">
                       Most Popular
@@ -353,33 +275,20 @@ export default function Pricing() {
                   </p>
 
                   <div className="mt-6">
-
                     <span className="text-3xl font-bold text-slate-900">
-                      {formatPrice(
-                        price,
-                        plan.currency
-                      )}
+                      {formatPrice(price, plan.currency)}
                     </span>
 
-                    {!isCustom &&
-                      !isFree &&
-                      price !== null && (
-                        <span className="text-sm text-slate-500">
-                          {billing === "monthly"
-                            ? " / month"
-                            : " / year"}
-                        </span>
-                      )}
-
+                    {!isCustom && !isFree && price !== null && (
+                      <span className="text-sm text-slate-500">
+                        {billing === "monthly" ? " / month" : " / year"}
+                      </span>
+                    )}
                   </div>
 
                   <button
-                    onClick={() =>
-                      handlePlanAction(plan)
-                    }
-                    disabled={
-                      checkoutPlan === plan.id
-                    }
+                    onClick={() => handlePlanAction(plan)}
+                    disabled={checkoutPlan === plan.id}
                     className={`mt-6 w-full rounded-xl px-5 py-3 font-medium transition ${
                       popular
                         ? "bg-blue-600 text-white hover:bg-blue-700"
@@ -399,114 +308,72 @@ export default function Pricing() {
 
                   {/* Features */}
                   <div className="mt-8 space-y-3">
-
                     {plan.features &&
-                      Object.entries(
-                        plan.features
-                      )
-                        .filter(
-                          ([, enabled]) =>
-                            enabled === true
-                        )
+                      Object.entries(plan.features)
+                        .filter(([, enabled]) => enabled === true)
                         .map(([feature]) => (
                           <div
                             key={feature}
                             className="flex gap-3 text-sm text-slate-700"
                           >
                             <Check className="h-5 w-5 shrink-0 text-blue-600" />
-
-                            <span>
-                              {formatFeatureName(
-                                feature
-                              )}
-                            </span>
+                            <span>{formatFeatureName(feature)}</span>
                           </div>
                         ))}
-
                   </div>
 
                   {/* Limits */}
                   {plan.limits && (
                     <div className="mt-6 border-t pt-6">
-
                       <p className="mb-3 text-xs font-semibold uppercase tracking-wide text-slate-500">
                         Plan limits
                       </p>
-
                       <div className="space-y-2">
-
-                        {Object.entries(
-                          plan.limits
-                        ).map(
-                          ([key, value]) => (
-                            <div
-                              key={key}
-                              className="flex justify-between gap-3 text-xs"
-                            >
-                              <span className="text-slate-500">
-                                {formatLimitName(
-                                  key
-                                )}
-                              </span>
-
-                              <span className="font-medium text-slate-700">
-                                {formatLimitValue(
-                                  key,
-                                  value
-                                )}
-                              </span>
-                            </div>
-                          )
-                        )}
-
+                        {Object.entries(plan.limits).map(([key, value]) => (
+                          <div
+                            key={key}
+                            className="flex justify-between gap-3 text-xs"
+                          >
+                            <span className="text-slate-500">
+                              {formatLimitName(key)}
+                            </span>
+                            <span className="font-medium text-slate-700">
+                              {formatLimitValue(key, value)}
+                            </span>
+                          </div>
+                        ))}
                       </div>
-
                     </div>
                   )}
-
                 </div>
               );
             })}
-
           </div>
 
           {/* Comparison */}
           <div className="mt-16 rounded-2xl bg-white p-6 shadow-sm sm:p-8">
-
             <h2 className="text-center text-2xl font-bold text-slate-900">
               Compare Plans
             </h2>
 
             <p className="mt-3 text-center text-slate-600">
-              See exactly what each Diralis plan
-              provides.
+              See exactly what each Diralis plan provides.
             </p>
 
             <div className="mt-8 overflow-x-auto">
-
               <table className="w-full min-w-[700px] text-left">
-
                 <thead>
                   <tr className="border-b">
-
-                    <th className="p-4">
-                      Feature
-                    </th>
-
+                    <th className="p-4">Feature</th>
                     {plans.map((plan) => (
-                      <th
-                        key={plan.id}
-                        className="p-4"
-                      >
+                      <th key={plan.id} className="p-4">
                         {plan.name}
                       </th>
                     ))}
-
                   </tr>
                 </thead>
 
                 <tbody>
-
                   {[
                     "analytics",
                     "forecasting",
@@ -518,53 +385,30 @@ export default function Pricing() {
                     "prioritySupport",
                     "dedicatedSupport",
                   ].map((feature) => (
-
-                    <tr
-                      key={feature}
-                      className="border-b"
-                    >
-
+                    <tr key={feature} className="border-b">
                       <td className="p-4 font-medium text-slate-700">
-                        {formatFeatureName(
-                          feature
-                        )}
+                        {formatFeatureName(feature)}
                       </td>
 
                       {plans.map((plan) => (
-
-                        <td
-                          key={plan.id}
-                          className="p-4"
-                        >
-                          {plan.features?.[
-                            feature
-                          ] ? (
+                        <td key={plan.id} className="p-4">
+                          {plan.features?.[feature] ? (
                             <Check className="h-5 w-5 text-blue-600" />
                           ) : (
-                            <span className="text-slate-300">
-                              —
-                            </span>
+                            <span className="text-slate-300">—</span>
                           )}
                         </td>
-
                       ))}
-
                     </tr>
-
                   ))}
-
                 </tbody>
-
               </table>
-
             </div>
-
           </div>
-
         </>
       )}
-
     </div>
   );
 }
+
 

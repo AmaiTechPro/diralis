@@ -1,19 +1,18 @@
 import { Request, Response } from "express";
-
 import { BillingProvider } from "@prisma/client";
-
 import { getPaymentProvider } from "../services/billing/providers/providerFactory";
-
 import {
   getActivePlans,
   getCurrentSubscription,
   getUserEntitlements,
   getBillingOverview,
 } from "../services/billingService";
-
 import { createCheckout } from "../services/billing/checkoutService";
 import { processBillingWebhook } from "../services/billing/webhookService";
-import { getBillingHistory } from "../services/billing/historyService";
+import {
+  getBillingHistory,
+  getPaymentReceipt,
+} from "../services/billing/historyService";
 import { verifyBillingPayment } from "../services/billing/verificationService";
 import { cancelUserSubscription } from "../services/billing/cancelSubscriptionService";
 
@@ -183,7 +182,8 @@ export async function checkout(req: Request, res: Response) {
 
         case "ALREADY_SUBSCRIBED_TO_PLAN":
           return res.status(400).json({
-            message: "You are already actively subscribed to this plan and interval.",
+            message:
+              "You are already actively subscribed to this plan and interval.",
           });
       }
     }
@@ -388,4 +388,48 @@ export async function billingHistory(req: Request, res: Response) {
   }
 }
 
+// =========================
+// Payment Receipt
+// =========================
+
+export async function getReceiptController(req: Request, res: Response) {
+  try {
+    const userId = req.user?.userId;
+
+    if (!userId) {
+      return res.status(401).json({
+        message: "Unauthorized",
+      });
+    }
+
+    const rawPaymentId = req.params.paymentId;
+    const paymentId = Array.isArray(rawPaymentId)
+      ? rawPaymentId[0]
+      : rawPaymentId;
+
+    if (!paymentId || typeof paymentId !== "string") {
+      return res.status(400).json({
+        message: "Payment ID is required",
+      });
+    }
+
+    const receipt = await getPaymentReceipt(userId, paymentId);
+
+    return res.json({
+      receipt,
+    });
+  } catch (error) {
+    console.error("Failed to load receipt:", error);
+
+    if (error instanceof Error && error.message === "PAYMENT_NOT_FOUND") {
+      return res.status(404).json({
+        message: "Payment receipt not found",
+      });
+    }
+
+    return res.status(500).json({
+      message: "Failed to load receipt",
+    });
+  }
+}
 

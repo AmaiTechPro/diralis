@@ -69,9 +69,7 @@ export default router;
               {/* NEW ROUTES */}
 
 import { Router } from "express";
-
 import { authenticate } from "../middleware/authMiddleware";
-
 import {
   getPlans,
   getSubscription,
@@ -81,6 +79,7 @@ import {
   cancelSubscriptionController,
   billingWebhook,
   billingHistory,
+  getReceiptController,
   verifyBillingPaymentController,
 } from "../controllers/billingController";
 
@@ -89,22 +88,23 @@ const router = Router();
 // Public — pricing page
 router.get("/plans", getPlans);
 
-// Protected billing information
+// Protected billing information & status
 router.get("/overview", authenticate, getBillingOverviewController);
-
 router.get("/subscription", authenticate, getSubscription);
-
 router.get("/entitlements", authenticate, getEntitlements);
 
+// Checkout & verification
 router.post("/checkout", authenticate, checkout);
-
-router.post("/cancel", authenticate, cancelSubscriptionController);
-
-router.post("/webhook", billingWebhook);
-
-router.get("/history", authenticate, billingHistory);
-
 router.get("/verify", verifyBillingPaymentController);
 
-export default router;
+// Cancellation
+router.post("/cancel", authenticate, cancelSubscriptionController);
 
+// Invoicing & transaction history
+router.get("/history", authenticate, billingHistory);
+router.get("/receipt/:paymentId", authenticate, getReceiptController);
+
+// Webhook handling
+router.post("/webhook", billingWebhook);
+
+export default router;

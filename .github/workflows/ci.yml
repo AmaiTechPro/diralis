@@ -19,6 +19,21 @@ jobs:
     name: Backend (Prisma, Build & Vitest)
     runs-on: ubuntu-latest
 
+    services:
+      postgres:
+        image: postgres:16-alpine
+        env:
+          POSTGRES_USER: diralis_ci
+          POSTGRES_PASSWORD: diralis_password
+          POSTGRES_DB: diralis_ci_db
+        ports:
+          - 5432:5432
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+
     defaults:
       run:
         working-directory: backend
@@ -30,15 +45,19 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: "npm"
           cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate Prisma Client
-        run: npx prisma generate
+      - name: Generate Prisma Client & Push DB Schema
+        env:
+          DATABASE_URL: "postgresql://diralis_ci:diralis_password@localhost:5432/diralis_ci_db?schema=public"
+        run: |
+          npx prisma generate
+          npx prisma db push --skip-generate
 
       - name: Run TypeScript build check
         run: npm run build
@@ -46,9 +65,10 @@ jobs:
       - name: Run Vitest test suites
         env:
           NODE_ENV: test
-          DATABASE_URL: "file:./test.db"
+          DATABASE_URL: "postgresql://diralis_ci:diralis_password@localhost:5432/diralis_ci_db?schema=public"
           JWT_SECRET: "ci_jwt_test_secret_32_characters_long_diralis"
           PAYSTACK_SECRET_KEY: "sk_test_ci_mock_secret"
+          RESEND_API_KEY: "re_mock_test_key_123456789"
         run: npx vitest run --fileParallelism=false
 
   frontend-ci:
@@ -66,7 +86,7 @@ jobs:
       - name: Set up Node.js
         uses: actions/setup-node@v4
         with:
-          node-version: 20
+          node-version: 22
           cache: "npm"
           cache-dependency-path: frontend/package-lock.json
 
@@ -74,7 +94,7 @@ jobs:
         run: npm ci
 
       - name: Type check and Build Frontend
-        run: npm run build
+        run: npm run build,
 
 
         

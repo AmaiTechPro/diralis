@@ -9,7 +9,7 @@ import { createCheckout } from "../services/billing/checkoutService";
 import { processBillingWebhook } from "../services/billing/webhookService";
 import { cancelUserSubscription } from "../services/billing/cancelSubscriptionService";
 import { getBillingHistory } from "../services/billing/historyService";
-import { BillingProvider, SubscriptionStatus } from "@prisma/client";
+import { BillingProvider, SubscriptionStatus, BillingInterval } from "@prisma/client";
 import { PaystackProvider } from "../services/billing/providers/paystackProvider";
 
 describe("End-to-End Billing Lifecycle Sandbox", () => {
@@ -19,7 +19,7 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
   const testUsername = `sandbox_${timestamp}`;
 
   beforeAll(async () => {
-    // 1. Mock Paystack external HTTP API requests for local sandbox environment
+    // 1. Mock Paystack external HTTP API requests
     vi.spyOn(PaystackProvider.prototype, "createCheckout").mockImplementation(
       async () => ({
         checkoutUrl: `https://checkout.paystack.com/sandbox_mock_${Date.now()}`,
@@ -32,18 +32,18 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
       async () => true
     );
 
-    // 2. Ensure active Primary Billing Provider exists in the DB with correct Prisma fields
+    // 2. Ensure Primary Billing Provider configuration exists
     await prisma.billingProviderConfig.upsert({
       where: { provider: BillingProvider.PAYSTACK },
-      update: { enabled: true, isPrimary: true },
+      update: { enabled: true, priority: 1 },
       create: {
         provider: BillingProvider.PAYSTACK,
         enabled: true,
-        isPrimary: true,
+        priority: 1,
       },
     });
 
-    // 3. Create sandbox test user
+    // 3. Create sandbox test user matching User schema
     const user = await prisma.user.create({
       data: {
         fullName: "Sandbox Tester",
@@ -58,7 +58,7 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
   afterAll(async () => {
     vi.restoreAllMocks();
 
-    // Cleanup sandbox test data
+    // Cleanup sandbox test data matching schema relations
     if (testUserId) {
       await prisma.billingWebhookEvent.deleteMany({
         where: {
@@ -117,7 +117,7 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
       },
     });
     expect(pendingSub).toBeDefined();
-    expect(pendingSub?.interval).toBe("MONTHLY");
+    expect(pendingSub?.interval).toBe(BillingInterval.MONTHLY);
   }, 15000);
 
   it("4. Should activate subscription via successful payment webhook", async () => {

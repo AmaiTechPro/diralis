@@ -11,6 +11,16 @@ export interface PlanLimits {
   [key: string]: unknown;
 }
 
+export interface PlanUsageMetrics {
+  datasets: number;
+  storageMb: number;
+  aiRequestsPerMonth: number;
+  monthlyExports: number;
+  forecastsPerMonth: number;
+  teamMembers: number;
+  [key: string]: number;
+}
+
 export interface PlanFeatures {
   datasetProfiling?: boolean;
   exportCsv?: boolean;
@@ -76,6 +86,7 @@ export interface BillingOverview {
     limits: PlanLimits;
     features: PlanFeatures;
   };
+  usage?: PlanUsageMetrics;
 }
 
 export interface CheckoutResponse {

@@ -12,6 +12,11 @@ import {
   History,
   Clock,
   Calendar,
+  Activity,
+  Database,
+  HardDrive,
+  Bot,
+  Users,
 } from "lucide-react";
 
 import {
@@ -79,47 +84,64 @@ function formatFeatureName(key: string) {
   );
 }
 
-function formatLimitName(key: string) {
-  const names: Record<string, string> = {
-    datasets: "Datasets",
-    storageMb: "Storage",
-    reportsPerMonth: "Reports / month",
-    forecastsPerMonth: "Forecasts / month",
-    aiRequestsPerMonth: "AI requests / month",
-    teamMembers: "Team members",
-  };
-
-  return (
-    names[key] ??
-    key
-      .replace(/([A-Z])/g, " $1")
-      .replace(/^./, (letter) => letter.toUpperCase())
-  );
-}
-
-function formatLimitValue(key: string, value: unknown) {
-  if (value === null || value === undefined) {
-    return "Unlimited";
-  }
-
-  if (typeof value === "number") {
-    if (key === "storageMb") {
-      if (value >= 1000) {
-        return `${value / 1000} GB`;
-      }
-      return `${value} MB`;
-    }
-    return value.toLocaleString();
-  }
-
-  return String(value);
-}
-
 function formatStatus(status: string) {
   return status
     .replace(/_/g, " ")
     .toLowerCase()
     .replace(/^./, (letter) => letter.toUpperCase());
+}
+
+interface UsageMetricProps {
+  label: string;
+  used: number;
+  limit: number | null | undefined;
+  unit?: string;
+  icon: typeof Database;
+}
+
+function UsageBar({ label, used, limit, unit = "", icon: Icon }: UsageMetricProps) {
+  const isUnlimited = limit === null || limit === undefined;
+  const percentage = isUnlimited || limit === 0 ? 0 : Math.min(100, (used / limit) * 100);
+
+  const getBarColor = () => {
+    if (isUnlimited) return "bg-cyan-500";
+    if (percentage >= 90) return "bg-rose-500";
+    if (percentage >= 75) return "bg-amber-500";
+    return "bg-cyan-500";
+  };
+
+  const getTextColor = () => {
+    if (isUnlimited) return "text-cyan-600";
+    if (percentage >= 90) return "text-rose-600 font-semibold";
+    if (percentage >= 75) return "text-amber-600 font-semibold";
+    return "text-slate-600";
+  };
+
+  return (
+    <div className="rounded-xl border border-slate-100 bg-slate-50/75 p-4">
+      <div className="flex items-center justify-between text-sm">
+        <div className="flex items-center gap-2 font-medium text-slate-700">
+          <Icon size={16} className="text-slate-500" />
+          <span>{label}</span>
+        </div>
+        <span className={`text-xs ${getTextColor()}`}>
+          {used.toLocaleString()} {unit} {isUnlimited ? "/ Unlimited" : `/ ${limit.toLocaleString()} ${unit}`}
+        </span>
+      </div>
+
+      <div className="mt-2.5 h-2 w-full overflow-hidden rounded-full bg-slate-200">
+        <div
+          className={`h-full rounded-full transition-all duration-300 ${getBarColor()}`}
+          style={{ width: isUnlimited ? "10%" : `${Math.max(percentage, 2)}%` }}
+        />
+      </div>
+
+      <div className="mt-1.5 flex justify-between text-[11px] text-slate-400">
+        <span>{isUnlimited ? "Unlimited tier" : `${percentage.toFixed(0)}% used`}</span>
+        {!isUnlimited && limit - used > 0 && <span>{(limit - used).toLocaleString()} {unit} remaining</span>}
+      </div>
+    </div>
+  );
 }
 
 export default function Billing() {
@@ -245,6 +267,12 @@ export default function Billing() {
   const activeSubscription = overview?.subscription;
   const currentPlan = overview?.plan;
   const entitlements = overview?.entitlements;
+  const usage = overview?.usage;
+
+  const datasetLimit = entitlements?.limits?.datasets as number | undefined;
+  const storageLimit = entitlements?.limits?.storageMb as number | undefined;
+  const aiRequestLimit = entitlements?.limits?.aiRequestsPerMonth as number | undefined;
+  const teamLimit = entitlements?.limits?.teamMembers as number | undefined;
 
   return (
     <div className="mx-auto max-w-7xl space-y-8">
@@ -343,47 +371,62 @@ export default function Billing() {
           </div>
         </div>
 
-        {/* Entitlements Details */}
-        {entitlements && (
-          <div className="mt-8 grid gap-6 border-t border-slate-100 pt-6 md:grid-cols-2">
-            <div>
-              <p className="mb-3 text-sm font-semibold text-slate-700">
-                Plan Limits
-              </p>
-              <div className="space-y-2">
-                {Object.entries(entitlements.limits ?? {}).map(([key, value]) => (
-                  <div
-                    key={key}
-                    className="flex justify-between gap-4 text-sm"
-                  >
-                    <span className="text-slate-500">
-                      {formatLimitName(key)}
-                    </span>
-                    <span className="font-medium text-slate-700">
-                      {formatLimitValue(key, value)}
-                    </span>
-                  </div>
-                ))}
-              </div>
+        {/* Real-time Resource Usage Progress Bars */}
+        {usage && (
+          <div className="mt-8 border-t border-slate-100 pt-6">
+            <div className="mb-4 flex items-center gap-2">
+              <Activity className="text-cyan-600" size={18} />
+              <h3 className="text-sm font-semibold text-slate-800">Resource Consumption & Quotas</h3>
             </div>
 
-            <div>
-              <p className="mb-3 text-sm font-semibold text-slate-700">
-                Included Features
-              </p>
-              <div className="grid gap-2 sm:grid-cols-2">
-                {Object.entries(entitlements.features ?? {})
-                  .filter(([, enabled]) => enabled === true)
-                  .map(([feature]) => (
-                    <div
-                      key={feature}
-                      className="flex items-center gap-2 text-sm text-slate-600"
-                    >
-                      <Check size={17} className="text-cyan-500" />
-                      {formatFeatureName(feature)}
-                    </div>
-                  ))}
-              </div>
+            <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
+              <UsageBar
+                label="Datasets"
+                used={usage.datasets || 0}
+                limit={datasetLimit}
+                icon={Database}
+              />
+              <UsageBar
+                label="Storage"
+                used={usage.storageMb || 0}
+                limit={storageLimit}
+                unit="MB"
+                icon={HardDrive}
+              />
+              <UsageBar
+                label="AI Requests"
+                used={usage.aiRequestsPerMonth || 0}
+                limit={aiRequestLimit}
+                icon={Bot}
+              />
+              <UsageBar
+                label="Team Members"
+                used={usage.teamMembers || 1}
+                limit={teamLimit}
+                icon={Users}
+              />
+            </div>
+          </div>
+        )}
+
+        {/* Entitlements & Features Grid */}
+        {entitlements && (
+          <div className="mt-6 border-t border-slate-100 pt-6">
+            <p className="mb-3 text-sm font-semibold text-slate-700">
+              Included Plan Capabilities
+            </p>
+            <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-3">
+              {Object.entries(entitlements.features ?? {})
+                .filter(([, enabled]) => enabled === true)
+                .map(([feature]) => (
+                  <div
+                    key={feature}
+                    className="flex items-center gap-2 text-sm text-slate-600"
+                  >
+                    <Check size={16} className="text-cyan-500 shrink-0" />
+                    {formatFeatureName(feature)}
+                  </div>
+                ))}
             </div>
           </div>
         )}

@@ -94,6 +94,41 @@ export async function getUserEntitlements(userId: string) {
 }
 
 /**
+ * Calculate user's current resource consumption across database models.
+ */
+export async function getUserUsageMetrics(userId: string) {
+  // Aggregate dataset count and storage footprint
+  const datasetAggregate = await prisma.dataset.aggregate({
+    where: { userId },
+    _count: { id: true },
+    _sum: { size: true },
+  });
+
+  const datasetsCount = datasetAggregate._count.id || 0;
+  const totalSizeBytes = datasetAggregate._sum.size || 0;
+  const storageUsedMb = Number((totalSizeBytes / (1024 * 1024)).toFixed(2));
+
+  // Count AI chat messages (user prompt interactions)
+  const aiMessagesCount = await prisma.chatMessage.count({
+    where: {
+      session: {
+        userId,
+      },
+      role: "user",
+    },
+  });
+
+  return {
+    datasets: datasetsCount,
+    storageMb: storageUsedMb,
+    aiRequestsPerMonth: aiMessagesCount,
+    monthlyExports: 0,
+    forecastsPerMonth: 0,
+    teamMembers: 1,
+  };
+}
+
+/**
  * Check whether a feature is available to the user.
  */
 export async function hasFeature(
@@ -152,6 +187,7 @@ export async function getBillingOverview(userId: string) {
   const subscription = await getCurrentSubscription(userId);
   const plan = await getUserPlan(userId);
   const entitlements = await getUserEntitlements(userId);
+  const usage = await getUserUsageMetrics(userId);
 
   return {
     hasActiveSubscription: !!subscription,
@@ -182,6 +218,8 @@ export async function getBillingOverview(userId: string) {
       limits: entitlements.limits,
       features: entitlements.features,
     },
+    usage,
   };
 }
+
 

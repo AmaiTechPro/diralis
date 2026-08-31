@@ -1,52 +1,3 @@
-
-{/*
-
-import { Router } from "express";
-
-import {
-  reportController,
-  generateReportPDF,
-  generateSectionReportPDF,
-} from "../controllers/reportController";
-
-import { authenticate } from "../middleware/authMiddleware";
-
-
-const router = Router();
-
-
-
-router.get(
-  "/",
-  authenticate,
-  reportController
-);
-
-
-
-router.get(
-  "/generate",
-  authenticate,
-  generateReportPDF
-);
-
-
-
-router.get(
-  "/generate/:section",
-  authenticate,
-  generateSectionReportPDF
-);
-
-
-
-export default router;
-
-*/}
-
-  {/* NEW REPORTROUTES! */}
-
-
 import { Router } from "express";
 
 import {
@@ -69,14 +20,14 @@ router.get(
 router.get(
   "/generate",
   authenticate,
-  requireFeature("pdfExport"),
+  requireFeature("exportPdf"),
   generateReportPDF
 );
 
 router.get(
   "/generate/:section",
   authenticate,
-  requireFeature("pdfExport"),
+  requireFeature("exportPdf"),
   generateSectionReportPDF
 );
 

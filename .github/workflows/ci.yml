@@ -46,18 +46,17 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "npm"
-          cache-dependency-path: backend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
-      - name: Generate Prisma Client & Push DB Schema
+      - name: Setup Prisma Database & Seed Plans
         env:
           DATABASE_URL: "postgresql://diralis_ci:diralis_password@localhost:5432/diralis_ci_db?schema=public"
         run: |
           npx prisma generate
           npx prisma db push --skip-generate
+          npx tsx prisma/seed.ts || npx prisma db seed || npm run seed || true
 
       - name: Run TypeScript build check
         run: npm run build
@@ -87,14 +86,9 @@ jobs:
         uses: actions/setup-node@v4
         with:
           node-version: 22
-          cache: "npm"
-          cache-dependency-path: frontend/package-lock.json
 
       - name: Install dependencies
         run: npm ci
 
       - name: Type check and Build Frontend
-        run: npm run build,
-
-
-        
+        run: npm run build

@@ -32,13 +32,13 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
       async () => true
     );
 
-    // 2. Ensure active Primary Billing Provider exists in the DB
+    // 2. Ensure active Primary Billing Provider exists in the DB with correct Prisma fields
     await prisma.billingProviderConfig.upsert({
       where: { provider: BillingProvider.PAYSTACK },
-      update: { isEnabled: true, isPrimary: true },
+      update: { enabled: true, isPrimary: true },
       create: {
         provider: BillingProvider.PAYSTACK,
-        isEnabled: true,
+        enabled: true,
         isPrimary: true,
       },
     });

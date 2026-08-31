@@ -1,6 +1,33 @@
-import axios from "axios";
+import api from "./api";
 
-const API = import.meta.env.VITE_API_URL;
+export interface PlanLimits {
+  datasets?: number;
+  maxFileSizeMb?: number;
+  storageMb?: number;
+  monthlyExports?: number;
+  aiRequestsPerMonth?: number;
+  forecastsPerMonth?: number;
+  teamMembers?: number;
+  [key: string]: unknown;
+}
+
+export interface PlanFeatures {
+  datasetProfiling?: boolean;
+  exportCsv?: boolean;
+  exportJson?: boolean;
+  exportPdf?: boolean;
+  exportExcel?: boolean;
+  aiChat?: boolean;
+  analytics?: boolean;
+  advancedAnalytics?: boolean;
+  forecasting?: boolean;
+  anomalyDetection?: boolean;
+  customVisualizations?: boolean;
+  apiAccess?: boolean;
+  teamCollaboration?: boolean;
+  prioritySupport?: boolean;
+  [key: string]: unknown;
+}
 
 export interface SubscriptionPlan {
   id: string;
@@ -11,14 +38,20 @@ export interface SubscriptionPlan {
   monthlyPrice: number | null;
   annualPrice: number | null;
   currency: string;
-  limits: Record<string, unknown>;
-  features: Record<string, unknown>;
+  limits: PlanLimits;
+  features: PlanFeatures;
   active: boolean;
 }
 
 export interface UserSubscription {
   id: string;
-  status: "ACTIVE" | "TRIALING" | "PAST_DUE" | "CANCELLED" | "EXPIRED" | "INCOMPLETE";
+  status:
+    | "ACTIVE"
+    | "TRIALING"
+    | "PAST_DUE"
+    | "CANCELLED"
+    | "EXPIRED"
+    | "INCOMPLETE";
   interval: "MONTHLY" | "YEARLY";
   provider: string;
   currentPeriodStart: string | null;
@@ -40,9 +73,18 @@ export interface BillingOverview {
     annualPrice: number | null;
   } | null;
   entitlements: {
-    limits: Record<string, unknown>;
-    features: Record<string, unknown>;
+    limits: PlanLimits;
+    features: PlanFeatures;
   };
+}
+
+export interface CheckoutResponse {
+  checkoutUrl?: string;
+  authorizationUrl?: string;
+  reference?: string;
+  accessCode?: string;
+  subscriptionId?: string;
+  [key: string]: unknown;
 }
 
 export interface BillingPayment {
@@ -66,107 +108,110 @@ export interface BillingPayment {
   } | null;
 }
 
+export interface PaymentReceipt {
+  payment: {
+    id: string;
+    reference: string;
+    amount: number;
+    currency: string;
+    status: string;
+    paidAt: string | null;
+    createdAt: string;
+  };
+  user: {
+    fullName: string;
+    email: string;
+  };
+  plan: {
+    name: string;
+    code: string;
+  } | null;
+}
+
+/* -------------------------------------------------- */
+/* API Calls                                          */
+/* -------------------------------------------------- */
+
 export async function getPlans(): Promise<{ plans: SubscriptionPlan[] }> {
-  const response = await axios.get(`${API}/billing/plans`);
+  const response = await api.get<{ plans: SubscriptionPlan[] }>("/billing/plans");
   return response.data;
 }
 
-export async function getBillingOverview(token: string): Promise<BillingOverview> {
-  const response = await axios.get(`${API}/billing/overview`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
+export async function getBillingOverview(): Promise<BillingOverview> {
+  const response = await api.get<BillingOverview>("/billing/overview");
+  return response.data;
+}
+
+export async function getSubscription(): Promise<{ subscription: UserSubscription | null }> {
+  const response = await api.get<{ subscription: UserSubscription | null }>(
+    "/billing/subscription"
+  );
+  return response.data;
+}
+
+export async function getEntitlements(): Promise<{
+  plan: { id: string; code: string; name: string };
+  limits: PlanLimits;
+  features: PlanFeatures;
+}> {
+  const response = await api.get<{
+    plan: { id: string; code: string; name: string };
+    limits: PlanLimits;
+    features: PlanFeatures;
+  }>("/billing/entitlements");
   return response.data;
 }
 
 export async function createCheckout(
   planId: string,
-  interval: "MONTHLY" | "YEARLY",
-  token: string
-) {
-  const response = await axios.post(
-    `${API}/billing/checkout`,
-    {
-      planId,
-      interval,
-    },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
+  interval: "MONTHLY" | "YEARLY"
+): Promise<CheckoutResponse> {
+  const response = await api.post<CheckoutResponse>("/billing/checkout", {
+    planId,
+    interval,
+  });
+  return response.data;
+}
+
+export async function verifyPayment(
+  reference: string
+): Promise<{ success: boolean; message?: string; [key: string]: unknown }> {
+  const response = await api.get<{
+    success: boolean;
+    message?: string;
+    [key: string]: unknown;
+  }>("/billing/verify", {
+    params: { reference },
+  });
+  return response.data;
+}
+
+export async function cancelSubscription(options?: {
+  immediately?: boolean;
+}): Promise<{ success: boolean; message: string }> {
+  const response = await api.post<{ success: boolean; message: string }>(
+    "/billing/cancel",
+    { immediately: options?.immediately ?? false }
   );
-
   return response.data;
 }
 
-export async function getSubscription(token: string) {
-  const response = await axios.get(`${API}/billing/subscription`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  return response.data;
-}
-
-export async function getEntitlements(token: string) {
-  const response = await axios.get(`${API}/billing/entitlements`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  return response.data;
-}
-
-export async function cancelSubscription(
-  token: string,
-  options?: { immediately?: boolean }
-) {
-  const response = await axios.post(
-    `${API}/billing/cancel`,
-    { immediately: options?.immediately ?? false },
-    {
-      headers: {
-        Authorization: `Bearer ${token}`,
-      },
-    }
+export async function getBillingHistory(): Promise<{
+  history: BillingPayment[];
+}> {
+  const response = await api.get<{ history: BillingPayment[] }>(
+    "/billing/history"
   );
-
   return response.data;
 }
 
-export async function verifyPayment(reference: string) {
-  const response = await axios.get(`${API}/billing/verify`, {
-    params: {
-      reference,
-    },
-  });
-
+export async function getPaymentReceipt(
+  paymentId: string
+): Promise<PaymentReceipt> {
+  const response = await api.get<PaymentReceipt>(
+    `/billing/receipt/${paymentId}`
+  );
   return response.data;
 }
 
-export async function getBillingHistory(
-  token: string
-): Promise<{ history: BillingPayment[] }> {
-  const response = await axios.get(`${API}/billing/history`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  return response.data;
-}
-
-export async function getPaymentReceipt(token: string, paymentId: string) {
-  const response = await axios.get(`${API}/billing/receipt/${paymentId}`, {
-    headers: {
-      Authorization: `Bearer ${token}`,
-    },
-  });
-
-  return response.data;
-}
 

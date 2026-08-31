@@ -100,7 +100,7 @@ function formatLimitValue(key: string, value: unknown) {
 }
 
 export default function Pricing() {
-  const { token, isAuthenticated } = useAuth();
+  const { isAuthenticated } = useAuth();
 
   const [billing, setBilling] = useState<"monthly" | "yearly">("monthly");
   const [plans, setPlans] = useState<SubscriptionPlan[]>([]);
@@ -141,7 +141,7 @@ export default function Pricing() {
       return;
     }
 
-    if (!isAuthenticated || !token) {
+    if (!isAuthenticated) {
       window.location.href = "/login";
       return;
     }
@@ -151,17 +151,16 @@ export default function Pricing() {
 
       const response = await createCheckout(
         plan.id,
-        billing === "monthly" ? "MONTHLY" : "YEARLY",
-        token
+        billing === "monthly" ? "MONTHLY" : "YEARLY"
       );
 
-      if (response?.checkoutUrl) {
-        window.location.href = response.checkoutUrl;
-        return;
-      }
+      const redirectUrl =
+        response?.checkoutUrl ||
+        response?.authorizationUrl ||
+        (typeof response?.url === "string" ? response.url : null);
 
-      if (response?.url) {
-        window.location.href = response.url;
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
         return;
       }
 
@@ -410,5 +409,4 @@ export default function Pricing() {
     </div>
   );
 }
-
 

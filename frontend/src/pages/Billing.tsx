@@ -145,8 +145,8 @@ export default function Billing() {
 
       const [plansRes, overviewRes, historyRes] = await Promise.all([
         getPlans(),
-        getBillingOverview(token),
-        getBillingHistory(token),
+        getBillingOverview(),
+        getBillingHistory(),
       ]);
 
       setPlans(Array.isArray(plansRes) ? plansRes : plansRes?.plans ?? []);
@@ -179,21 +179,20 @@ export default function Billing() {
 
       const response = await createCheckout(
         plan.id,
-        billing === "monthly" ? "MONTHLY" : "YEARLY",
-        token
+        billing === "monthly" ? "MONTHLY" : "YEARLY"
       );
 
-      if (response?.checkoutUrl) {
-        window.location.href = response.checkoutUrl;
+      const redirectUrl =
+        response?.checkoutUrl ||
+        response?.authorizationUrl ||
+        (typeof response?.url === "string" ? response.url : null);
+
+      if (redirectUrl) {
+        window.location.href = redirectUrl;
         return;
       }
 
-      if (response?.url) {
-        window.location.href = response.url;
-        return;
-      }
-
-      throw new Error("No checkout URL returned.");
+      throw new Error("No checkout URL returned from billing provider.");
     } catch (err: any) {
       console.error("Checkout failed:", err);
       const msg =
@@ -210,7 +209,7 @@ export default function Billing() {
 
     try {
       setCancelling(true);
-      await cancelSubscription(token, { immediately: false });
+      await cancelSubscription({ immediately: false });
       setShowCancelModal(false);
       await loadBillingData();
     } catch (err: any) {
@@ -618,5 +617,4 @@ export default function Billing() {
     </div>
   );
 }
-
 

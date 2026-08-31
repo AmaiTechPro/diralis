@@ -19,7 +19,7 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
   const testUsername = `sandbox_${timestamp}`;
 
   beforeAll(async () => {
-    // Mock Paystack external HTTP API requests for local sandbox environment
+    // 1. Mock Paystack external HTTP API requests for local sandbox environment
     vi.spyOn(PaystackProvider.prototype, "createCheckout").mockImplementation(
       async () => ({
         checkoutUrl: `https://checkout.paystack.com/sandbox_mock_${Date.now()}`,
@@ -32,7 +32,18 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
       async () => true
     );
 
-    // Create sandbox test user
+    // 2. Ensure active Primary Billing Provider exists in the DB
+    await prisma.billingProviderConfig.upsert({
+      where: { provider: BillingProvider.PAYSTACK },
+      update: { isEnabled: true, isPrimary: true },
+      create: {
+        provider: BillingProvider.PAYSTACK,
+        isEnabled: true,
+        isPrimary: true,
+      },
+    });
+
+    // 3. Create sandbox test user
     const user = await prisma.user.create({
       data: {
         fullName: "Sandbox Tester",
@@ -195,5 +206,4 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
     expect(history[0].subscription?.plan.code).toBe("PRO");
   }, 15000);
 });
-
 

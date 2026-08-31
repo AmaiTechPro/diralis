@@ -56,7 +56,7 @@ jobs:
         run: |
           npx prisma generate
           npx prisma db push --skip-generate
-          npx tsx prisma/seed.ts || npx prisma db seed || npm run seed || true
+          DATABASE_URL="postgresql://diralis_ci:diralis_password@localhost:5432/diralis_ci_db?schema=public" npx tsx prisma/seed.ts
 
       - name: Run TypeScript build check
         run: npm run build

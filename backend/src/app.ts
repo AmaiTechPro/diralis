@@ -2,10 +2,30 @@ import express from "express";
 import cors from "cors";
 import helmet from "helmet";
 import morgan from "morgan";
+import routes from "./routes/index.routes";
 
 const app = express();
 
-// Middleware
+// Trust proxy for reverse proxies (Render, AWS ALB, Nginx) so rate limiters track real client IPs
+app.set("trust proxy", 1);
+
+// Security Headers via Helmet
+app.use(
+  helmet({
+    contentSecurityPolicy: {
+      directives: {
+        defaultSrc: ["'self'"],
+        scriptSrc: ["'self'"],
+        styleSrc: ["'self'", "'unsafe-inline'"],
+        imgSrc: ["'self'", "data:", "https:"],
+        connectSrc: ["'self'", "https://api.paystack.co", "https://checkout.paystack.com"],
+      },
+    },
+    crossOriginEmbedderPolicy: false,
+  })
+);
+
+// CORS configuration
 app.use(
   cors({
     origin: [
@@ -18,11 +38,12 @@ app.use(
   })
 );
 
-app.use(helmet());
 app.use(morgan("dev"));
 
+// Body parser with rawBuffer capture for HMAC webhook verification
 app.use(
   express.json({
+    limit: "10mb",
     verify: (req: express.Request, _res, buf) => {
       if (req.originalUrl === "/api/billing/webhook") {
         (req as express.Request & { rawBody?: Buffer }).rawBody = buf;
@@ -31,10 +52,9 @@ app.use(
   })
 );
 
+app.use(express.urlencoded({ extended: true, limit: "10mb" }));
 
-// Routes
-import routes from "./routes/index.routes";
-
+// Root routes
 app.get("/", (_req, res) => {
   res.json({
     success: true,
@@ -42,8 +62,6 @@ app.get("/", (_req, res) => {
     version: "1.0.0",
   });
 });
-
-app.use("/api", routes);
 
 app.get("/health", (_req, res) => {
   res.json({
@@ -53,5 +71,9 @@ app.get("/health", (_req, res) => {
   });
 });
 
+// Mount main API router
+app.use("/api", routes);
+
 export default app;
+
 

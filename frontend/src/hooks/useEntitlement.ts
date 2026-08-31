@@ -8,14 +8,30 @@ import {
   type PlanUsageMetrics,
 } from "../services/billingService";
 
+export type PlanTierCode = "FREE" | "STARTER" | "PRO" | "BUSINESS" | "CUSTOM";
+
+export const PLAN_TIER_RANK: Record<PlanTierCode, number> = {
+  FREE: 0,
+  STARTER: 1,
+  PRO: 2,
+  BUSINESS: 3,
+  CUSTOM: 4,
+};
+
 export interface EntitlementState {
   loading: boolean;
   error: string | null;
   overview: BillingOverview | null;
+  currentTier: PlanTierCode;
   features: PlanFeatures;
   limits: PlanLimits;
   usage: PlanUsageMetrics;
   hasFeature: (featureName: keyof PlanFeatures | string) => boolean;
+  meetsMinimumTier: (minimumTier: PlanTierCode) => boolean;
+  isFeatureAvailable: (
+    featureName?: keyof PlanFeatures | string,
+    minimumTier?: PlanTierCode
+  ) => boolean;
   getLimit: (limitName: keyof PlanLimits | string) => number | null;
   getUsage: (resourceName: keyof PlanUsageMetrics | string) => number;
   getRemaining: (resourceName: string) => number | null;
@@ -53,6 +69,7 @@ export function useEntitlement(): EntitlementState {
     fetchOverview();
   }, [fetchOverview]);
 
+  const currentTier: PlanTierCode = (overview?.plan?.code as PlanTierCode) || "FREE";
   const features: PlanFeatures = overview?.entitlements?.features || {};
   const limits: PlanLimits = overview?.entitlements?.limits || {};
   const usage: PlanUsageMetrics = overview?.usage || {
@@ -64,12 +81,48 @@ export function useEntitlement(): EntitlementState {
     teamMembers: 1,
   };
 
+  const meetsMinimumTier = useCallback(
+    (minimumTier: PlanTierCode): boolean => {
+      // Custom enterprise plans can configure specific tiers or evaluate higher rank
+      const currentRank = PLAN_TIER_RANK[currentTier] ?? 0;
+      const targetRank = PLAN_TIER_RANK[minimumTier] ?? 0;
+      return currentRank >= targetRank;
+    },
+    [currentTier]
+  );
+
   const hasFeature = useCallback(
     (featureName: keyof PlanFeatures | string): boolean => {
       if (!overview) return false;
-      return Boolean(features[featureName as keyof PlanFeatures]);
+      // For CUSTOM plan: if the feature is explicitly set to false, it is denied
+      if (features[featureName as keyof PlanFeatures] !== undefined) {
+        return Boolean(features[featureName as keyof PlanFeatures]);
+      }
+      return false;
     },
     [overview, features]
+  );
+
+  const isFeatureAvailable = useCallback(
+    (
+      featureName?: keyof PlanFeatures | string,
+      minimumTier?: PlanTierCode
+    ): boolean => {
+      if (!overview) return false;
+
+      // 1. If an explicit boolean feature key is given, check it
+      if (featureName && !hasFeature(featureName)) {
+        return false;
+      }
+
+      // 2. If a minimum tier is required, check tier hierarchy
+      if (minimumTier && !meetsMinimumTier(minimumTier)) {
+        return false;
+      }
+
+      return true;
+    },
+    [overview, hasFeature, meetsMinimumTier]
   );
 
   const getLimit = useCallback(
@@ -112,10 +165,13 @@ export function useEntitlement(): EntitlementState {
     loading,
     error,
     overview,
+    currentTier,
     features,
     limits,
     usage,
     hasFeature,
+    meetsMinimumTier,
+    isFeatureAvailable,
     getLimit,
     getUsage,
     getRemaining,

@@ -5,6 +5,12 @@ import {
 } from "@prisma/client";
 
 import prisma from "../../lib/prisma";
+import {
+  sendPaymentSuccessEmail,
+  sendSubscriptionActivatedEmail,
+  sendSubscriptionCancelledEmail,
+  sendPaymentFailedEmail,
+} from "../emailService";
 
 interface BillingWebhookInput {
   provider: BillingProvider;
@@ -177,6 +183,9 @@ async function handleSuccessfulPayment(
   const periodEnd = calculatePeriodEnd(payload);
   const currentKey = `${userId}_current`;
 
+  let userRecord: { email: string; fullName: string } | null = null;
+  let planName = "Subscription";
+
   await prisma.$transaction(async (tx) => {
     // 1. Upsert payment record
     await tx.payment.upsert({
@@ -220,7 +229,7 @@ async function handleSuccessfulPayment(
       });
 
       // Activate new subscription
-      await tx.subscription.update({
+      const updatedSub = await tx.subscription.update({
         where: {
           id: subscriptionId,
         },
@@ -232,9 +241,43 @@ async function handleSuccessfulPayment(
           currentPeriodStart: now,
           currentPeriodEnd: periodEnd,
         },
+        include: {
+          plan: true,
+          user: {
+            select: {
+              email: true,
+              fullName: true,
+            },
+          },
+        },
       });
+
+      userRecord = updatedSub.user;
+      planName = updatedSub.plan.name;
     }
   });
+
+  // 3. Dispatch confirmation notification (non-blocking)
+  if (!userRecord) {
+    userRecord = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, fullName: true },
+    });
+  }
+
+  if (userRecord?.email) {
+    try {
+      await sendPaymentSuccessEmail(
+        userRecord.email,
+        userRecord.fullName,
+        amount,
+        currency,
+        planName
+      );
+    } catch (emailErr) {
+      console.warn("Failed to dispatch payment success email:", emailErr);
+    }
+  }
 }
 
 // ======================================================
@@ -256,7 +299,7 @@ async function handleSubscriptionStatus(
     status === SubscriptionStatus.CANCELLED ||
     status === SubscriptionStatus.EXPIRED;
 
-  await prisma.subscription.update({
+  const updatedSubscription = await prisma.subscription.update({
     where: {
       id: subscriptionId,
     },
@@ -267,7 +310,43 @@ async function handleSubscriptionStatus(
         ? { cancelledAt: new Date() }
         : {}),
     },
+    include: {
+      user: {
+        select: {
+          email: true,
+          fullName: true,
+        },
+      },
+      plan: {
+        select: {
+          name: true,
+        },
+      },
+    },
   });
+
+  // Dispatch lifecycle notification
+  if (updatedSubscription.user?.email) {
+    try {
+      if (status === SubscriptionStatus.CANCELLED) {
+        await sendSubscriptionCancelledEmail(
+          updatedSubscription.user.email,
+          updatedSubscription.user.fullName,
+          updatedSubscription.plan.name,
+          updatedSubscription.currentPeriodEnd
+        );
+      } else if (status === SubscriptionStatus.ACTIVE) {
+        await sendSubscriptionActivatedEmail(
+          updatedSubscription.user.email,
+          updatedSubscription.user.fullName,
+          updatedSubscription.plan.name,
+          updatedSubscription.interval ?? "MONTHLY"
+        );
+      }
+    } catch (emailErr) {
+      console.warn("Failed to dispatch subscription status email:", emailErr);
+    }
+  }
 }
 
 // ======================================================
@@ -277,6 +356,9 @@ async function handleSubscriptionStatus(
 async function handlePaymentFailed(payload: unknown) {
   const data = getPayloadRecord(payload);
   const providerReference = getString(data.providerReference);
+  const userId = getString(data.userId);
+  const amount = typeof data.amount === "number" ? data.amount : 0;
+  const currency = getString(data.currency) || "USD";
 
   if (!providerReference) {
     throw new Error("Provider reference is required.");
@@ -290,6 +372,26 @@ async function handlePaymentFailed(payload: unknown) {
       status: PaymentStatus.FAILED,
     },
   });
+
+  if (userId) {
+    const user = await prisma.user.findUnique({
+      where: { id: userId },
+      select: { email: true, fullName: true },
+    });
+
+    if (user?.email) {
+      try {
+        await sendPaymentFailedEmail(
+          user.email,
+          user.fullName,
+          amount,
+          currency
+        );
+      } catch (emailErr) {
+        console.warn("Failed to dispatch payment failed email:", emailErr);
+      }
+    }
+  }
 }
 
 

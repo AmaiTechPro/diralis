@@ -303,44 +303,59 @@ export async function cancelSubscriptionController(
 
 export async function billingWebhook(req: Request, res: Response) {
   try {
-    const providerName = req.headers["x-billing-provider"];
+    // 1. Detect provider from header or identify Paystack signature
+    const headerProvider = req.headers["x-billing-provider"];
+    const paystackSignature = req.headers["x-paystack-signature"];
 
-    if (!providerName || typeof providerName !== "string") {
-      return res.status(400).json({
-        message: "Missing billing provider header",
-      });
+    let providerType: BillingProvider = BillingProvider.PAYSTACK;
+
+    if (typeof headerProvider === "string" && headerProvider.toUpperCase() in BillingProvider) {
+      providerType = headerProvider.toUpperCase() as BillingProvider;
+    } else if (paystackSignature) {
+      providerType = BillingProvider.PAYSTACK;
     }
 
-    const provider = getPaymentProvider(providerName as BillingProvider);
+    const provider = getPaymentProvider(providerType);
 
-    const signature = req.headers["x-paystack-signature"];
+    // 2. Extract signature
+    const signature =
+      (typeof paystackSignature === "string" ? paystackSignature : null) ||
+      (typeof req.headers["x-webhook-signature"] === "string"
+        ? req.headers["x-webhook-signature"]
+        : "");
 
-    if (!signature || typeof signature !== "string") {
+    if (!signature) {
+      console.warn("⚠️ Webhook missing signature header");
       return res.status(401).json({
         message: "Missing webhook signature",
       });
     }
 
-    const rawBody = (
-      req as Request & {
-        rawBody?: Buffer;
-      }
-    ).rawBody;
+    // 3. Extract raw body with JSON string fallback
+    const rawReq = req as Request & { rawBody?: Buffer | string };
+    const rawBody = rawReq.rawBody
+      ? typeof rawReq.rawBody === "string"
+        ? rawReq.rawBody
+        : rawReq.rawBody.toString("utf8")
+      : JSON.stringify(req.body);
 
     if (!rawBody) {
+      console.warn("⚠️ Webhook raw body missing");
       return res.status(400).json({
         message: "Raw webhook body is required",
       });
     }
 
-    const valid = provider.verifyWebhook(signature, rawBody.toString());
+    const isValid = provider.verifyWebhook(signature, rawBody);
 
-    if (!valid) {
+    if (!isValid) {
+      console.warn("⚠️ Webhook signature validation failed");
       return res.status(401).json({
         message: "Invalid webhook signature",
       });
     }
 
+    // 4. Normalize & process webhook event
     const normalized = provider.normalizeWebhook(req.body);
 
     const result = await processBillingWebhook({
@@ -352,14 +367,13 @@ export async function billingWebhook(req: Request, res: Response) {
 
     return res.status(200).json(result);
   } catch (error) {
-    console.error("Billing webhook failed:", error);
+    console.error("❌ Billing webhook failed:", error);
 
     return res.status(500).json({
       message: "Billing webhook processing failed",
     });
   }
 }
-
 // =========================
 // Billing History
 // =========================

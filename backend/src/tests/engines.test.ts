@@ -1,4 +1,4 @@
-import { describe, it, expect } from "@jest/globals";
+import { describe, it, expect } from "vitest";
 import { MetricEngine } from "../services/engines/metricEngine";
 import { AnomalyEngine } from "../services/engines/anomalyEngine";
 import { KeyDriverEngine } from "../services/engines/keyDriverEngine";

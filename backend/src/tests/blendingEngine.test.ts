@@ -1,4 +1,4 @@
-import { describe, it, expect } from "@jest/globals";
+import { describe, it, expect } from "vitest";
 import { BlendingEngine } from "../services/copilot/blendingEngine";
 import { ToolRegistry } from "../services/copilot/toolRegistry";
 

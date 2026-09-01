@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, test, jest } from "@jest/globals";
+import { describe, it, expect, beforeAll, afterAll, test, vi } from "vitest";
 import { profileDataset } from "../services/profiler/profileDataset";
 
 const employeeDataset = [

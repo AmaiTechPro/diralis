@@ -1,4 +1,4 @@
-import { describe, it, expect } from "@jest/globals";
+import { describe, it, expect } from "vitest";
 import { ForecastEngine } from "../services/engines/forecastEngine";
 import { MultiDriverEngine } from "../services/engines/multiDriverEngine";
 import { ToolRegistry } from "../services/copilot/toolRegistry";

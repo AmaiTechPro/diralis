@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll, beforeEach, jest } from "@jest/globals";
+import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from "vitest";
 import prisma from "../lib/prisma";
 import {
   getBillingOverview,
@@ -20,7 +20,7 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
 
   beforeAll(async () => {
     // 1. Mock Paystack external HTTP API requests
-    jest.spyOn(PaystackProvider.prototype, "createCheckout").mockImplementation(
+    vi.spyOn(PaystackProvider.prototype, "createCheckout").mockImplementation(
       async () => ({
         checkoutUrl: `https://checkout.paystack.com/sandbox_mock_${Date.now()}`,
         providerReference: `mock_ref_${Date.now()}`,
@@ -28,7 +28,7 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
       })
     );
 
-    jest.spyOn(PaystackProvider.prototype, "cancelSubscription").mockImplementation(
+    vi.spyOn(PaystackProvider.prototype, "cancelSubscription").mockImplementation(
       async () => true
     );
 
@@ -56,7 +56,7 @@ describe("End-to-End Billing Lifecycle Sandbox", () => {
   }, 15000);
 
   afterAll(async () => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
 
     // Cleanup sandbox test data matching schema relations
     if (testUserId) {

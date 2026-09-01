@@ -1,4 +1,4 @@
-import { describe, it, expect } from "@jest/globals";
+import { describe, it, expect } from "vitest";
 import { CopilotLogger } from "../services/copilot/copilotLogger";
 
 describe("Phase 3.1 — Structured Observability Logger Suite", () => {

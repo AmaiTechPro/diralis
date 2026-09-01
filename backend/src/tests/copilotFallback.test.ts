@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, beforeEach, jest } from "@jest/globals";
+import { describe, it, expect, beforeAll, beforeEach, vi } from "vitest";
 import { CopilotOrchestrator } from "../services/copilot/copilotOrchestrator";
 import { ProactiveAnalysisService } from "../services/copilot/proactiveAnalysisService";
 import * as providerFactory from "../services/ai/providerFactory";
@@ -9,7 +9,7 @@ describe("Phase 3.1 — Fallback States & Status Semantics Suite", () => {
   });
 
   beforeEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   it("1. Returns SUCCESS with LLM_SYNTHESIS and consumes quota when AI succeeds", async () => {
@@ -28,8 +28,8 @@ describe("Phase 3.1 — Fallback States & Status Semantics Suite", () => {
   });
 
   it("2. Returns DETERMINISTIC_FALLBACK and DOES NOT consume quota when AI fails but deterministic data exists", async () => {
-    jest.spyOn(providerFactory, "getAIProvider").mockReturnValue({
-      generateCompletion: jest.fn().mockImplementation(() => Promise.reject(new Error("AI Provider upstream timeout"))),
+    vi.spyOn(providerFactory, "getAIProvider").mockReturnValue({
+      generateCompletion: vi.fn().mockImplementation(() => Promise.reject(new Error("AI Provider upstream timeout"))),
     } as any);
 
     const res = await CopilotOrchestrator.processTurn({
@@ -50,8 +50,8 @@ describe("Phase 3.1 — Fallback States & Status Semantics Suite", () => {
   });
 
   it("3. Returns PROVIDER_UNAVAILABLE when AI fails and no deterministic analytics apply", async () => {
-    jest.spyOn(providerFactory, "getAIProvider").mockReturnValue({
-      generateCompletion: jest.fn().mockImplementation(() => Promise.reject(new Error("Provider down"))),
+    vi.spyOn(providerFactory, "getAIProvider").mockReturnValue({
+      generateCompletion: vi.fn().mockImplementation(() => Promise.reject(new Error("Provider down"))),
     } as any);
 
     const res = await CopilotOrchestrator.processTurn({

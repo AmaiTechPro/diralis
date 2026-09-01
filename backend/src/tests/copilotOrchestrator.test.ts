@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll } from "@jest/globals";
+import { describe, it, expect, beforeAll } from "vitest";
 import { ToolRegistry } from "../services/copilot/toolRegistry";
 import { CopilotOrchestrator } from "../services/copilot/copilotOrchestrator";
 

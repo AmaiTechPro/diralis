@@ -1,4 +1,4 @@
-import { describe, it, expect, beforeAll, afterAll } from "@jest/globals";
+import { describe, it, expect, beforeAll, afterAll } from "vitest";
 import prisma from "../lib/prisma";
 import { ProactiveAnalysisService } from "../services/copilot/proactiveAnalysisService";
 import { EntitlementService } from "../services/entitlementService";

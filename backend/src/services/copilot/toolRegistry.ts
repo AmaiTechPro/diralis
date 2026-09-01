@@ -3,6 +3,7 @@ import { AnomalyEngine } from "../engines/anomalyEngine";
 import { KeyDriverEngine } from "../engines/keyDriverEngine";
 import { ForecastEngine } from "../engines/forecastEngine";
 import { ScenarioEngine } from "../engines/scenarioEngine";
+import { MultiDriverEngine } from "../engines/multiDriverEngine";
 import { BlendingEngine, JoinType, JoinCondition } from "./blendingEngine";
 
 export interface ToolContext {
@@ -57,7 +58,7 @@ export class ToolRegistry {
       execute: (_ctx, params) => KeyDriverEngine.rankDrivers(params.metricName, params.totalDelta, params.segmentDeltas),
     });
 
-    // 4. Generate Forecast
+    // 4. Generate Linear Forecast
     this.registerTool({
       name: "generate_forecast",
       description: "Generates linear trend projection with bounded prediction intervals.",
@@ -70,7 +71,45 @@ export class ToolRegistry {
       execute: (_ctx, params) => ForecastEngine.generateLinearTrend(params.metricId, params.metricName, params.historicalData, params.periodsToForecast),
     });
 
-    // 5. Run Scenario
+    // 5. Generate Seasonal / Holt-Winters Forecast (Milestone 2)
+    this.registerTool({
+      name: "generate_seasonal_forecast",
+      description: "Generates Holt-Winters or Holt Linear forecast with auto-periodicity and 80%/95% confidence bands.",
+      parameters: {
+        metricId: "string",
+        metricName: "string",
+        historicalData: "Array<{ period: string; value: number }>",
+        periodsToForecast: "number",
+        forcedL: "Optional number (4, 7, 12)",
+      },
+      execute: (_ctx, params) =>
+        ForecastEngine.generateSeasonalForecast(
+          params.metricId,
+          params.metricName,
+          params.historicalData,
+          params.periodsToForecast || 4,
+          params.forcedL
+        ),
+    });
+
+    // 6. Analyze Multi-Variable Drivers (Milestone 2)
+    this.registerTool({
+      name: "analyze_multivariable_drivers",
+      description: "Performs deterministic OLS multi-variable regression with standardized betas, adjusted R2, and VIF metrics.",
+      parameters: {
+        targetName: "string",
+        featureNames: "string[]",
+        rows: "Optional Array<Record<string, any>>",
+      },
+      execute: (ctx, params) =>
+        MultiDriverEngine.analyzeMultiVariableDrivers(
+          params.targetName,
+          params.featureNames,
+          params.rows || ctx.rows
+        ),
+    });
+
+    // 7. Run Scenario
     this.registerTool({
       name: "run_scenario",
       description: "Simulates what-if parameter variations against an immutable dataset baseline.",
@@ -81,7 +120,7 @@ export class ToolRegistry {
       execute: (ctx, params) => ScenarioEngine.evaluateWhatIf(params.metric, ctx.rows, params.adjustments),
     });
 
-    // 6. Blend Datasets (Milestone 1)
+    // 8. Blend Datasets
     this.registerTool({
       name: "blend_datasets",
       description: "Deterministically joins or unions two tenant datasets in-memory.",

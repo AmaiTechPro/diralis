@@ -36,3 +36,11 @@ router.use("/profiles", profileRoutes);
 
 export default router;
 
+
+
+import copilotRoutes from "./copilotRoutes";
+
+// Add to your router:
+router.use("/copilot", copilotRoutes);
+
+

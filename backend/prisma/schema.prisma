@@ -84,6 +84,8 @@ model User {
   securityEvents     SecurityEvent[]
   subscriptions      Subscription[]
   payments           Payment[]
+
+  copilotInsights CopilotInsight[]
 }
 
 model Dataset {
@@ -97,6 +99,8 @@ model Dataset {
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
   chatSessions ChatSession[] // <-- ADD: reverse relation
+
+  copilotInsights CopilotInsight[]
 }
 
 model ChatSession {
@@ -335,3 +339,32 @@ model BillingProviderConfig {
   @@index([enabled])
   @@index([priority])
 }
+
+
+model CopilotInsight {
+  id              String    @id @default(cuid())
+  datasetId       String
+  dataset         Dataset   @relation(fields: [datasetId], references: [id], onDelete: Cascade)
+  userId          String
+  user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  type            String    // "ANOMALY" | "DRIVER" | "TREND" | "OPPORTUNITY"
+  severity        String    // "INFO" | "POSITIVE" | "WARNING" | "CRITICAL"
+  title           String
+  metricName      String
+  observedValue   Float
+  expectedValue   Float?
+  deltaPercentage Float?
+  narrative       String    @db.Text
+  evidenceJson    Json      // Array of evidence items/strings
+  mapVersion      Int       @default(1)
+  dismissedAt     DateTime?
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([userId, datasetId, dismissedAt])
+  @@index([datasetId, createdAt])
+}
+
+
+

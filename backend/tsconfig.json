@@ -1,9 +1,10 @@
-
 {
   "compilerOptions": {
+    "isolatedModules": true,
     "target": "ES2022",
     "module": "NodeNext",
     "moduleResolution": "NodeNext",
+    "types": ["node", "jest"],
 
     "rootDir": "./src",
     "outDir": "./dist",
@@ -22,6 +23,8 @@
 
   "exclude": [
     "node_modules",
-    "dist"
+    "dist",
+    "src/tests"
   ]
 }
+

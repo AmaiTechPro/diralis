@@ -1,4 +1,4 @@
-import rateLimit from "express-rate-limit";
+import rateLimit, { ipKeyGenerator } from "express-rate-limit";
 import { Request } from "express";
 
 /**
@@ -41,7 +41,12 @@ export const aiLimiter = rateLimit({
   standardHeaders: true,
   legacyHeaders: false,
   keyGenerator: (req: Request) => {
-    return (req as any).user?.userId || req.ip || "unknown";
+    const userId = (req as any).user?.userId || (req as any).user?.id;
+    if (userId) return userId;
+    return ipKeyGenerator(req.ip ?? "");
+  },
+  validate: {
+    keyGeneratorIpFallback: false,
   },
   message: {
     error: "AI_RATE_LIMIT_EXCEEDED",
@@ -63,5 +68,3 @@ export const uploadLimiter = rateLimit({
     message: "Upload threshold reached. Please wait before uploading additional datasets.",
   },
 });
-
-

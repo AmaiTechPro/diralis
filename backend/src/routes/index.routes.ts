@@ -1,4 +1,5 @@
 import { Router } from "express";
+import aiRoutes from "./aiRoutes";
 import dashboardRoutes from "./dashboard.routes";
 import authRoutes from "./auth.routes";
 import datasetRoutes from "./datasetRoutes";
@@ -14,6 +15,9 @@ import {
 
 const router = Router();
 
+// Mount AI route
+router.use("/ai", aiRoutes);
+
 // Apply general API rate limiting to regular traffic
 router.use(generalLimiter);
 
@@ -27,11 +31,8 @@ router.use("/reports", reportRoutes);
 router.use("/admin", adminRoutes);
 router.use("/billing", billingRoutes);
 
-/*
- * Analytics API & Chat
- */
-router.use(profileRoutes);
+// Analytics profile routes
+router.use("/profiles", profileRoutes);
 
 export default router;
-
 

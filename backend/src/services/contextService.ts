@@ -1,68 +1,53 @@
 import prisma from "../lib/prisma";
 
-
-export async function buildDatasetContext() {
-
-  const datasets =
-    await prisma.dataset.findMany({
-
-      orderBy: {
-        uploadedAt: "desc",
-      },
-
-      take: 5,
-
-    });
-
-
+export async function buildDatasetContext(userId: string, datasetId?: string): Promise<string> {
+  // 1. Tenant-isolated query
+  const datasets = await prisma.dataset.findMany({
+    where: {
+      userId,
+      ...(datasetId ? { id: datasetId } : {}),
+    },
+    orderBy: { uploadedAt: "desc" },
+    take: datasetId ? 1 : 3,
+  });
 
   if (datasets.length === 0) {
-
-    return `
-No datasets have been uploaded yet.
-
-The user has not provided business data.
-`;
-
+    return "No dataset context available for this user workspace.";
   }
 
-
-
-  return `
-
-DATASET OVERVIEW
-
-Total recent datasets:
-${datasets.length}
-
-
-${datasets
-  .map(
-    (dataset, index) => `
-
-Dataset ${index + 1}
-
-Name:
-${dataset.originalName}
-
-File Type:
-${dataset.mimetype}
-
-Size:
-${(dataset.size / 1024).toFixed(2)} KB
-
-Uploaded:
-${dataset.uploadedAt.toLocaleString()}
-
-`
-  )
-  .join("\n")}
-
-
-Use this information to understand
-the available business data sources.
-
+  const summaries = datasets.map((ds, idx) => {
+    return `
+Dataset ${idx + 1}: ${ds.originalName}
+- MIME: ${ds.mimetype}
+- Size: ${(ds.size / 1024).toFixed(2)} KB
+- Uploaded: ${ds.uploadedAt.toISOString()}
 `;
+  });
 
+  return `### AVAILABLE DATASETS IN WORKSPACE:\n${summaries.join("\n")}`;
+}
+
+export async function buildMAPContext(userId: string, datasetId?: string): Promise<string> {
+  // Find the targeted dataset or most recent active dataset owned by this user
+  const dataset = await prisma.dataset.findFirst({
+    where: {
+      userId,
+      ...(datasetId ? { id: datasetId } : {}),
+    },
+    orderBy: { uploadedAt: "desc" },
+  });
+
+  if (!dataset) {
+    return "NO_DATASET_UPLOADED";
+  }
+
+  // Return compact schema & metadata profile
+  return `
+### ACTIVE DATASET MAP (Metadata Aggregation Profile)
+- Name: ${dataset.originalName}
+- Identifier: ${dataset.id}
+- Dimensions / Scope: Compact profile active.
+- Grounding Rule: Rely strictly on observed columns and aggregated summaries. Do not invent raw cell entries.
+`;
 }
 

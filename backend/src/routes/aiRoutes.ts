@@ -1,9 +1,28 @@
 import { Router } from "express";
-import { aiController } from "../controllers/aiController";
+import { authenticate } from "../middleware/authMiddleware";
+import { aiLimiter } from "../middleware/rateLimiter";
+import { sendMessage } from "../controllers/aiController";
+import {
+  createSession,
+  listSessions,
+  getSession,
+  updateSession,
+  deleteSession,
+  getSessionMessages,
+} from "../controllers/chatSessionController";
 
-const router = Router();
+const router = Router({ mergeParams: true });
 
-router.post("/", aiController);
+// Session lifecycle routes
+router.post("/sessions", authenticate, createSession);
+router.get("/sessions", authenticate, listSessions);
+router.get("/sessions/:sessionId", authenticate, getSession);
+router.patch("/sessions/:sessionId", authenticate, updateSession);
+router.delete("/sessions/:sessionId", authenticate, deleteSession);
+
+// Multi-turn message & history routes
+router.get("/sessions/:sessionId/messages", authenticate, getSessionMessages);
+router.post("/sessions/:sessionId/messages", authenticate, aiLimiter, sendMessage);
 
 export default router;
 

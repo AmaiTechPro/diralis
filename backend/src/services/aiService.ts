@@ -1,118 +1,42 @@
-import openai from "../ai/openai";
 import { DIRALIS_SYSTEM_PROMPT } from "../ai/prompts";
+import { getAIProvider } from "./ai/providerFactory";
+import { buildDatasetContext, buildMAPContext } from "./contextService";
 
-import { buildDatasetContext } from "./contextService";
-import { getLatestDatasetContext } from "./datasetContextService";
-import { getAnalyticsContext } from "./analyticsContextService";
-import { getPredictionContext } from "./predictionContextService";
-import { getRecommendationContext } from "./recommendationContextService";
-
-
-export async function askDiralis(
-  message: string
-) {
-
-  const datasetContext =
-    await buildDatasetContext();
-
-
-  const latestDataset =
-    await getLatestDatasetContext();
-
-
-  const analyticsContext =
-    await getAnalyticsContext();
-
-
-  const predictionContext =
-    await getPredictionContext();
-
-
-  const recommendationContext =
-    await getRecommendationContext();
-
-
-
-  const response =
-    await openai.responses.create({
-
-      model: "gpt-5.5",
-
-      input: [
-
-        {
-          role: "system",
-          content:
-            DIRALIS_SYSTEM_PROMPT,
-        },
-
-
-        {
-          role: "system",
-          content:
-            `
-DATASET CONTEXT:
-
-${datasetContext}
-`,
-        },
-
-
-        {
-          role: "system",
-          content:
-            `
-LATEST DATASET:
-
-${latestDataset}
-`,
-        },
-
-
-        {
-          role: "system",
-          content:
-            `
-ANALYTICS:
-
-${analyticsContext}
-`,
-        },
-
-
-        {
-          role: "system",
-          content:
-            `
-FORECASTING:
-
-${predictionContext}
-`,
-        },
-
-
-        {
-          role: "system",
-          content:
-            `
-RECOMMENDATIONS:
-
-${recommendationContext}
-`,
-        },
-
-
-        {
-          role: "user",
-          content:
-            message,
-        },
-
-      ],
-
-    });
-
-
-  return response.output_text;
+export interface AskDiralisOptions {
+  userId: string;
+  message: string;
+  datasetId?: string;
 }
 
+export async function askDiralis({
+  userId,
+  message,
+  datasetId,
+}: AskDiralisOptions): Promise<string> {
+  // 1. Retrieve tenant-scoped dataset and MAP context
+  const datasetContext = await buildDatasetContext(userId, datasetId);
+  const mapContext = await buildMAPContext(userId, datasetId);
+
+  // 2. Obtain active provider instance (OpenAI or Mock)
+  const provider = getAIProvider();
+
+  // 3. Generate grounded completion
+  const reply = await provider.generateCompletion({
+    messages: [
+      {
+        role: "system",
+        content: DIRALIS_SYSTEM_PROMPT,
+      },
+      {
+        role: "system",
+        content: `DATASET OVERVIEW:\n${datasetContext}\n\nACTIVE MAP CONTEXT:\n${mapContext}`,
+      },
+      {
+        role: "user",
+        content: message,
+      },
+    ],
+  });
+
+  return reply;
+}

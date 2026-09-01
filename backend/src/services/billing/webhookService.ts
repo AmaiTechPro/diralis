@@ -175,22 +175,32 @@ async function handleSuccessfulPayment(
     throw new Error("Missing payment reference in webhook payload.");
   }
 
-  // Look up existing pending payment record created during checkout initialization
+  // Look up existing pending payment record
   const existingPayment = await prisma.payment.findUnique({
     where: { providerReference },
     include: { subscription: true },
   });
 
-  // Fallback chain for essential fields
-  let userId =
-    getString(data.userId) ||
-    getString(metadata.userId) ||
-    existingPayment?.userId;
-
-  let subscriptionId =
+  let rawSubId =
     getString(data.subscriptionId) ||
     getString(metadata.subscriptionId) ||
     existingPayment?.subscriptionId;
+
+  // Validate that subscriptionId actually exists in DB to avoid P2003 foreign key violation
+  let validSubscription = rawSubId
+    ? await prisma.subscription.findUnique({
+        where: { id: rawSubId },
+        include: { plan: true },
+      })
+    : null;
+
+  const resolvedSubscriptionId = validSubscription ? validSubscription.id : undefined;
+
+  let userId =
+    getString(data.userId) ||
+    getString(metadata.userId) ||
+    validSubscription?.userId ||
+    existingPayment?.userId;
 
   const amount =
     typeof data.amount === "number"
@@ -208,18 +218,9 @@ async function handleSuccessfulPayment(
   const interval =
     getString(data.interval) ||
     getString(metadata.interval) ||
+    validSubscription?.interval ||
     existingPayment?.subscription?.interval ||
     "MONTHLY";
-
-  // If userId is still missing, attempt resolution from incomplete subscriptions
-  if (!userId && subscriptionId) {
-    const sub = await prisma.subscription.findUnique({
-      where: { id: subscriptionId },
-    });
-    if (sub) {
-      userId = sub.userId;
-    }
-  }
 
   if (!userId || amount === undefined) {
     throw new Error(
@@ -232,7 +233,7 @@ async function handleSuccessfulPayment(
   const currentKey = `${userId}_current`;
 
   let userRecord: { email: string; fullName: string } | null = null;
-  let planName = "Subscription";
+  let planName = validSubscription?.plan.name || "Pro";
 
   await prisma.$transaction(async (tx) => {
     // 1. Upsert payment record
@@ -243,12 +244,12 @@ async function handleSuccessfulPayment(
       update: {
         status: PaymentStatus.SUCCESS,
         paidAt: now,
-        subscriptionId: subscriptionId ?? undefined,
+        subscriptionId: resolvedSubscriptionId,
         metadata: payload as any,
       },
       create: {
         userId,
-        subscriptionId: subscriptionId ?? undefined,
+        subscriptionId: resolvedSubscriptionId,
         provider,
         providerReference,
         amount,
@@ -260,14 +261,14 @@ async function handleSuccessfulPayment(
     });
 
     // 2. Manage subscription and currentKey
-    if (subscriptionId) {
+    if (resolvedSubscriptionId) {
       // Clear old active subscription key
       await tx.subscription.updateMany({
         where: {
           userId,
           currentKey,
           id: {
-            not: subscriptionId,
+            not: resolvedSubscriptionId,
           },
         },
         data: {
@@ -279,7 +280,7 @@ async function handleSuccessfulPayment(
       // Activate new subscription
       const updatedSub = await tx.subscription.update({
         where: {
-          id: subscriptionId,
+          id: resolvedSubscriptionId,
         },
         data: {
           status: SubscriptionStatus.ACTIVE,
@@ -341,6 +342,15 @@ async function handleSubscriptionStatus(
 
   if (!subscriptionId) {
     throw new Error("Subscription ID is required.");
+  }
+
+  const existingSub = await prisma.subscription.findUnique({
+    where: { id: subscriptionId },
+  });
+
+  if (!existingSub) {
+    console.warn(`Subscription ${subscriptionId} not found during status change to ${status}`);
+    return;
   }
 
   const isInactive =

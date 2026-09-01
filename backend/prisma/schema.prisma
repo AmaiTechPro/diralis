@@ -96,28 +96,39 @@ model Dataset {
 
   userId String
   user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatSessions ChatSession[] // <-- ADD: reverse relation
 }
 
 model ChatSession {
-  id        String   @id @default(cuid())
-  title     String
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  id         String        @id @default(cuid())
+  title      String
+  createdAt  DateTime      @default(now())
+  updatedAt  DateTime      @updatedAt
+  archivedAt DateTime?     // <-- ADD: for soft-deletes/archival
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  messages ChatMessage[]
+  datasetId  String?       // <-- ADD: optional link to a specific dataset
+  dataset    Dataset?      @relation(fields: [datasetId], references: [id], onDelete: SetNull)
+
+  messages   ChatMessage[]
+
+  @@index([userId, updatedAt])
+  @@index([userId, archivedAt])
+  @@index([datasetId])
 }
 
 model ChatMessage {
-  id        String   @id @default(cuid())
-  role      String
+  id        String      @id @default(cuid())
+  role      String      // "user" | "assistant"
   content   String
-  createdAt DateTime @default(now())
+  createdAt DateTime    @default(now())
 
   sessionId String
   session   ChatSession @relation(fields: [sessionId], references: [id], onDelete: Cascade)
+
+  @@index([sessionId, createdAt])
 }
 
 model PasswordResetToken {

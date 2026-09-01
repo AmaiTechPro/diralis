@@ -5,10 +5,19 @@ import {
   CopilotResponseStatus,
   AIProviderState,
 } from "./responseSemantics";
+import { ContextService, DatasetProfileSummary } from "./contextService";
+
+export interface DatasetInput {
+  id: string;
+  name: string;
+  rows: Record<string, any>[];
+  columns?: { name: string; type: string }[];
+}
 
 export interface CopilotRequest {
   userId: string;
-  datasetId: string;
+  datasetId?: string;
+  datasets?: DatasetInput[];
   prompt: string;
   rows?: Record<string, any>[];
   mapSummary?: string;
@@ -21,20 +30,44 @@ export class CopilotOrchestrator {
     req: CopilotRequest
   ): Promise<StructuredCopilotResponse> {
     const startTime = Date.now();
-    const rows = req.rows || [];
-    const ctx: ToolContext = {
-      userId: req.userId,
-      datasetId: req.datasetId,
-      rows,
-    };
-
     const evidence: any[] = [];
     const executedTools: string[] = [];
     const warnings: string[] = [];
     let analyticalAvailable = false;
 
-    // 1. Check MAP Context Availability
-    if (!req.mapSummary && rows.length === 0) {
+    // 1. Resolve Active Rows and Multi-Dataset Inputs
+    let activeRows: Record<string, any>[] = req.rows || [];
+    const activeDatasets = req.datasets || [];
+
+    if (activeRows.length === 0 && activeDatasets.length > 0) {
+      activeRows = activeDatasets[0].rows;
+    }
+
+    const primaryDatasetId = req.datasetId || (activeDatasets[0]?.id ?? "default_dataset");
+
+    // 2. Synthesize Composite MAP Context if multi-datasets provided
+    let compositeContextString = req.mapSummary || "";
+    if (activeDatasets.length > 0) {
+      const profiles: DatasetProfileSummary[] = activeDatasets.map((d) => ({
+        id: d.id,
+        name: d.name,
+        rowCount: d.rows.length,
+        columns:
+          d.columns ||
+          (d.rows[0]
+            ? Object.keys(d.rows[0]).map((k) => ({
+                name: k,
+                type: typeof d.rows[0][k],
+              }))
+            : []),
+      }));
+
+      const composite = ContextService.buildCompositeMAPContext(profiles);
+      compositeContextString = composite.formattedContextString;
+    }
+
+    // Guard: Check MAP / Row Context Availability
+    if (!compositeContextString && activeRows.length === 0) {
       return {
         status: "MAP_UNAVAILABLE",
         summary:
@@ -59,22 +92,124 @@ export class CopilotOrchestrator {
       };
     }
 
-    // 2. Execute deterministic analytical tools based on prompt intent
+    const ctx: ToolContext = {
+      userId: req.userId,
+      datasetId: primaryDatasetId,
+      rows: activeRows,
+    };
+
     const lower = req.prompt.toLowerCase();
+
+    // 3. Deterministic Routing Logic
     try {
+      // Route A: Cross-Dataset Blending
+      if (
+        activeDatasets.length >= 2 &&
+        (lower.includes("blend") ||
+          lower.includes("join") ||
+          lower.includes("combine") ||
+          lower.includes("merge") ||
+          lower.includes("across"))
+      ) {
+        const blendResult = await ToolRegistry.executeTool("blend_datasets", ctx, {
+          leftRows: activeDatasets[0].rows,
+          rightRows: activeDatasets[1].rows,
+          rightDatasetId: activeDatasets[1].id,
+          joinType: "INNER",
+        });
+
+        evidence.push({ tool: "blend_datasets", result: blendResult });
+        executedTools.push("blend_datasets");
+        activeRows = blendResult.blendedRows;
+        ctx.rows = activeRows;
+        analyticalAvailable = true;
+      }
+
+      // Route B: Seasonal Forecasting (Holt-Winters / Trend)
+      if (
+        lower.includes("forecast") ||
+        lower.includes("predict") ||
+        lower.includes("projection") ||
+        lower.includes("next quarter") ||
+        lower.includes("future")
+      ) {
+        if (activeRows.length >= 2) {
+          const firstRow = activeRows[0];
+          const keys = Object.keys(firstRow);
+          const dateKey = keys.find((k) => /date|time|period|quarter|month|year/i.test(k)) || keys[0];
+          const numKey = keys.find((k) => typeof firstRow[k] === "number" && k !== dateKey) || keys[1];
+
+          if (dateKey && numKey) {
+            const series = activeRows.map((r) => ({
+              period: String(r[dateKey]),
+              value: Number(r[numKey]),
+            }));
+
+            const forecast = await ToolRegistry.executeTool(
+              "generate_seasonal_forecast",
+              ctx,
+              {
+                metricId: numKey,
+                metricName: numKey,
+                historicalData: series,
+                periodsToForecast: 4,
+              }
+            );
+
+            evidence.push({ tool: "generate_seasonal_forecast", result: forecast });
+            executedTools.push("generate_seasonal_forecast");
+            analyticalAvailable = true;
+          }
+        }
+      }
+
+      // Route C: Multi-Variable OLS Regression Drivers
+      if (
+        lower.includes("driver") ||
+        lower.includes("influence") ||
+        lower.includes("impact") ||
+        lower.includes("regression") ||
+        lower.includes("multivariable")
+      ) {
+        if (activeRows.length >= 4) {
+          const firstRow = activeRows[0];
+          const numericKeys = Object.keys(firstRow).filter((k) => typeof firstRow[k] === "number");
+
+          if (numericKeys.length >= 2) {
+            const target = numericKeys[0];
+            const features = numericKeys.slice(1);
+
+            const regression = await ToolRegistry.executeTool(
+              "analyze_multivariable_drivers",
+              ctx,
+              {
+                targetName: target,
+                featureNames: features,
+                rows: activeRows,
+              }
+            );
+
+            evidence.push({ tool: "analyze_multivariable_drivers", result: regression });
+            executedTools.push("analyze_multivariable_drivers");
+            analyticalAvailable = true;
+          }
+        }
+      }
+
+      // Route D: Anomaly Outlier Detection
       if (
         lower.includes("outlier") ||
         lower.includes("anomaly") ||
         lower.includes("unusual")
       ) {
-        if (rows.length >= 4) {
-          const firstRow = rows[0];
+        if (activeRows.length >= 4) {
+          const firstRow = activeRows[0];
           const numericKeys = Object.keys(firstRow).filter(
             (k) => typeof firstRow[k] === "number"
           );
           if (numericKeys.length > 0) {
             const key = numericKeys[0];
-            const points = rows.map((r, i) => ({
+            const points = activeRows.map((r, i) => ({
               id: String(i),
               label: `Row ${i + 1}`,
               value: Number(r[key]),
@@ -85,7 +220,7 @@ export class CopilotOrchestrator {
               {
                 metricId: key,
                 metricName: key,
-                data: points, // <-- Aligned with ToolRegistry parameter
+                data: points,
               }
             );
             evidence.push({ tool: "detect_anomalies", result: anomalies });
@@ -98,7 +233,7 @@ export class CopilotOrchestrator {
       warnings.push(`Tool execution error: ${err.message || "Failed to execute deterministic tool."}`);
     }
 
-    // 3. Assemble bounded prompt
+    // 4. Assemble Bounded Prompt
     const evidenceText =
       evidence.length > 0
         ? `### DETERMINISTIC ANALYTICAL EVIDENCE:\n${JSON.stringify(evidence, null, 2)}`
@@ -112,7 +247,7 @@ export class CopilotOrchestrator {
       },
       {
         role: "system" as const,
-        content: `### MAP CONTEXT:\n${req.mapSummary || "Provided Dataset Rows"}\n\n${evidenceText}`,
+        content: `### MAP CONTEXT:\n${compositeContextString || "Provided Dataset Rows"}\n\n${evidenceText}`,
       },
       ...(req.history || []).slice(-6).map((h) => ({
         role: h.role,
@@ -124,7 +259,7 @@ export class CopilotOrchestrator {
       },
     ];
 
-    // 4. Attempt AI Generation with Protected Fallback
+    // 5. Attempt AI Generation with Protected Fallback
     let aiResponseText = "";
     let providerState: AIProviderState = "AVAILABLE";
     let isAIAvailable = false;
@@ -145,7 +280,6 @@ export class CopilotOrchestrator {
         providerState = "UNAVAILABLE";
       }
 
-      // If we have deterministic evidence, degrade to DETERMINISTIC_FALLBACK
       if (evidence.length > 0 || analyticalAvailable) {
         finalStatus = "DETERMINISTIC_FALLBACK";
         aiResponseText =
@@ -169,13 +303,21 @@ export class CopilotOrchestrator {
       ai: {
         available: isAIAvailable,
         providerState,
-        source: isAIAvailable ? "LLM_SYNTHESIS" : (analyticalAvailable ? "DETERMINISTIC_ENGINE" : "NONE"),
+        source: isAIAvailable
+          ? "LLM_SYNTHESIS"
+          : analyticalAvailable
+          ? "DETERMINISTIC_ENGINE"
+          : "NONE",
         quotaConsumed: isAIAvailable,
         latencyMs: durationMs,
       },
       analytical: {
-        available: analyticalAvailable || !!req.mapSummary,
-        state: analyticalAvailable ? "AVAILABLE" : (req.mapSummary ? "AVAILABLE" : "INSUFFICIENT_DATA"),
+        available: analyticalAvailable || !!compositeContextString,
+        state: analyticalAvailable
+          ? "AVAILABLE"
+          : compositeContextString
+          ? "AVAILABLE"
+          : "INSUFFICIENT_DATA",
         mapVersion: req.mapVersion || 1,
         toolsExecuted: executedTools,
       },
@@ -185,9 +327,13 @@ export class CopilotOrchestrator {
         ? [{ title: "Review Key Findings", description: "Follow up on highlighted dataset insights." }]
         : [],
       warnings,
-      retryable: finalStatus === "PROVIDER_TIMEOUT" || finalStatus === "PROVIDER_UNAVAILABLE" || finalStatus === "DETERMINISTIC_FALLBACK",
+      retryable:
+        finalStatus === "PROVIDER_TIMEOUT" ||
+        finalStatus === "PROVIDER_UNAVAILABLE" ||
+        finalStatus === "DETERMINISTIC_FALLBACK",
       timestamp: new Date().toISOString(),
     };
   }
 }
+
 

@@ -13,6 +13,8 @@ import {
   X,
 } from "lucide-react";
 
+import { CopilotWorkspace } from "../components/copilot/CopilotWorkspace";
+
 const SUGGESTED_PROMPTS = [
   "What are the top 3 revenue driving trends in this dataset?",
   "Identify anomalies or underperforming segments.",
@@ -83,7 +85,7 @@ export const AIChatPage: React.FC = () => {
           />
         )}
 
-        {/* Sidebar */}
+        {/* Left Sidebar: Session History */}
         <aside
           className={`absolute md:static z-50 flex flex-col w-72 h-full bg-slate-900 border-r border-slate-800 transition-transform duration-300 ease-in-out ${
             mobileSidebarOpen ? "translate-x-0" : "-translate-x-full md:translate-x-0"
@@ -184,8 +186,8 @@ export const AIChatPage: React.FC = () => {
           </div>
         </aside>
 
-        {/* Main Conversation Container */}
-        <main className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden">
+        {/* Center: Main Conversation Container */}
+        <main className="flex-1 flex flex-col h-full bg-slate-950 overflow-hidden min-w-0">
           {/* Header Bar */}
           <header className="h-16 border-b border-slate-800 px-6 flex items-center justify-between bg-slate-900/50 backdrop-blur">
             <div className="flex items-center gap-3">
@@ -307,10 +309,26 @@ export const AIChatPage: React.FC = () => {
             </div>
           </footer>
         </main>
+
+        {/* Right Sidebar: Copilot Workspace (Scenarios & Proactive Feed) */}
+        <aside className="hidden xl:flex flex-col w-96 bg-slate-900 border-l border-slate-800 h-full overflow-hidden flex-shrink-0">
+          {activeSession?.dataset?.id ? (
+            <CopilotWorkspace
+              datasetId={activeSession.dataset.id}
+              onSendPrompt={(prompt) => onSend(prompt)}
+            />
+          ) : (
+            <div className="flex flex-col h-full items-center justify-center p-8 text-center space-y-3 text-slate-500 text-sm">
+              <Database size={32} className="text-slate-600" />
+              <p>Link or select a dataset session to view proactive statistical insights and run what-if simulations.</p>
+            </div>
+          )}
+        </aside>
       </div>
     </FeatureGate>
   );
 };
 
 export default AIChatPage;
+
 

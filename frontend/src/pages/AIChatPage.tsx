@@ -1,6 +1,8 @@
 import React, { useState, useRef, useEffect } from "react";
 import { useAIChat } from "../hooks/useAIChat";
 import FeatureGate from "../components/billing/FeatureGate";
+import { EvidenceContainer } from "../components/copilot/EvidenceContainer";
+import { CopilotWorkspace } from "../components/copilot/CopilotWorkspace";
 import {
   Plus,
   MessageSquare,
@@ -12,8 +14,6 @@ import {
   Menu,
   X,
 } from "lucide-react";
-
-import { CopilotWorkspace } from "../components/copilot/CopilotWorkspace";
 
 const SUGGESTED_PROMPTS = [
   "What are the top 3 revenue driving trends in this dataset?",
@@ -266,6 +266,12 @@ export const AIChatPage: React.FC = () => {
                       }`}
                     >
                       <div className="whitespace-pre-wrap">{msg.content}</div>
+
+                      {/* Render Interactive Evidence Charts & Audit Drawer */}
+                      {(msg as any).evidence && (msg as any).evidence.length > 0 && (
+                        <EvidenceContainer evidence={(msg as any).evidence} />
+                      )}
+
                       <div className={`text-[10px] mt-2 opacity-50 ${isUser ? "text-right" : "text-left"}`}>
                         {new Date(msg.createdAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })}
                       </div>
@@ -330,5 +336,4 @@ export const AIChatPage: React.FC = () => {
 };
 
 export default AIChatPage;
-
 

@@ -1,10 +1,29 @@
-import { PrismaClient } from "@prisma/client";
+import { PrismaClient, BillingProvider } from "@prisma/client";
 
 const prisma = new PrismaClient();
 
 async function main() {
-  console.log("🌱 Seeding billing plans...");
+  console.log("🌱 Seeding billing plans & provider config...");
 
+  // 1. Ensure Primary Billing Provider is configured in DB
+  await prisma.billingProviderConfig.upsert({
+    where: { provider: BillingProvider.PAYSTACK },
+    update: {
+      enabled: true,
+      priority: 1,
+      supportedCurrencies: ["KES", "USD"],
+      supportedIntervals: ["MONTHLY", "YEARLY"],
+    },
+    create: {
+      provider: BillingProvider.PAYSTACK,
+      enabled: true,
+      priority: 1,
+      supportedCurrencies: ["KES", "USD"],
+      supportedIntervals: ["MONTHLY", "YEARLY"],
+    },
+  });
+
+  // 2. Upsert standard subscription tiers
   const plans = [
     {
       code: "FREE",
@@ -41,7 +60,7 @@ async function main() {
       version: 1,
       description: "For small teams needing consistent reporting and forecasting.",
       monthlyPrice: 2900, // $29.00 in cents
-      annualPrice: 29000, // $290.00 in cents (~2 months free)
+      annualPrice: 29000, // $290.00 in cents
       currency: "USD",
       active: true,
       limits: {
@@ -188,17 +207,16 @@ async function main() {
     });
   }
 
-  console.log("✅ Billing plans seeded successfully.");
+  console.log("✅ Billing plans and provider configuration seeded successfully.");
 }
 
 main()
   .catch((e) => {
     console.error("❌ Seeding failed:", e);
-    process.exit(1);
+    (globalThis as any).process?.exit?.(1);
   })
   .finally(async () => {
     await prisma.$disconnect();
   });
-
 
   

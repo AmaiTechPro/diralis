@@ -1,5 +1,6 @@
 import prisma from "../lib/prisma";
 import { getUserPlan, getUserUsageMetrics, getUsageLimit, hasFeature } from "./billingService";
+import { CopilotLogger } from "./copilot/copilotLogger";
 
 export type EntitlementReasonCode =
   | "AUTH_REQUIRED"
@@ -22,24 +23,26 @@ export interface EntitlementDecision {
 }
 
 export class EntitlementService {
-  /**
-   * Evaluates whether a user is entitled to access a specific capability and has quota available.
-   */
   public static async evaluate(
     userId: string,
     options: {
       requiredFeature?: string;
       quotaMetric?: "aiRequestsPerMonth" | "forecastsPerMonth" | "monthlyExports";
       datasetId?: string;
+      correlationId?: string;
     }
   ): Promise<EntitlementDecision> {
+    const correlationId = options.correlationId || CopilotLogger.createCorrelationId();
+
     if (!userId) {
-      return {
+      const decision: EntitlementDecision = {
         allowed: false,
         statusCode: 401,
         code: "AUTH_REQUIRED",
         message: "Authentication is required to perform this action.",
       };
+      CopilotLogger.log("ENTITLEMENT_EVALUATED", { correlationId, userId }, { decision }, undefined, "WARN");
+      return decision;
     }
 
     // 1. Verify Dataset Resource Ownership (Tenant Isolation)
@@ -48,12 +51,14 @@ export class EntitlementService {
         where: { id: options.datasetId, userId },
       });
       if (!dataset) {
-        return {
+        const decision: EntitlementDecision = {
           allowed: false,
           statusCode: 404,
           code: "RESOURCE_UNAUTHORIZED",
           message: "The requested dataset was not found in your workspace.",
         };
+        CopilotLogger.log("ENTITLEMENT_EVALUATED", { correlationId, userId, datasetId: options.datasetId }, { decision }, undefined, "WARN");
+        return decision;
       }
     }
 
@@ -64,7 +69,7 @@ export class EntitlementService {
     if (options.requiredFeature) {
       const featureEnabled = await hasFeature(userId, options.requiredFeature);
       if (!featureEnabled) {
-        return {
+        const decision: EntitlementDecision = {
           allowed: false,
           statusCode: 403,
           code: "PLAN_NOT_ENTITLED",
@@ -74,6 +79,8 @@ export class EntitlementService {
             tier: planCode,
           },
         };
+        CopilotLogger.log("ENTITLEMENT_EVALUATED", { correlationId, userId }, { decision }, undefined, "WARN");
+        return decision;
       }
     }
 
@@ -84,7 +91,7 @@ export class EntitlementService {
 
       const currentUsage = usage[options.quotaMetric] || 0;
       if (limit !== null && currentUsage >= limit) {
-        return {
+        const decision: EntitlementDecision = {
           allowed: false,
           statusCode: 403,
           code: "QUOTA_EXHAUSTED",
@@ -95,9 +102,14 @@ export class EntitlementService {
             tier: planCode,
           },
         };
+        CopilotLogger.log("ENTITLEMENT_EVALUATED", { correlationId, userId }, { decision }, undefined, "WARN");
+        return decision;
       }
     }
 
-    return { allowed: true, statusCode: 200 };
+    const allowedDecision: EntitlementDecision = { allowed: true, statusCode: 200 };
+    CopilotLogger.log("ENTITLEMENT_EVALUATED", { correlationId, userId }, { decision: allowedDecision, tier: planCode });
+    return allowedDecision;
   }
 }
+

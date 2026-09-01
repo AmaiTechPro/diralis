@@ -85,7 +85,7 @@ export class CopilotOrchestrator {
               {
                 metricId: key,
                 metricName: key,
-                dataPoints: points,
+                data: points, // <-- Aligned with ToolRegistry parameter
               }
             );
             evidence.push({ tool: "detect_anomalies", result: anomalies });
@@ -190,5 +190,4 @@ export class CopilotOrchestrator {
     };
   }
 }
-
 

@@ -64,6 +64,7 @@ export async function processBillingWebhook(input: BillingWebhookInput) {
       case "PAYMENT_SUCCESS":
       case "PAYMENT_SUCCESSFUL":
       case "CHARGE_SUCCESS":
+      case "charge.success":
         await handleSuccessfulPayment(payload, provider);
         break;
 
@@ -92,6 +93,7 @@ export async function processBillingWebhook(input: BillingWebhookInput) {
 
       case "PAYMENT_FAILED":
       case "CHARGE_FAILED":
+      case "charge.failed":
         await handlePaymentFailed(payload);
         break;
 
@@ -126,7 +128,7 @@ export async function processBillingWebhook(input: BillingWebhookInput) {
 // Helpers
 // ======================================================
 
-function getPayloadRecord(payload: unknown): Record<string, unknown> {
+function getPayloadRecord(payload: unknown): Record<string, any> {
   if (
     typeof payload !== "object" ||
     payload === null ||
@@ -135,24 +137,20 @@ function getPayloadRecord(payload: unknown): Record<string, unknown> {
     throw new Error("Invalid billing webhook payload.");
   }
 
-  return payload as Record<string, unknown>;
+  return payload as Record<string, any>;
 }
 
 function getString(value: unknown): string | undefined {
-  return typeof value === "string" ? value : undefined;
+  return typeof value === "string" && value.trim().length > 0 ? value.trim() : undefined;
 }
 
-function calculatePeriodEnd(payload: unknown): Date {
-  const data = getPayloadRecord(payload);
-  const interval = getString(data.interval);
+function calculatePeriodEnd(interval?: string): Date {
   const end = new Date();
-
   if (interval === "YEARLY") {
     end.setFullYear(end.getFullYear() + 1);
   } else {
     end.setMonth(end.getMonth() + 1);
   }
-
   return end;
 }
 
@@ -165,22 +163,72 @@ async function handleSuccessfulPayment(
   provider: BillingProvider
 ) {
   const data = getPayloadRecord(payload);
+  const metadata = data.metadata || data.data?.metadata || {};
 
-  const userId = getString(data.userId);
-  const subscriptionId = getString(data.subscriptionId);
-  const providerReference = getString(data.providerReference);
+  // Resolve reference
+  const providerReference =
+    getString(data.providerReference) ||
+    getString(data.reference) ||
+    getString(data.data?.reference);
+
+  if (!providerReference) {
+    throw new Error("Missing payment reference in webhook payload.");
+  }
+
+  // Look up existing pending payment record created during checkout initialization
+  const existingPayment = await prisma.payment.findUnique({
+    where: { providerReference },
+    include: { subscription: true },
+  });
+
+  // Fallback chain for essential fields
+  let userId =
+    getString(data.userId) ||
+    getString(metadata.userId) ||
+    existingPayment?.userId;
+
+  let subscriptionId =
+    getString(data.subscriptionId) ||
+    getString(metadata.subscriptionId) ||
+    existingPayment?.subscriptionId;
+
   const amount =
-    typeof data.amount === "number" ? data.amount : undefined;
-  const currency = getString(data.currency);
-  const providerCustomerId = getString(data.providerCustomerId);
-  const providerSubscriptionId = getString(data.providerSubscriptionId);
+    typeof data.amount === "number"
+      ? data.amount
+      : typeof data.data?.amount === "number"
+      ? data.data.amount
+      : existingPayment?.amount;
 
-  if (!userId || !providerReference || amount === undefined || !currency) {
-    throw new Error("Incomplete successful payment webhook payload.");
+  const currency =
+    getString(data.currency) ||
+    getString(data.data?.currency) ||
+    existingPayment?.currency ||
+    "KES";
+
+  const interval =
+    getString(data.interval) ||
+    getString(metadata.interval) ||
+    existingPayment?.subscription?.interval ||
+    "MONTHLY";
+
+  // If userId is still missing, attempt resolution from incomplete subscriptions
+  if (!userId && subscriptionId) {
+    const sub = await prisma.subscription.findUnique({
+      where: { id: subscriptionId },
+    });
+    if (sub) {
+      userId = sub.userId;
+    }
+  }
+
+  if (!userId || amount === undefined) {
+    throw new Error(
+      `Incomplete successful payment webhook payload (userId=${userId}, reference=${providerReference}, amount=${amount}).`
+    );
   }
 
   const now = new Date();
-  const periodEnd = calculatePeriodEnd(payload);
+  const periodEnd = calculatePeriodEnd(interval);
   const currentKey = `${userId}_current`;
 
   let userRecord: { email: string; fullName: string } | null = null;
@@ -236,8 +284,6 @@ async function handleSuccessfulPayment(
         data: {
           status: SubscriptionStatus.ACTIVE,
           currentKey,
-          providerCustomerId: providerCustomerId ?? undefined,
-          providerSubscriptionId: providerSubscriptionId ?? undefined,
           currentPeriodStart: now,
           currentPeriodEnd: periodEnd,
         },
@@ -257,7 +303,7 @@ async function handleSuccessfulPayment(
     }
   });
 
-  // 3. Dispatch confirmation notification (non-blocking)
+  // 3. Dispatch confirmation notification
   if (!userRecord) {
     userRecord = await prisma.user.findUnique({
       where: { id: userId },
@@ -289,7 +335,9 @@ async function handleSubscriptionStatus(
   status: SubscriptionStatus
 ) {
   const data = getPayloadRecord(payload);
-  const subscriptionId = getString(data.subscriptionId);
+  const metadata = data.metadata || data.data?.metadata || {};
+  const subscriptionId =
+    getString(data.subscriptionId) || getString(metadata.subscriptionId);
 
   if (!subscriptionId) {
     throw new Error("Subscription ID is required.");
@@ -355,10 +403,27 @@ async function handleSubscriptionStatus(
 
 async function handlePaymentFailed(payload: unknown) {
   const data = getPayloadRecord(payload);
-  const providerReference = getString(data.providerReference);
-  const userId = getString(data.userId);
-  const amount = typeof data.amount === "number" ? data.amount : 0;
-  const currency = getString(data.currency) || "USD";
+  const metadata = data.metadata || data.data?.metadata || {};
+
+  const providerReference =
+    getString(data.providerReference) ||
+    getString(data.reference) ||
+    getString(data.data?.reference);
+
+  const userId =
+    getString(data.userId) || getString(metadata.userId);
+
+  const amount =
+    typeof data.amount === "number"
+      ? data.amount
+      : typeof data.data?.amount === "number"
+      ? data.data.amount
+      : 0;
+
+  const currency =
+    getString(data.currency) ||
+    getString(data.data?.currency) ||
+    "KES";
 
   if (!providerReference) {
     throw new Error("Provider reference is required.");
@@ -393,5 +458,4 @@ async function handlePaymentFailed(payload: unknown) {
     }
   }
 }
-
 

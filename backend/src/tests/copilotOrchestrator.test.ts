@@ -55,8 +55,9 @@ describe("Copilot Orchestrator & Tool Registry Suite", () => {
     };
 
     const output = await CopilotOrchestrator.processTurn(req);
+    expect(output.status).toBe("SUCCESS");
     expect(output.summary).toBeDefined();
-    expect(output.deterministicEvidence.length).toBeGreaterThan(0);
+    expect(output.evidence.length).toBeGreaterThan(0);
     expect(output.insights.length).toBeGreaterThanOrEqual(1);
     expect(output.insights[0].severity).toBe("CRITICAL");
   });

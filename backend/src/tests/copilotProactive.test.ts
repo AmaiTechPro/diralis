@@ -54,11 +54,12 @@ describe("Copilot Proactive Insights Pipeline Suite", () => {
       { latency: 450 }, // Critical outlier
     ];
 
-    const count = await ProactiveAnalysisService.analyzeDataset(user.id, dataset.id, rows);
-    expect(count).toBeGreaterThanOrEqual(1);
+    const result = await ProactiveAnalysisService.analyzeDataset(user.id, dataset.id, rows);
+    expect(result.status).toBe("COMPLETED");
+    expect(result.insightsCreated).toBeGreaterThanOrEqual(1);
 
     const saved = await prisma.copilotInsight.findMany({ where: { datasetId: dataset.id } });
-    expect(saved.length).toBe(count);
+    expect(saved.length).toBe(result.insightsCreated);
     expect(saved[0].severity).toBe("CRITICAL");
   });
 

@@ -1,5 +1,6 @@
 import { useState, useEffect, useCallback, useRef } from "react";
-import { aiService, ChatSessionMeta, ChatMessageItem, SessionDetail } from "../services/aiService";
+import { aiService } from "../services/aiService";
+import type { ChatSessionMeta, ChatMessageItem, SessionDetail } from "../services/aiService";
 
 export function useAIChat(initialSessionId?: string) {
   const [sessions, setSessions] = useState<ChatSessionMeta[]>([]);
@@ -116,18 +117,29 @@ export function useAIChat(initialSessionId?: string) {
         createdAt: new Date().toISOString(),
       };
 
-      setMessages((prev) => [...prev.filter((m) => m.id !== optimisticUserMsg.id), { ...optimisticUserMsg, id: res.userMessageId }, assistantMsg]);
+      setMessages((prev) => [
+        ...prev.filter((m) => m.id !== optimisticUserMsg.id),
+        { ...optimisticUserMsg, id: res.userMessageId },
+        assistantMsg,
+      ]);
 
-      // Update sidebar session title & message counter
       setSessions((prev) =>
-        prev.map((s) => (s.id === targetSessionId ? { ...s, messageCount: s.messageCount + 2, updatedAt: new Date().toISOString() } : s))
+        prev.map((s) =>
+          s.id === targetSessionId
+            ? { ...s, messageCount: s.messageCount + 2, updatedAt: new Date().toISOString() }
+            : s
+        )
       );
     } catch (err: any) {
       const status = err.response?.status;
       const data = err.response?.data;
 
       if (status === 429) {
-        setErrorBanner(data?.error === "AI_RATE_LIMIT_EXCEEDED" ? "You are querying too quickly. Please wait a moment." : "Monthly AI quota exhausted for this period.");
+        setErrorBanner(
+          data?.error === "AI_RATE_LIMIT_EXCEEDED"
+            ? "You are querying too quickly. Please wait a moment."
+            : "Monthly AI quota exhausted for this period."
+        );
         if (data?.error !== "AI_RATE_LIMIT_EXCEEDED") setQuotaExhausted(true);
       } else if (status === 403 && data?.code === "QUOTA_EXHAUSTED") {
         setQuotaExhausted(true);
@@ -138,7 +150,6 @@ export function useAIChat(initialSessionId?: string) {
         setErrorBanner(data?.message || "Failed to process AI response. Please try again.");
       }
 
-      // Revert optimistic message on persistent failure
       setMessages((prev) => prev.filter((m) => m.id !== optimisticUserMsg.id));
     } finally {
       setIsSending(false);
@@ -148,9 +159,13 @@ export function useAIChat(initialSessionId?: string) {
   const renameSession = async (sessionId: string, newTitle: string) => {
     try {
       const { session } = await aiService.renameSession(sessionId, newTitle);
-      setSessions((prev) => prev.map((s) => (s.id === sessionId ? { ...s, title: session.title, updatedAt: session.updatedAt } : s)));
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === sessionId ? { ...s, title: session.title, updatedAt: session.updatedAt } : s
+        )
+      );
       if (activeSession?.id === sessionId) {
-        setActiveSession((prev) => (prev ? { ...prev, title: session.title } : null));
+        setActiveSession((prev: SessionDetail | null) => (prev ? { ...prev, title: session.title } : null));
       }
     } catch (err: any) {
       setErrorBanner(err.response?.data?.message || "Failed to rename session.");
@@ -193,6 +208,4 @@ export function useAIChat(initialSessionId?: string) {
     refreshSessions: loadSessions,
   };
 }
-
-
 

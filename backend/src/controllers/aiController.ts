@@ -82,10 +82,21 @@ export async function sendMessage(req: Request, res: Response) {
     });
 
     // 5. Build Separated Context Layers
-    const [mapContext, datasetOverview] = await Promise.all([
-      buildMAPContext(userId, activeDatasetId || undefined),
-      buildDatasetContext(userId, activeDatasetId || undefined),
-    ]);
+    let mapContext = "";
+    let datasetOverview = "";
+    let isMapAvailable = false;
+
+    try {
+      const [mapRes, datasetRes] = await Promise.all([
+        buildMAPContext(userId, activeDatasetId || undefined),
+        buildDatasetContext(userId, activeDatasetId || undefined),
+      ]);
+      mapContext = mapRes;
+      datasetOverview = datasetRes;
+      isMapAvailable = !!(mapContext && mapContext.trim().length > 0);
+    } catch {
+      isMapAvailable = false;
+    }
 
     const messages = assembleMultiTurnPrompt(
       DIRALIS_SYSTEM_PROMPT,
@@ -95,9 +106,27 @@ export async function sendMessage(req: Request, res: Response) {
       content.trim()
     );
 
-    // 6. Invoke AI Provider
-    const provider = getAIProvider();
-    const reply = await provider.generateCompletion({ messages });
+    // 6. Invoke AI Provider with Protected Fallback
+    let reply = "";
+    let status: "SUCCESS" | "DETERMINISTIC_FALLBACK" | "PROVIDER_UNAVAILABLE" = "SUCCESS";
+    let isAIAvailable = false;
+
+    try {
+      const provider = getAIProvider();
+      reply = await provider.generateCompletion({ messages });
+      isAIAvailable = true;
+      status = "SUCCESS";
+    } catch (providerError: any) {
+      const errMsg = (providerError?.message || "").toLowerCase();
+      
+      if (isMapAvailable) {
+        status = "DETERMINISTIC_FALLBACK";
+        reply = "AI interpretation is temporarily unavailable. Based on the verified dataset analytics (MAP), statistical distributions and schema properties remain accessible in your dashboard.";
+      } else {
+        status = "PROVIDER_UNAVAILABLE";
+        reply = "Diralis AI is temporarily unavailable. Please retry your question in a moment.";
+      }
+    }
 
     // 7. Atomic Transaction: Persist User + Assistant messages & update session timestamp
     const isFirstMessage = history.length === 0;
@@ -130,14 +159,25 @@ export async function sendMessage(req: Request, res: Response) {
     ]);
 
     return res.status(200).json({
+      status,
       reply: assistantMessage.content,
       userMessageId: userMessage.id,
       assistantMessageId: assistantMessage.id,
       sessionId: session.id,
+      ai: {
+        available: isAIAvailable,
+        source: isAIAvailable ? "LLM_SYNTHESIS" : (status === "DETERMINISTIC_FALLBACK" ? "DETERMINISTIC_ENGINE" : "NONE"),
+        quotaConsumed: isAIAvailable,
+      },
+      analytical: {
+        available: isMapAvailable,
+        source: isMapAvailable ? "MAP" : "NONE",
+      },
       usage: {
-        current: usage.aiRequestsPerMonth + 1,
+        current: usage.aiRequestsPerMonth + (isAIAvailable ? 1 : 0),
         limit: quotaLimit,
       },
+      retryable: !isAIAvailable,
     });
   } catch (error: any) {
     if (error?.message?.includes("timeout")) {

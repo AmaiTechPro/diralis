@@ -1,5 +1,5 @@
 import React, { useState } from "react";
-import { Sliders, RefreshCw, Sparkles, ArrowRight } from "lucide-react";
+import { Sliders, RefreshCw, ArrowRight } from "lucide-react";
 
 interface ScenarioSimulatorProps {
   baseMetricName: string;
@@ -18,7 +18,6 @@ export const ScenarioSimulator: React.FC<ScenarioSimulatorProps> = ({
 }) => {
   const [sliderVal, setSliderVal] = useState<number>(0);
 
-  // Immediate deterministic calculation on client
   const deltaDecimal = sliderVal / 100;
   const simulatedValue = baselineValue * (1 + deltaDecimal);
   const diff = simulatedValue - baselineValue;
@@ -53,11 +52,16 @@ export const ScenarioSimulator: React.FC<ScenarioSimulatorProps> = ({
         </div>
       </div>
 
-      {/* Interactive Slider */}
       <div className="mt-5">
         <div className="flex items-center justify-between text-xs text-slate-300 mb-1.5">
-          <span>Simulate Adjustment on: <strong>{variableName}</strong></span>
-          <span className={`font-mono font-bold ${sliderVal >= 0 ? "text-emerald-400" : "text-rose-400"}`}>
+          <span>
+            Simulate Adjustment on: <strong>{variableName}</strong>
+          </span>
+          <span
+            className={`font-mono font-bold ${
+              sliderVal >= 0 ? "text-emerald-400" : "text-rose-400"
+            }`}
+          >
             {sliderVal > 0 ? `+${sliderVal}%` : `${sliderVal}%`}
           </span>
         </div>

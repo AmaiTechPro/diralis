@@ -3,6 +3,7 @@ import { useAIChat } from "../hooks/useAIChat";
 import FeatureGate from "../components/billing/FeatureGate";
 import { EvidenceContainer } from "../components/copilot/EvidenceContainer";
 import { CopilotWorkspace } from "../components/copilot/CopilotWorkspace";
+import api from "../services/api";
 import {
   Plus,
   MessageSquare,
@@ -13,7 +14,14 @@ import {
   Sparkles,
   Menu,
   X,
+  ChevronDown,
 } from "lucide-react";
+
+interface DatasetOption {
+  id: string;
+  originalName: string;
+  rowCount?: number;
+}
 
 const SUGGESTED_PROMPTS = [
   "What are the top 3 revenue driving trends in this dataset?",
@@ -40,16 +48,41 @@ export const AIChatPage: React.FC = () => {
     deleteSession,
   } = useAIChat();
 
+  const [availableDatasets, setAvailableDatasets] = useState<DatasetOption[]>([]);
+  const [selectedDatasetId, setSelectedDatasetId] = useState<string | undefined>(undefined);
   const [inputContent, setInputContent] = useState("");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
   const [editingSessionId, setEditingSessionId] = useState<string | null>(null);
   const [editTitleValue, setEditTitleValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
+  // Load user's uploaded datasets to populate selector
+  useEffect(() => {
+    api
+      .get("/datasets")
+      .then((res: any) => {
+        const list = res.data?.datasets || res.data || [];
+        setAvailableDatasets(list);
+        if (list.length > 0 && !selectedDatasetId) {
+          setSelectedDatasetId(list[0].id);
+        }
+      })
+      .catch(() => setAvailableDatasets([]));
+  }, []);
+
+  // Sync selectedDatasetId when activeSession changes
+  useEffect(() => {
+    if (activeSession?.dataset?.id) {
+      setSelectedDatasetId(activeSession.dataset.id);
+    } else if (availableDatasets.length > 0 && !selectedDatasetId) {
+      setSelectedDatasetId(availableDatasets[0].id);
+    }
+  }, [activeSession, availableDatasets]);
+
   const onSend = (textToSend?: string) => {
     const text = textToSend || inputContent;
     if (!text.trim() || isSending) return;
-    handleSendMessage(text);
+    handleSendMessage(text, selectedDatasetId);
     setInputContent("");
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
@@ -66,9 +99,14 @@ export const AIChatPage: React.FC = () => {
   useEffect(() => {
     if (textareaRef.current) {
       textareaRef.current.style.height = "auto";
-      textareaRef.current.style.height = `${Math.min(textareaRef.current.scrollHeight, 160)}px`;
+      textareaRef.current.style.height = `${Math.min(
+        textareaRef.current.scrollHeight,
+        160
+      )}px`;
     }
   }, [inputContent]);
+
+  const currentDatasetId = activeSession?.dataset?.id || selectedDatasetId;
 
   return (
     <FeatureGate
@@ -94,7 +132,7 @@ export const AIChatPage: React.FC = () => {
           <div className="p-4 border-b border-slate-800 flex items-center justify-between">
             <button
               onClick={() => {
-                startNewSession();
+                startNewSession(selectedDatasetId);
                 setMobileSidebarOpen(false);
               }}
               className="flex items-center justify-center gap-2 w-full py-2.5 px-4 bg-cyan-500 hover:bg-cyan-400 text-slate-950 rounded-xl font-semibold transition shadow"
@@ -112,9 +150,13 @@ export const AIChatPage: React.FC = () => {
 
           <div className="flex-1 overflow-y-auto p-3 space-y-1">
             {loadingSessions ? (
-              <div className="p-4 text-center text-sm text-slate-500">Loading conversations...</div>
+              <div className="p-4 text-center text-sm text-slate-500">
+                Loading conversations...
+              </div>
             ) : sessions.length === 0 ? (
-              <div className="p-6 text-center text-sm text-slate-500">No previous conversations.</div>
+              <div className="p-6 text-center text-sm text-slate-500">
+                No previous conversations.
+              </div>
             ) : (
               sessions.map((s) => {
                 const isActive = activeSession?.id === s.id;
@@ -122,7 +164,9 @@ export const AIChatPage: React.FC = () => {
                   <div
                     key={s.id}
                     className={`group flex items-center justify-between p-3 rounded-xl cursor-pointer text-sm transition ${
-                      isActive ? "bg-slate-800 text-white font-medium shadow-inner" : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
+                      isActive
+                        ? "bg-slate-800 text-white font-medium shadow-inner"
+                        : "text-slate-400 hover:bg-slate-800/60 hover:text-slate-200"
                     }`}
                     onClick={() => {
                       selectSession(s.id);
@@ -198,16 +242,35 @@ export const AIChatPage: React.FC = () => {
                 <Menu size={20} />
               </button>
               <div>
-                <h1 className="font-semibold text-slate-100 flex items-center gap-2">
+                <h1 className="font-semibold text-slate-100 flex items-center gap-2 text-sm sm:text-base">
                   <Sparkles size={18} className="text-cyan-400" />
                   {activeSession?.title || "AI Business Analyst"}
                 </h1>
-                {activeSession?.dataset && (
-                  <div className="flex items-center gap-1.5 text-xs text-cyan-300 mt-0.5">
-                    <Database size={13} />
-                    <span>Grounded in: <strong>{activeSession.dataset.originalName}</strong></span>
-                  </div>
-                )}
+              </div>
+            </div>
+
+            {/* Dataset Selector Dropdown */}
+            <div className="flex items-center gap-2">
+              <Database size={15} className="text-cyan-400 hidden sm:inline" />
+              <div className="relative">
+                <select
+                  value={currentDatasetId || ""}
+                  onChange={(e) => setSelectedDatasetId(e.target.value || undefined)}
+                  className="appearance-none bg-slate-900 border border-slate-700 hover:border-cyan-500/60 text-slate-200 text-xs rounded-xl px-3 py-1.5 pr-8 outline-none cursor-pointer focus:ring-1 focus:ring-cyan-500"
+                >
+                  <option value="" disabled>
+                    Select Active Dataset
+                  </option>
+                  {availableDatasets.map((ds) => (
+                    <option key={ds.id} value={ds.id}>
+                      {ds.originalName}
+                    </option>
+                  ))}
+                </select>
+                <ChevronDown
+                  size={14}
+                  className="absolute right-2.5 top-1/2 -translate-y-1/2 pointer-events-none text-slate-400"
+                />
               </div>
             </div>
           </header>
@@ -318,15 +381,15 @@ export const AIChatPage: React.FC = () => {
 
         {/* Right Sidebar: Copilot Workspace (Scenarios & Proactive Feed) */}
         <aside className="hidden xl:flex flex-col w-96 bg-slate-900 border-l border-slate-800 h-full overflow-hidden flex-shrink-0">
-          {activeSession?.dataset?.id ? (
+          {currentDatasetId ? (
             <CopilotWorkspace
-              datasetId={activeSession.dataset.id}
+              datasetId={currentDatasetId}
               onSendPrompt={(prompt) => onSend(prompt)}
             />
           ) : (
             <div className="flex flex-col h-full items-center justify-center p-8 text-center space-y-3 text-slate-500 text-sm">
               <Database size={32} className="text-slate-600" />
-              <p>Link or select a dataset session to view proactive statistical insights and run what-if simulations.</p>
+              <p>Upload or select a dataset from the header dropdown to view proactive statistical insights and run what-if simulations.</p>
             </div>
           )}
         </aside>

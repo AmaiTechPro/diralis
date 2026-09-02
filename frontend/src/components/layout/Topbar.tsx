@@ -18,6 +18,12 @@ const navItems = [
     name: "Datasets",
     path: "/datasets",
   },
+
+  {
+    name: "Integrations",
+    path: "/integrations",
+  },
+  
   {
     name: "AI Insights",
     path: "/ai-insights",

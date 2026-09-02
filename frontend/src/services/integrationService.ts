@@ -48,7 +48,7 @@ export async function getIntegrationFreshness(connectionId: string): Promise<Con
 
 export async function getShopifyConnectUrl(shop: string): Promise<{ authorizationUrl: string; state: string }> {
   return await apiFetch<{ authorizationUrl: string; state: string }>(
-    `/api/integrations/shopify/connect?shop=${encodeURIComponent(shop)}`
+    `/integrations/shopify/connect?shop=${encodeURIComponent(shop)}`
   );
 }
 

@@ -37,12 +37,12 @@ export interface ConnectionFreshness {
 }
 
 export async function listIntegrationsFreshness(): Promise<ConnectionFreshness[]> {
-  const data = await apiFetch<{ connections: ConnectionFreshness[] }>("/api/integrations/freshness");
+  const data = await apiFetch<{ connections: ConnectionFreshness[] }>("/integrations/freshness");
   return data.connections;
 }
 
 export async function getIntegrationFreshness(connectionId: string): Promise<ConnectionFreshness> {
-  const data = await apiFetch<{ freshness: ConnectionFreshness }>(`/api/integrations/${connectionId}/freshness`);
+  const data = await apiFetch<{ freshness: ConnectionFreshness }>(`/integrations/${connectionId}/freshness`);
   return data.freshness;
 }
 

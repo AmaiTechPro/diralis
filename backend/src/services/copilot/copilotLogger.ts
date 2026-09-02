@@ -6,7 +6,9 @@ export type ObservabilityEventType =
   | "DETERMINISTIC_TOOL_EXECUTED"
   | "AI_PROVIDER_CALLED"
   | "FALLBACK_TRIGGERED"
-  | "COPILOT_TURN_COMPLETED";
+  | "COPILOT_TURN_COMPLETED"
+  | "MAP_PROFILE_REFRESHED"
+  | "MAP_PROFILE_REFRESH_FAILED";
 
 export interface LogContext {
   correlationId?: string;

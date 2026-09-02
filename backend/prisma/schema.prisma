@@ -75,6 +75,10 @@ model User {
 
   createdAt DateTime @default(now())
 
+  canonicalTransactions  CanonicalTransaction[]
+  canonicalInventoryItems CanonicalInventoryItem[]
+
+
   datasets            Dataset[]
   integrationConnections IntegrationConnection[]
   syncJobs               SyncJob[]
@@ -408,25 +412,32 @@ model IntegrationConnection {
 
   syncJobs         SyncJob[]
   mappings         CanonicalSchemaMapping[]
+  canonicalTransactions CanonicalTransaction[]
+  canonicalInventoryItems CanonicalInventoryItem[]
 
   @@index([userId, providerId])
   @@index([status])
 }
 
 model SyncJob {
-  id             String                @id @default(cuid())
-  connectionId   String
-  connection     IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-  userId         String
-  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
-  status         SyncJobStatus         @default(PENDING)
-  recordsFetched Int                   @default(0)
-  recordsIngested Int                  @default(0)
-  errorMessage   String?               @db.Text
-  metadata       Json?                 // Diagnostics, token usage, latency
-  startedAt      DateTime?
-  completedAt    DateTime?
-  createdAt      DateTime              @default(now())
+  id                  String                @id @default(cuid())
+  connectionId        String
+  connection          IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  userId              String
+  user                User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  status              SyncJobStatus         @default(PENDING)
+  recordsFetched      Int                   @default(0)
+  recordsIngested     Int                   @default(0)
+  recordsAccepted     Int                   @default(0)
+  recordsRejected     Int                   @default(0)
+  recordsDeduplicated Int                   @default(0)
+  mapRefreshStatus    String?               // "PENDING" | "SUCCESS" | "FAILED" | "SKIPPED"
+  errorMessage        String?               @db.Text
+  metadata            Json?                 // Diagnostics, token usage, latency
+  startedAt           DateTime?
+  completedAt         DateTime?
+  createdAt           DateTime              @default(now())
 
   @@index([connectionId, createdAt])
   @@index([userId, status])
@@ -445,5 +456,67 @@ model CanonicalSchemaMapping {
   @@unique([connectionId, sourceEntity])
 }
 
+
+model CanonicalTransaction {
+  id              String                @id @default(cuid())
+  userId          String
+  user            User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId    String
+  connection      IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  externalId      String                // Source system identifier
+  sourceEntity    String                @default("transactions")
+  transactionDate DateTime
+  
+  currency        String                @default("USD")
+  subtotal        Float                 @default(0.0)
+  tax             Float                 @default(0.0)
+  discount        Float                 @default(0.0)
+  totalAmount     Float
+  status          String                @default("COMPLETED") // "COMPLETED", "REFUNDED", "VOID"
+  
+  customerRef     String?
+  storeLocation   String?
+  sourceMetadata  Json?
+
+  createdAt       DateTime              @default(now())
+  updatedAt       DateTime              @updatedAt
+
+  @@unique([connectionId, externalId])
+  @@index([userId, transactionDate])
+  @@index([connectionId, createdAt])
+}
+
+model CanonicalInventoryItem {
+  id               String                @id @default(cuid())
+  userId           String
+  user             User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  connectionId     String
+  connection       IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+
+  externalId       String                // Source system item identifier
+  sourceEntity     String                @default("inventory")
+  sku              String
+  productName      String
+  category         String?
+  
+  currentStock     Float                 @default(0.0)
+  availableStock   Float?
+  reservedStock    Float?
+  reorderThreshold Float?
+  unitCost         Float?
+  inventoryValue   Float?
+  
+  storeLocation    String?
+  effectiveDate    DateTime              @default(now())
+  sourceMetadata   Json?
+
+  createdAt        DateTime              @default(now())
+  updatedAt        DateTime              @updatedAt
+
+  @@unique([connectionId, externalId])
+  @@index([userId, sku])
+  @@index([connectionId, updatedAt])
+}
 
 

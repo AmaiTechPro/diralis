@@ -6,9 +6,15 @@ import {
   triggerManualSync,
   listConnections,
   deleteConnection,
+  listConnectionsFreshness,
+  getConnectionFreshness,
 } from "../controllers/integrationController";
 
 const router = Router();
+
+// Freshness endpoints (must precede /:connectionId routes to avoid wildcard collision)
+router.get("/freshness", authenticate, listConnectionsFreshness);
+router.get("/:connectionId/freshness", authenticate, getConnectionFreshness);
 
 // Shopify OAuth connection flows
 router.get("/shopify/connect", authenticate, connectShopify);

@@ -2,6 +2,8 @@ import { Request, Response } from "express";
 import { ShopifyOAuthService } from "../services/integration/providers/shopify/shopifyOAuthService";
 import { ConnectionService } from "../services/integration/connectionService";
 import { SyncOrchestratorService } from "../services/integration/syncOrchestratorService";
+import { DataFreshnessService } from "../services/integration/dataFreshnessService";
+import { EntitlementService } from "../services/entitlementService";
 
 export async function connectShopify(req: Request, res: Response): Promise<void> {
   try {
@@ -122,4 +124,63 @@ export async function deleteConnection(req: Request, res: Response): Promise<voi
     res.status(400).json({ error: err.message || "Failed to delete connection." });
   }
 }
+
+export async function listConnectionsFreshness(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    // Entitlement verification
+    const entitlement = await EntitlementService.evaluateConnectorAccess(userId);
+    if (!entitlement.allowed) {
+      res.status(403).json({ error: entitlement.message || "PLAN_NOT_ENTITLED" });
+      return;
+    }
+
+    const connections = await DataFreshnessService.listUserConnectionsFreshness(userId);
+    res.json({ connections });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to list connection freshness." });
+  }
+}
+
+export async function getConnectionFreshness(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const connectionId = Array.isArray(req.params.connectionId)
+      ? req.params.connectionId[0]
+      : req.params.connectionId;
+
+    if (!connectionId) {
+      res.status(400).json({ error: "MISSING_PARAM: connectionId is required." });
+      return;
+    }
+
+    // Entitlement verification
+    const entitlement = await EntitlementService.evaluateConnectorAccess(userId);
+    if (!entitlement.allowed) {
+      res.status(403).json({ error: entitlement.message || "PLAN_NOT_ENTITLED" });
+      return;
+    }
+
+    const freshness = await DataFreshnessService.getConnectionFreshness(userId, connectionId, true);
+    if (!freshness) {
+      res.status(404).json({ error: "CONNECTION_NOT_FOUND" });
+      return;
+    }
+
+    res.json({ freshness });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to get connection freshness." });
+  }
+}
+
 

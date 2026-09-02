@@ -2,12 +2,40 @@ import { useAuth } from "../context/AuthContext";
 import { getGreeting } from "../utils/getGreeting";
 import { motion } from "framer-motion";
 import { useDashboard } from "../hooks/useDashboard";
+import { Layers } from "lucide-react";
+
+     {/* FRESHNESS BANNERS IMPORT */}
+
+import { useEffect, useState } from "react";
+import { Link } from "react-router-dom";
+import { listIntegrationsFreshness, type ConnectionFreshness } from "../services/integrationService";
+import { FreshnessBadge } from "../components/integrations/FreshnessBadge";
+
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { text, emoji } = getGreeting();
 
   const { dashboardData, loading, error } = useDashboard();
+
+  const [connections, setConnections] = useState<ConnectionFreshness[]>([]);
+
+  useEffect(() => {
+    let isMounted = true;
+    listIntegrationsFreshness()
+      .then((conns) => {
+        if (isMounted) setConnections(conns);
+      })
+      .catch(() => {
+        // Silently ignore if unentitled or unavailable on dashboard
+      });
+    return () => {
+      isMounted = false;
+    };
+  }, []);
+
+  const activeConnection = connections.find((c) => c.status === "ACTIVE") || connections[0];
+
 
   if (loading) {
     return (
@@ -48,6 +76,35 @@ export default function Dashboard() {
           title="Datasets"
           value={dashboardData.stats.datasets.toString()}
         />
+
+        {activeConnection && (
+        <div className="mt-6 p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+          <div className="flex items-center gap-3">
+            <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
+              <Layers size={18} />
+            </div>
+            <div>
+              <div className="flex items-center gap-2">
+                <span className="text-sm font-semibold text-slate-200">
+                  {activeConnection.name}
+                </span>
+                <FreshnessBadge freshness={activeConnection.freshness} />
+              </div>
+              <p className="text-xs text-slate-400 mt-0.5">
+                {activeConnection.lastSuccessfulSyncAt
+                  ? `Last synchronized: ${new Date(activeConnection.lastSuccessfulSyncAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })} (${activeConnection.recordsLastSynced} records)`
+                  : "Never synchronized"}
+              </p>
+            </div>
+          </div>
+          <Link
+            to="/integrations"
+            className="text-xs font-medium text-cyan-400 hover:text-cyan-300 self-start sm:self-auto hover:underline"
+          >
+            Manage Data Sources &rarr;
+          </Link>
+        </div>
+      )}
 
         <StatCard
           title="AI Reports"

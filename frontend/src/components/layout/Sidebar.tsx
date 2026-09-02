@@ -10,6 +10,7 @@ import {
   Settings,
   LogOut,
   Sparkles,
+  Layers,
 } from "lucide-react";
 import { NavLink, useNavigate, Link } from "react-router-dom";
 import { useAuth } from "../../context/AuthContext";
@@ -100,6 +101,14 @@ export default function Sidebar({
           to="/datasets"
           icon={<Database size={20} />}
           title="Datasets"
+          collapsed={collapsed}
+          onClick={onClose}
+        />
+
+        <SidebarLink
+          to="/integrations"
+          icon={<Layers size={20} />}
+          title="Integrations"
           collapsed={collapsed}
           onClick={onClose}
         />

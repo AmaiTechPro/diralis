@@ -41,6 +41,8 @@ import BillingVerify from "./pages/BillingVerify";
 
 import Billing from "./pages/Billing";
 
+import Integrations from "./pages/Integrations";
+
 
 
 function App() {
@@ -200,6 +202,17 @@ function App() {
 
             </AppLayout>
 
+          </ProtectedRoute>
+        }
+      />
+
+      <Route
+        path="/integrations"
+        element={
+          <ProtectedRoute>
+            <AppLayout>
+              <Integrations />
+            </AppLayout>
           </ProtectedRoute>
         }
       />

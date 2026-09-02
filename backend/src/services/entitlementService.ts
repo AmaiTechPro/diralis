@@ -111,5 +111,84 @@ export class EntitlementService {
     CopilotLogger.log("ENTITLEMENT_EVALUATED", { correlationId, userId }, { decision: allowedDecision, tier: planCode });
     return allowedDecision;
   }
+
+  /**
+   * Evaluates if a tenant can configure or activate external connectors based on their 5-tier plan.
+   * FREE: 0 connectors (manual upload only)
+   * STARTER: 1 connector
+   * PRO: 3 connectors
+   * BUSINESS: unlimited (-1)
+   * CUSTOM: unlimited (-1)
+   */
+  public static async evaluateConnectorAccess(
+    userId: string,
+    options?: { correlationId?: string }
+  ): Promise<EntitlementDecision> {
+    const correlationId = options?.correlationId || CopilotLogger.createCorrelationId();
+
+    if (!userId) {
+      const decision: EntitlementDecision = {
+        allowed: false,
+        statusCode: 401,
+        code: "AUTH_REQUIRED",
+        message: "Authentication is required to perform this action.",
+      };
+      CopilotLogger.log("ENTITLEMENT_EVALUATED", { correlationId, userId }, { decision }, undefined, "WARN");
+      return decision;
+    }
+
+    const plan = await getUserPlan(userId);
+    const planCode = plan?.code || "FREE";
+
+    const defaultLimits: Record<string, number> = {
+      FREE: 0,
+      STARTER: 1,
+      PRO: 3,
+      BUSINESS: -1,
+      CUSTOM: -1,
+    };
+
+    const configuredLimit = await getUsageLimit(userId, "maxActiveConnectors");
+    const maxAllowed = configuredLimit !== null ? configuredLimit : (defaultLimits[planCode] ?? 0);
+
+    if (maxAllowed === 0) {
+      const decision: EntitlementDecision = {
+        allowed: false,
+        statusCode: 403,
+        code: "PLAN_NOT_ENTITLED",
+        message: "Automated business data connectors require a Starter or higher tier.",
+        details: { tier: planCode, quotaLimit: 0 },
+      };
+      CopilotLogger.log("ENTITLEMENT_EVALUATED", { correlationId, userId }, { decision }, undefined, "WARN");
+      return decision;
+    }
+
+    if (maxAllowed !== -1) {
+      const currentCount = await (prisma as any).integrationConnection.count({
+        where: { userId, status: "ACTIVE" },
+      });
+
+      if (currentCount >= maxAllowed) {
+        const decision: EntitlementDecision = {
+          allowed: false,
+          statusCode: 403,
+          code: "QUOTA_EXHAUSTED",
+          message: `Maximum active connectors limit (${maxAllowed}) reached for your plan.`,
+          details: { currentUsage: currentCount, quotaLimit: maxAllowed, tier: planCode },
+        };
+        CopilotLogger.log("ENTITLEMENT_EVALUATED", { correlationId, userId }, { decision }, undefined, "WARN");
+        return decision;
+      }
+    }
+
+    const decision: EntitlementDecision = {
+      allowed: true,
+      statusCode: 200,
+      details: { tier: planCode, quotaLimit: maxAllowed },
+    };
+    CopilotLogger.log("ENTITLEMENT_EVALUATED", { correlationId, userId }, { decision, tier: planCode });
+    return decision;
+  }
 }
+
 

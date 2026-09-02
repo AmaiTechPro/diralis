@@ -76,6 +76,8 @@ model User {
   createdAt DateTime @default(now())
 
   datasets            Dataset[]
+  integrationConnections IntegrationConnection[]
+  syncJobs               SyncJob[]
   chatSessions        ChatSession[]
   passwordResetTokens PasswordResetToken[]
 
@@ -364,6 +366,83 @@ model CopilotInsight {
 
   @@index([userId, datasetId, dismissedAt])
   @@index([datasetId, createdAt])
+}
+
+
+enum IntegrationStatus {
+  ACTIVE
+  INACTIVE
+  NEEDS_REAUTH
+  ERROR
+}
+
+enum SyncJobStatus {
+  PENDING
+  RUNNING
+  COMPLETED
+  FAILED
+  PARTIAL
+}
+
+enum SyncFrequency {
+  MANUAL
+  HOURLY
+  DAILY
+  REALTIME
+}
+
+model IntegrationConnection {
+  id               String            @id @default(cuid())
+  userId           String
+  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerId       String            // e.g. "square", "shopify_pos", "postgres"
+  name             String
+  status           IntegrationStatus @default(ACTIVE)
+  encryptedConfig  String            @db.Text // AES-256-GCM (iv:authTag:ciphertext)
+  syncFrequency    SyncFrequency     @default(DAILY)
+  cursor           Json?             // Checkpoint metadata: timestamps, high watermarks, tokens
+  lastSyncAt       DateTime?
+  errorDetails     String?           @db.Text
+  createdAt        DateTime          @default(now())
+  updatedAt        DateTime          @updatedAt
+
+  syncJobs         SyncJob[]
+  mappings         CanonicalSchemaMapping[]
+
+  @@index([userId, providerId])
+  @@index([status])
+}
+
+model SyncJob {
+  id             String                @id @default(cuid())
+  connectionId   String
+  connection     IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  userId         String
+  user           User                  @relation(fields: [userId], references: [id], onDelete: Cascade)
+  status         SyncJobStatus         @default(PENDING)
+  recordsFetched Int                   @default(0)
+  recordsIngested Int                  @default(0)
+  errorMessage   String?               @db.Text
+  metadata       Json?                 // Diagnostics, token usage, latency
+  startedAt      DateTime?
+  completedAt    DateTime?
+  createdAt      DateTime              @default(now())
+
+  @@index([connectionId, createdAt])
+  @@index([userId, status])
+}
+
+model CanonicalSchemaMapping {
+  id             String                @id @default(cuid())
+  connectionId   String
+  connection     IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  sourceEntity   String                // e.g., "orders", "inventory_levels"
+  targetEntity   String                // e.g., "canonical_transactions", "canonical_inventory"
+  fieldMappings  Json                  // { "sourceField": "targetField" }
+  createdAt      DateTime              @default(now())
+  updatedAt      DateTime              @updatedAt
+
+  @@unique([connectionId, sourceEntity])
 }
 
 

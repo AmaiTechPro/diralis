@@ -396,27 +396,33 @@ enum SyncFrequency {
 }
 
 model IntegrationConnection {
-  id               String            @id @default(cuid())
-  userId           String
-  user             User              @relation(fields: [userId], references: [id], onDelete: Cascade)
-  providerId       String            // e.g. "square", "shopify_pos", "postgres"
-  name             String
-  status           IntegrationStatus @default(ACTIVE)
-  encryptedConfig  String            @db.Text // AES-256-GCM (iv:authTag:ciphertext)
-  syncFrequency    SyncFrequency     @default(DAILY)
-  cursor           Json?             // Checkpoint metadata: timestamps, high watermarks, tokens
-  lastSyncAt       DateTime?
-  errorDetails     String?           @db.Text
-  createdAt        DateTime          @default(now())
-  updatedAt        DateTime          @updatedAt
+  id                   String                   @id @default(cuid())
+  userId               String
+  user                 User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerId           String                   // e.g. "square", "shopify_pos", "postgres"
+  name                 String
+  status               IntegrationStatus        @default(ACTIVE)
+  encryptedConfig      String                   @db.Text // AES-256-GCM (iv:authTag:ciphertext)
+  syncFrequency        SyncFrequency            @default(DAILY)
+  cursor               Json?                    // Checkpoint metadata: timestamps, high watermarks, tokens
+  lastSyncAt           DateTime?
+  lastAttemptedAt      DateTime?
+  nextSyncAt           DateTime?
+  syncInProgress       Boolean                  @default(false)
+  syncLeaseExpiresAt   DateTime?
+  retryCount           Int                      @default(0)
+  errorDetails         String?                  @db.Text
+  createdAt            DateTime                 @default(now())
+  updatedAt            DateTime                 @updatedAt
 
-  syncJobs         SyncJob[]
-  mappings         CanonicalSchemaMapping[]
+  syncJobs             SyncJob[]
+  mappings             CanonicalSchemaMapping[]
   canonicalTransactions CanonicalTransaction[]
   canonicalInventoryItems CanonicalInventoryItem[]
 
   @@index([userId, providerId])
   @@index([status])
+  @@index([status, syncFrequency, nextSyncAt])
 }
 
 model SyncJob {

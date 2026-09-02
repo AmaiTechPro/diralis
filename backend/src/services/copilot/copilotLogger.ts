@@ -8,7 +8,9 @@ export type ObservabilityEventType =
   | "FALLBACK_TRIGGERED"
   | "COPILOT_TURN_COMPLETED"
   | "MAP_PROFILE_REFRESHED"
-  | "MAP_PROFILE_REFRESH_FAILED";
+  | "MAP_PROFILE_REFRESH_FAILED"
+  | "SYNC_SCHEDULED"
+  | "SYNC_COMPLETED";
 
 export interface LogContext {
   correlationId?: string;

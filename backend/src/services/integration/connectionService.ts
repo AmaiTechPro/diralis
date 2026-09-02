@@ -1,11 +1,13 @@
 import prisma from "../../lib/prisma";
 import { VaultService } from "./vaultService";
 import { MockPosProvider } from "./providers/mockPosProvider";
+import { ShopifyConnectorProvider } from "./providers/shopify/shopifyConnectorProvider";
 import { IConnectorProvider } from "./connectorTypes";
 
 export class ConnectionService {
-  private static providers: Map<string, IConnectorProvider> = new Map([
+  private static providers = new Map<string, IConnectorProvider>([
     ["mock_pos", new MockPosProvider()],
+    ["shopify", new ShopifyConnectorProvider()],
   ]);
 
   public static getProvider(providerId: string): IConnectorProvider {
@@ -90,5 +92,4 @@ export class ConnectionService {
     return { success: true };
   }
 }
-
 

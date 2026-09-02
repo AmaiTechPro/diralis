@@ -7,6 +7,8 @@ import profileRoutes from "./profileRoutes";
 import reportRoutes from "./reportRoutes";
 import adminRoutes from "./admin.routes";
 import billingRoutes from "./billingRoutes";
+import copilotRoutes from "./copilotRoutes";
+import integrationRoutes from "./integrationRoutes";
 import {
   authLimiter,
   uploadLimiter,
@@ -34,13 +36,11 @@ router.use("/billing", billingRoutes);
 // Analytics profile routes
 router.use("/profiles", profileRoutes);
 
-export default router;
-
-
-
-import copilotRoutes from "./copilotRoutes";
-
-// Add to your router:
+// Copilot route
 router.use("/copilot", copilotRoutes);
 
+// Integration routes
+router.use("/integrations", integrationRoutes);
+
+export default router;
 

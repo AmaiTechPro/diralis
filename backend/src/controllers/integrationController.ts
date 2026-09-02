@@ -1,0 +1,125 @@
+import { Request, Response } from "express";
+import { ShopifyOAuthService } from "../services/integration/providers/shopify/shopifyOAuthService";
+import { ConnectionService } from "../services/integration/connectionService";
+import { SyncOrchestratorService } from "../services/integration/syncOrchestratorService";
+
+export async function connectShopify(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const { shop } = req.query;
+    if (!shop || typeof shop !== "string") {
+      res.status(400).json({ error: "MISSING_PARAM: 'shop' query parameter is required." });
+      return;
+    }
+
+    const { url, state } = ShopifyOAuthService.buildAuthorizationUrl({ userId, shop });
+    res.json({ authorizationUrl: url, state });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || "Failed to initiate Shopify connection." });
+  }
+}
+
+export async function shopifyCallback(req: Request, res: Response): Promise<void> {
+  try {
+    const { code, shop, state } = req.query;
+
+    if (!code || !shop || !state || typeof code !== "string" || typeof shop !== "string" || typeof state !== "string") {
+      res.status(400).json({ error: "MISSING_PARAMS: code, shop, and state are required." });
+      return;
+    }
+
+    const result = await ShopifyOAuthService.handleCallback({
+      code,
+      shop,
+      state,
+      currentUserId: req.user?.userId,
+    });
+
+    res.json({
+      success: true,
+      message: "Shopify store successfully connected.",
+      connection: result,
+    });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || "Shopify callback failed." });
+  }
+}
+
+export async function triggerManualSync(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const connectionId = Array.isArray(req.params.connectionId)
+      ? req.params.connectionId[0]
+      : req.params.connectionId;
+
+    if (!connectionId) {
+      res.status(400).json({ error: "MISSING_PARAM: connectionId is required." });
+      return;
+    }
+
+    const { entityName } = req.body;
+
+    const result = await SyncOrchestratorService.orchestrateSync({
+      connectionId,
+      userId,
+      entityName: entityName || "transactions",
+    });
+
+    res.json({
+      success: result.status === "COMPLETED",
+      result,
+    });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to trigger sync." });
+  }
+}
+
+export async function listConnections(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const connections = await ConnectionService.listConnections(userId);
+    res.json({ connections });
+  } catch (err: any) {
+    res.status(500).json({ error: err.message || "Failed to list connections." });
+  }
+}
+
+export async function deleteConnection(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const connectionId = Array.isArray(req.params.connectionId)
+      ? req.params.connectionId[0]
+      : req.params.connectionId;
+
+    if (!connectionId) {
+      res.status(400).json({ error: "MISSING_PARAM: connectionId is required." });
+      return;
+    }
+
+    await ConnectionService.deleteConnection(userId, connectionId);
+    res.json({ success: true, message: "Connection disconnected." });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || "Failed to delete connection." });
+  }
+}
+

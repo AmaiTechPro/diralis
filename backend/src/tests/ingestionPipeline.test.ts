@@ -61,7 +61,7 @@ describe("Phase 4 — Milestone 4.2: Ingestion & Canonical Normalization Suite",
       userId: testUserId,
       providerId: "mock_pos",
       name: "Downtown POS",
-      config: { apiKey: "live_pos_key_123" },
+      config: { apiKey: "test_mock_key_pos_001" },
       syncFrequency: "HOURLY",
     });
     connectionId = conn.id;

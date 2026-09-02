@@ -77,7 +77,7 @@ describe("Phase 4 — Milestone 4.3: Scheduled Background Synchronization Suite"
       userId: testUserId,
       providerId: "mock_pos",
       name: "Scheduler POS",
-      config: { apiKey: "live_pos_key_123" },
+      config: { apiKey: "test_mock_key_pos_001" },
       syncFrequency: "HOURLY",
     });
     connectionId = conn.id;

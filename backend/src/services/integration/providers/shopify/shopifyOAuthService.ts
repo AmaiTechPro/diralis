@@ -170,9 +170,11 @@ export class ShopifyOAuthService {
     const verifiedState = this.validateState(params.state, params.currentUserId);
     const sanitizedShop = ShopifyClient.sanitizeShopDomain(params.shop);
 
-    if (sanitizedShop !== verifiedState.shop) {
-      throw new Error("INVALID_SHOP_DOMAIN: Shop mismatch between state and callback.");
-    }
+      if (sanitizedShop !== verifiedState.shop) {
+        console.warn(
+          `[ShopifyOAuth] Canonical shop mismatch: initiated with "${verifiedState.shop}", returned canonical "${sanitizedShop}". Proceeding with canonical domain.`
+        );
+      }
 
     // 2. Exchange authorization code
     const tokenResult = await this.exchangeCodeForToken({

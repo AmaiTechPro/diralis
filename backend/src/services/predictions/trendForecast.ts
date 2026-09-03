@@ -1,28 +1,30 @@
 import { detectTrend } from "./trendDirection";
 import { linearRegressionPredict } from "./linearRegression";
 
-function pickBusinessMetric(
-  numericColumns: string[]
-): string | undefined {
+const BLOCKED_TOKENS = [
+  "index",
+  "id",
+  "customer id",
+  "userid",
+  "order id",
+  "invoice id",
+  "invoice",
+  "row",
+  "uuid",
+  "key",
+];
 
-  const blocked = [
-    "index",
-    "id",
-    "customer id",
-    "userid",
-    "order id",
-    "invoice id",
-    "row"
-  ];
+function isBlocked(name: string): boolean {
+  const lower = name.toLowerCase().trim();
+  return BLOCKED_TOKENS.some((token) => lower === token || lower.includes(token));
+}
 
-  return numericColumns.find(column => {
+function pickBusinessMetric(numericColumns: string[]): string | undefined {
+  return numericColumns.find((column) => !isBlocked(column));
+}
 
-    const name = column.toLowerCase();
-
-    return !blocked.some(word => name.includes(word));
-
-  });
-
+function pickDateMetric(dateColumns: string[]): string | undefined {
+  return dateColumns.find((column) => !isBlocked(column));
 }
 
 export function generateTrendForecast(
@@ -31,76 +33,51 @@ export function generateTrendForecast(
   dateColumns: string[],
   statistics: Record<string, unknown>
 ): string[] {
-
   const forecasts: string[] = [];
 
-  const metric =
-    pickBusinessMetric(numericColumns);
+  const metric = pickBusinessMetric(numericColumns);
+  const dateField = pickDateMetric(dateColumns);
 
-  if (
-    dateColumns.length > 0 &&
-    metric
-  ) {
-
+  if (dateField && metric) {
     forecasts.push(
-      `Forecasting models can be built using ${dateColumns[0]} to predict future ${metric} values.`
+      `Time-series forecasting models can evaluate chronological trends in ${dateField} to project ${metric}.`
     );
-
+  } else if (metric) {
+    forecasts.push(
+      `Predictive models can be trained on sequential entries to estimate future values for ${metric}.`
+    );
   } else {
-
     forecasts.push(
-      "No suitable business metric was detected for predictive forecasting."
+      "No non-identifier business metric was identified for predictive forecasting."
     );
-
   }
 
-  if (rows >= 1000) {
-
+  if (rows >= 500) {
     forecasts.push(
-      "Dataset size is adequate for machine learning forecasting models."
+      "Dataset sample size provides solid statistical confidence for regression modeling."
     );
-
   } else {
-
     forecasts.push(
-      "Larger datasets generally improve prediction accuracy."
+      "Sample size is limited; expand observation counts to improve regression accuracy."
     );
-
   }
 
-  for (const [column, value] of Object.entries(statistics)) {
+  if (metric && statistics[metric]) {
+    const value = statistics[metric];
+    if (typeof value === "object" && value !== null) {
+      const stats = value as Record<string, unknown>;
+      const samples = stats.samples as number[] | undefined;
 
-    if (
-      typeof value !== "object" ||
-      value === null
-    ) continue;
-
-    if (
-      !metric ||
-      column !== metric
-    ) continue;
-
-    const stats =
-      value as Record<string, unknown>;
-
-    const samples =
-      stats.samples as number[] | undefined;
-
-    if (!samples) continue;
-
-    const trend =
-      detectTrend(samples);
-
-    const prediction =
-      linearRegressionPredict(samples, 3);
-
-    forecasts.push(
-      `${column} shows a ${trend.toLowerCase()} trend. Predicted next values: ${prediction.join(", ")}`
-    );
-
+      if (samples && samples.length >= 3) {
+        const trend = detectTrend(samples);
+        const prediction = linearRegressionPredict(samples, 3);
+        forecasts.push(
+          `${metric} exhibits a ${trend.toLowerCase()} trend. Projected next 3 intervals: ${prediction.join(", ")}.`
+        );
+      }
+    }
   }
 
   return forecasts;
-
 }
 

@@ -100,9 +100,16 @@ export async function sendMessage(req: Request, res: Response) {
       isAIAvailable = true;
       status = "SUCCESS";
     } catch (providerError: any) {
+      console.error("[AIProvider Error Details]:", {
+        message: providerError?.message,
+        status: providerError?.status,
+        code: providerError?.code,
+        error: providerError,
+      });
+
       if (isMapAvailable) {
         status = "DETERMINISTIC_FALLBACK";
-        reply = "AI interpretation is temporarily unavailable. Based on the verified dataset analytics (MAP), statistical distributions and schema properties remain accessible in your dashboard.";
+        reply = "AI interpretation is temporarily unavailable. Based on the verified dataset analytics (MAP),statistical distributions and schema properties remainaccessible in your dashboard.";
       } else {
         status = "PROVIDER_UNAVAILABLE";
         reply = "Diralis AI is temporarily unavailable. Please retry your question in a moment.";

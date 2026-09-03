@@ -43,7 +43,9 @@ export function generatePDFReport(
     Executive Summary
   */
 
-  if (report.summary) {
+  const executiveSummaryText = report.executiveSummary || report.summary;
+
+  if (executiveSummaryText) {
 
     doc
       .fontSize(15)
@@ -51,18 +53,15 @@ export function generatePDFReport(
         "Executive Summary"
       );
 
-
     doc
       .fontSize(11)
       .text(
-        report.summary
+        executiveSummaryText
       );
-
 
     doc.moveDown();
 
   }
-
 
 
 

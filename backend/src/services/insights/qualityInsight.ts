@@ -1,51 +1,3 @@
-           {/* Original Generate Insights Code 
-
-export function generateQualityInsight(
-  missingValues: Record<string, number>,
-  duplicates: number
-): string[] {
-
-  const insights: string[] = [];
-
-  Object.entries(missingValues).forEach(
-    ([column, missing]) => {
-
-      if (missing > 0) {
-
-        insights.push(
-          `${column} contains ${missing} missing values.`
-        );
-
-      }
-
-    }
-  );
-
-  if (duplicates > 0) {
-
-    insights.push(
-      `${duplicates} duplicate rows were detected.`
-    );
-
-  }
-
-  if (insights.length === 0) {
-
-    insights.push(
-      "No significant data quality issues were detected."
-    );
-
-  }
-
-  return insights;
-
-}
-
-
-
-          {/* End of Original Generate Insights Code */}
-
-
 export function generateQualityInsights(
   issues: string[],
   missingValues: Record<string, number>,
@@ -53,28 +5,45 @@ export function generateQualityInsights(
 ): string[] {
   const insights: string[] = [];
 
-  // Report any quality issues directly
+  // Report high-level quality flags directly
   for (const issue of issues) {
-    insights.push(`Quality issue detected: ${issue}`);
+    insights.push(`Data quality alert: ${issue}.`);
   }
 
-  // Highlight columns with missing values
-  for (const [column, count] of Object.entries(missingValues)) {
-    if (count > 0) {
-      insights.push(`${column} contains ${count} missing values.`);
+  // Aggregate missing values dynamically
+  const columnsWithMissing = Object.entries(missingValues)
+    .filter(([_, count]) => count > 0)
+    .sort((a, b) => b[1] - a[1]); // Sort descending by missing count
+
+  if (columnsWithMissing.length > 0) {
+    const totalMissing = columnsWithMissing.reduce((sum, [_, count]) => sum + count, 0);
+
+    if (columnsWithMissing.length <= 3) {
+      for (const [column, count] of columnsWithMissing) {
+        insights.push(`${column} contains ${count.toLocaleString()} missing values.`);
+      }
+    } else {
+      const topColumns = columnsWithMissing
+        .slice(0, 3)
+        .map(([col, count]) => `${col} (${count})`)
+        .join(", ");
+
+      insights.push(
+        `Missing values detected across ${columnsWithMissing.length} columns (${totalMissing.toLocaleString()} total cells). Highest impact in: ${topColumns}.`
+      );
     }
   }
 
-  // Handle duplicate rows if provided
+  // Handle duplicate records
   if (duplicates && duplicates > 0) {
-    insights.push(`${duplicates} duplicate rows were detected.`);
+    insights.push(`${duplicates.toLocaleString()} duplicate record(s) detected across sample rows.`);
   }
 
-  // If no issues, missing values, or duplicates
   if (insights.length === 0) {
-    insights.push("No significant data quality issues were detected.");
+    insights.push("No significant data hygiene or null-value anomalies detected.");
   }
 
   return insights;
 }
+
 

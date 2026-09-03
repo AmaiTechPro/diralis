@@ -1,5 +1,6 @@
 import { Request, Response } from "express";
 import fs from "node:fs";
+import path from "node:path";
 import prisma from "../lib/prisma";
 import { previewDataset } from "../services/previewService";
 import { getUsageLimit } from "../services/billingService";
@@ -7,6 +8,10 @@ import {
   getDatasets as getDatasetsService,
   deleteDataset as deleteDatasetService,
 } from "../services/datasetService";
+
+import { parseDataset } from "../services/datasetFileService";
+import { profileDataset } from "../services/profiler/profileDataset";
+import { ProactiveAnalysisService } from "../services/copilot/proactiveAnalysisService";
 
 interface DatasetParams {
   id: string;
@@ -44,7 +49,6 @@ export async function uploadDataset(req: Request, res: Response) {
       const maxAllowedBytes = storageLimitMb * 1024 * 1024;
 
       if (currentStorageBytes + req.file.size > maxAllowedBytes) {
-        // Clean up uploaded file on disk
         if (req.file.path && fs.existsSync(req.file.path)) {
           fs.unlinkSync(req.file.path);
         }
@@ -59,6 +63,7 @@ export async function uploadDataset(req: Request, res: Response) {
       }
     }
 
+    // 1. Persist initial dataset record
     const dataset = await prisma.dataset.create({
       data: {
         originalName: req.file.originalname,
@@ -68,6 +73,28 @@ export async function uploadDataset(req: Request, res: Response) {
         userId,
       },
     });
+
+    // 2. Deterministic Profiling & Proactive Analysis (MAP Engine)
+    try {
+      const rows = await parseDataset(dataset.id);
+      const profile = profileDataset(rows);
+
+      // Save profile metadata directly to DB
+      await prisma.dataset.update({
+        where: { id: dataset.id },
+        data: {
+          profileJson: profile as any,
+        },
+      });
+
+      // Generate initial proactive insights & anomaly metrics
+      await ProactiveAnalysisService.analyzeDataset(userId, dataset.id, rows);
+    } catch (analysisErr) {
+      console.warn(
+        `[MAP Profiling Warning] Could not complete instant profiling for dataset ${dataset.id}:`,
+        analysisErr
+      );
+    }
 
     return res.status(201).json({
       message: "Dataset uploaded successfully.",

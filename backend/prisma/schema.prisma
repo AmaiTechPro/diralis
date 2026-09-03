@@ -99,6 +99,7 @@ model Dataset {
   filename     String
   size         Int
   mimetype     String
+  profileJson     Json?
   uploadedAt   DateTime         @default(now())
 
   userId       String

@@ -29,7 +29,6 @@ Dataset ${idx + 1}: ${ds.originalName}
 }
 
 export async function buildMAPContext(userId: string, datasetId?: string): Promise<string> {
-  // 1. Fetch targeted or most recently uploaded dataset
   const dataset = await prisma.dataset.findFirst({
     where: {
       userId,
@@ -43,47 +42,60 @@ export async function buildMAPContext(userId: string, datasetId?: string): Promi
   }
 
   try {
-    // 2. Parse dataset deterministically via stream (server-side only, raw rows never forwarded to LLM)
-    const rows = await parseDataset(dataset.id);
-    const profile = profileDataset(rows);
+    let profile: any = dataset.profileJson;
 
-    // 3. Retrieve pre-computed Copilot proactive insights
+    // Fallback: If profileJson wasn't computed during upload, try parsing once and save to DB
+    if (!profile) {
+      try {
+        const rows = await parseDataset(dataset.id);
+        profile = profileDataset(rows);
+        await prisma.dataset.update({
+          where: { id: dataset.id },
+          data: { profileJson: profile },
+        });
+      } catch (fileErr) {
+        // Disk file gone on Render restart and no profile cached
+        return `
+### ACTIVE DATASET MAP (Metadata Aggregation Profile)
+- File: ${dataset.originalName}
+- Status: The raw source file was cleared during environment redeployment, and no persistent summary is cached. Please re-upload "${dataset.originalName}" to resume deterministic analytics.
+`;
+      }
+    }
+
+    // Retrieve proactive insights
     const insights = await prisma.copilotInsight.findMany({
       where: { datasetId: dataset.id, dismissedAt: null },
       orderBy: { createdAt: "desc" },
       take: 5,
     });
 
-    // 4. Format Column Summaries
     const columnSummary = profile.columnProfiles
-      .map(
-        (col) =>
+      ?.map(
+        (col: any) =>
           `- ${col.name} [Type: ${col.type}, Unique: ${col.unique}, Missing: ${col.missing}]`
       )
-      .join("\n");
+      .join("\n") || "None";
 
-    // 5. Format Numeric Distributions
     const statKeys = Object.keys(profile.statistics || {});
     const numericSummary =
       statKeys.length > 0
         ? statKeys
             .map((col) => {
               const s = profile.statistics[col];
-              return `- ${col}: Min=${s.min}, Max=${s.max}, Mean=${s.mean.toFixed(2)}, Median=${s.median.toFixed(2)}, StdDev=${s.standardDeviation.toFixed(2)}`;
+              return `- ${col}: Min=${s.min}, Max=${s.max}, Mean=${s.mean?.toFixed(2)}, Median=${s.median?.toFixed(2)}, StdDev=${s.standardDeviation?.toFixed(2)}`;
             })
             .join("\n")
         : "None detected.";
 
-    // 6. Format Significant Correlations
     const correlationSummary =
       profile.correlations && profile.correlations.length > 0
         ? profile.correlations
             .slice(0, 5)
-            .map((c) => `- ${c.columnA} <-> ${c.columnB}: r = ${c.coefficient.toFixed(3)}`)
+            .map((c: any) => `- ${c.columnA} <-> ${c.columnB}: r = ${c.coefficient?.toFixed(3)}`)
             .join("\n")
         : "No significant linear correlations detected.";
 
-    // 7. Format Proactive Anomaly Insights
     const insightSummary =
       insights.length > 0
         ? insights
@@ -94,12 +106,11 @@ export async function buildMAPContext(userId: string, datasetId?: string): Promi
             .join("\n")
         : "No active anomalous thresholds flagged.";
 
-    // 8. Return Compact, Token-Bounded MAP Payload
     return `
 ### ACTIVE DATASET MAP (Metadata Aggregation Profile)
 - File: ${dataset.originalName} (ID: ${dataset.id})
-- Dimensions: ${profile.totalRows || profile.rows} Rows x ${profile.columns} Columns
-- Quality Score: ${profile.qualityScore}% (Duplicates: ${profile.duplicateRows})
+- Dimensions: ${profile.totalRows || profile.rows || "N/A"} Rows x ${profile.columns || "N/A"} Columns
+- Quality Score: ${profile.qualityScore || 100}% (Duplicates: ${profile.duplicateRows || 0})
 
 #### SCHEMA & DATA TYPES
 ${columnSummary}
@@ -121,10 +132,8 @@ Answer strictly from the observed statistical facts, distributions, column bound
     return `
 ### ACTIVE DATASET MAP (Metadata Aggregation Profile)
 - Name: ${dataset.originalName}
-- Identifier: ${dataset.id}
-- Status: Detailed profiling encountered an issue during extraction. Rely strictly on verified schema properties.
+- Status: Detailed profiling encountered an issue. Rely strictly on verified schema properties.
 `;
   }
 }
-
 

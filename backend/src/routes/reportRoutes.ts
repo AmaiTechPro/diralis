@@ -20,14 +20,14 @@ router.get(
 router.get(
   "/generate",
   authenticate,
-  requireFeature("exportPdf"),
+  requireFeature("reports"),
   generateReportPDF
 );
 
 router.get(
   "/generate/:section",
   authenticate,
-  requireFeature("exportPdf"),
+  requireFeature("reports"),
   generateSectionReportPDF
 );
 

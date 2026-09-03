@@ -53,60 +53,81 @@ export async function getOverallInsights({
 
   const risks = analyzeRisks(businessHealth, warnings);
 
-  // Deterministic baseline calculations (Milestone 5.2, Section 21)
-  let summary = `Diralis analyzed ${datasets.length} dataset(s) with an overall business health score of ${businessHealth}%. Aggregated across all sources, ${totalInsights} analytical insights and ${warnings} operational warning(s) were observed.`;
-  
-  let recommendations = [
-    ...new Set(datasets.flatMap(d => d.recommendations)),
-  ].slice(0, 6);
+  // Extract real ingested dataset names and specific computed recommendations
+  const datasetNames = datasets
+    .map((d) => d.name)
+    .filter(Boolean)
+    .join(", ") || "Active Dataset";
+
+  const extractedRecs = [
+    ...new Set(datasets.flatMap((d) => d.recommendations)),
+  ].filter(Boolean);
+
+  // Real data-grounded baseline calculations
+  let summary = `Analyzed ${datasets.length} dataset(s) (${datasetNames}) with an aggregate health score of ${businessHealth}%. Discovered ${totalInsights} domain metric insight(s) and flagged ${warnings} data issue(s).`;
+
+  let recommendations = extractedRecs.length > 0
+    ? extractedRecs.slice(0, 5)
+    : [
+        `Maintain continuous ingestion on ${datasetNames} to stabilize statistical trends.`,
+        `Address ${warnings} detected data quality anomaly/anomalies to improve scoring reliability.`,
+      ];
 
   let opportunities: string[] = [];
-  if (businessHealth >= 90) {
-    opportunities.push("High dataset integrity enables reliable downstream machine learning forecasts.");
+  if (extractedRecs.length > 2) {
+    opportunities.push(
+      `Dataset profiles indicate actionable variance in key operational metrics across ${datasetNames}.`
+    );
   }
-  if (totalInsights >= 10) {
-    opportunities.push("Sufficient multi-metric depth exists to support autonomous decision scoring.");
-  }
-  if (warnings === 0) {
-    opportunities.push("Zero data quality warnings recorded, maximizing statistical confidence in KPI tracking.");
+  if (businessHealth >= 80) {
+    opportunities.push(
+      `High sample integrity (${businessHealth}%) supports automated KPI anomaly detection and forecasting.`
+    );
   }
   if (opportunities.length === 0) {
-    opportunities.push("Standardize data collection frequency to uncover high-confidence growth opportunities.");
+    opportunities.push(
+      `Expand observation volume in ${datasetNames} to unlock deeper automated cross-metric correlations.`
+    );
   }
 
-  // Grounded OpenAI Synthesis (Milestone 5.2, Section 1 & 8)
+  // Attempt live LLM synthesis
   try {
     const aiProvider = getAIProvider();
 
     const evidencePackage = {
-      totalDatasets: datasets.length,
-      averageHealthScore: businessHealth,
-      totalInsightsObserved: totalInsights,
-      totalWarningsIdentified: warnings,
+      datasets: datasets.map((d) => ({
+        name: d.name,
+        qualityScore: d.quality,
+        insightsCount: d.insights,
+        warningCount: d.warnings,
+        keyObservations: d.recommendations.slice(0, 3),
+      })),
+      aggregateHealth: businessHealth,
+      totalInsights,
+      totalWarnings: warnings,
       identifiedRisks: risks.slice(0, 3),
-      candidateRecommendations: recommendations.slice(0, 5),
     };
 
-    const prompt = `You are an elite retail analytics executive. Synthesize this portfolio of ingested business datasets into concise executive intelligence.
+    const prompt = `You are a senior data and retail intelligence analyst. Synthesize the provided ingested business datasets into executive intelligence.
 
 GROUNDING RULES:
-1. Rely strictly on the numbers and metrics in the evidence package.
-2. Do NOT invent new business statistics, external competitors, or imaginary revenue numbers.
-3. Keep the tone sharp, factual, and decision-oriented.
+1. Base all observations strictly on the datasets and numbers provided in the evidence package.
+2. Reference the real dataset name(s) and metrics directly.
+3. Do not invent external data, fictitious brand names, or imaginary numbers.
 
 Evidence Package:
 ${JSON.stringify(evidencePackage, null, 2)}
 
-Respond ONLY with a valid JSON object matching this schema:
+Respond ONLY with valid JSON:
 {
-  "summary": "A 2-sentence executive assessment of portfolio-wide data health, analytical readiness, and operational risk.",
+  "summary": "2-sentence executive assessment mentioning specific dataset health and metrics.",
   "opportunities": [
-    "Specific opportunity grounded in the health score and insight count.",
-    "Strategic leverage opportunity based on available analytical depth."
+    "Opportunity grounded in the dataset metrics.",
+    "Strategic leverage opportunity based on observed trends."
   ],
   "recommendations": [
-    "Prioritized strategic recommendation 1 derived from data evidence.",
-    "Prioritized strategic recommendation 2 focusing on operational improvement."
+    "Prioritized actionable recommendation based on data evidence.",
+    "Operational recommendation based on data findings."
   ]
 }`;
 
@@ -129,7 +150,10 @@ Respond ONLY with a valid JSON object matching this schema:
       recommendations = parsed.recommendations;
     }
   } catch (err) {
-    console.warn("[overallInsights] OpenAI synthesis skipped, utilizing deterministic baseline:", (err as Error).message);
+    console.warn(
+      "[overallInsights] Live AI synthesis bypassed, serving grounded data fallback:",
+      (err as Error).message
+    );
   }
 
   return {

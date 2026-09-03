@@ -8,6 +8,7 @@ export class OpenAIProvider implements AIProvider {
   constructor() {
     this.client = new OpenAI({
       apiKey: process.env.OPENAI_API_KEY || "mock-key",
+      baseURL: process.env.OPENAI_BASE_URL || undefined,
     });
     this.model = process.env.OPENAI_MODEL || "gpt-4o-mini";
   }
@@ -31,5 +32,4 @@ export class OpenAIProvider implements AIProvider {
     return reply;
   }
 }
-
 

@@ -55,11 +55,14 @@ export async function getShopifyConnectUrl(shop: string): Promise<{ authorizatio
 export async function triggerManualSync(
   connectionId: string,
   entityName: "transactions" | "inventory" = "transactions"
-): Promise<{ success: boolean; result: any }> {
-  return await apiFetch<{ success: boolean; result: any }>(`/api/integrations/${connectionId}/sync`, {
-    method: "POST",
-    body: JSON.stringify({ entityName }),
-  });
+) {
+  return await apiFetch(
+    `/integrations/${connectionId}/sync`,
+    {
+      method: "POST",
+      body: JSON.stringify({ entityName }),
+    }
+  );
 }
 
 export async function disconnectIntegration(connectionId: string): Promise<{ success: boolean; message: string }> {

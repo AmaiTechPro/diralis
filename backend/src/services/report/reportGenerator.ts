@@ -43,19 +43,31 @@ export async function generateReport(
 
   // Deterministic fallback values (Milestone 5.2, Section 21)
   let executiveSummary = `Diralis analyzed ${profile.rows} records across ${profile.columns} columns for '${datasetName}'. Dataset quality achieved a health score of ${score}%.`;
-  
+
   let recommendations: string[] = [];
   if (profile.quality.issues && profile.quality.issues.length > 0) {
-    recommendations.push(`Address identified quality issues: ${profile.quality.issues.slice(0, 2).join("; ")}.`);
+    recommendations.push(
+      `Address identified quality issues: ${profile.quality.issues.slice(0, 2).join("; ")}.`
+    );
   }
-  if (insights.anomalies.length > 0 && !insights.anomalies[0].toLowerCase().includes("no anomaly")) {
+  if (
+    insights.anomalies.length > 0 &&
+    !insights.anomalies[0].toLowerCase().includes("no anomaly")
+  ) {
     recommendations.push(`Investigate flagged outliers: ${insights.anomalies[0]}`);
   }
-  if (insights.kpis.length > 0 && !insights.kpis[0].toLowerCase().includes("no dominant")) {
-    recommendations.push(`Establish tracking thresholds for key metrics: ${insights.kpis[0]}`);
+  if (
+    insights.kpis.length > 0 &&
+    !insights.kpis[0].toLowerCase().includes("no dominant")
+  ) {
+    recommendations.push(
+      `Establish tracking thresholds for key metrics: ${insights.kpis[0]}`
+    );
   }
   if (recommendations.length === 0) {
-    recommendations.push("Maintain standard data hygiene and monitor ongoing metric distributions.");
+    recommendations.push(
+      "Maintain standard data hygiene and monitor ongoing metric distributions."
+    );
   }
 
   // OpenAI Grounded Synthesis (Milestone 5.2, Section 1, 8 & 16)
@@ -72,13 +84,15 @@ export async function generateReport(
       categoricalColumns: profile.categoricalColumns,
       dateColumns: profile.dateColumns,
       keyStatistics: profile.statistics
-        ? Object.entries(profile.statistics).slice(0, 6).map(([col, stats]) => ({
-            column: col,
-            mean: stats.mean,
-            min: stats.min,
-            max: stats.max,
-            standardDeviation: stats.standardDeviation,
-          }))
+        ? Object.entries(profile.statistics)
+            .slice(0, 6)
+            .map(([col, stats]) => ({
+              column: col,
+              mean: stats.mean,
+              min: stats.min,
+              max: stats.max,
+              standardDeviation: stats.standardDeviation,
+            }))
         : [],
       observedInsights: [
         ...insights.business.slice(0, 3),
@@ -89,6 +103,10 @@ export async function generateReport(
         ...insights.anomalies.slice(0, 2),
       ],
     };
+
+    console.log(
+      `[reportGenerator] Dispatching evidence package to AI (${datasetName}, ${profile.rows} rows, score: ${score}%)...`
+    );
 
     const prompt = `You are an elite retail and business intelligence analyst. Generate an executive summary and strategic recommendations based STRICTLY on the supplied evidence package.
 
@@ -118,6 +136,8 @@ Respond ONLY with a valid JSON object matching this exact schema:
       temperature: 0.2,
     });
 
+    console.log("[reportGenerator] OpenAI synthesis response received successfully.");
+
     const cleanJson = completion.replace(/```json|```/g, "").trim();
     const parsed = JSON.parse(cleanJson);
 
@@ -128,7 +148,10 @@ Respond ONLY with a valid JSON object matching this exact schema:
       recommendations = parsed.recommendations;
     }
   } catch (err) {
-    console.warn("[reportGenerator] OpenAI synthesis skipped, utilizing deterministic fallback:", (err as Error).message);
+    console.warn(
+      "[reportGenerator] OpenAI synthesis skipped, utilizing deterministic fallback:",
+      (err as Error).message
+    );
   }
 
   return {

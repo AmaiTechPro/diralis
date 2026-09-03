@@ -51,78 +51,77 @@ enum PaymentStatus {
 }
 
 model User {
-  id       String  @id @default(cuid())
-  fullName String
-  username String  @unique
-  email    String  @unique
-  password String?
-  provider String  @default("local")
-  googleId String? @unique
-  picture  String?
+  id                      String                  @id @default(cuid())
+  fullName                String
+  username                String                  @unique
+  email                   String                  @unique
+  password                String?
+  provider                String                  @default("local")
+  googleId                String?                 @unique
+  picture                 String?
 
-  role   String @default("USER")
-  status String @default("PENDING_VERIFICATION")
+  role                    String                  @default("USER")
+  status                  String                  @default("PENDING_VERIFICATION")
 
-  emailVerified Boolean @default(false)
+  emailVerified           Boolean                 @default(false)
 
-  failedLoginAttempts Int       @default(0)
-  lockedUntil         DateTime?
+  failedLoginAttempts     Int                     @default(0)
+  lockedUntil             DateTime?
 
-  lastLogin DateTime?
+  lastLogin               DateTime?
 
-  theme              String  @default("dark")
-  emailNotifications Boolean @default(true)
+  theme                   String                  @default("dark")
+  emailNotifications      Boolean                 @default(true)
 
-  createdAt DateTime @default(now())
+  createdAt               DateTime                @default(now())
 
-  canonicalTransactions  CanonicalTransaction[]
+  canonicalTransactions   CanonicalTransaction[]
   canonicalInventoryItems CanonicalInventoryItem[]
 
+  datasets                Dataset[]
+  integrationConnections  IntegrationConnection[]
+  syncJobs                SyncJob[]
+  chatSessions            ChatSession[]
+  passwordResetTokens     PasswordResetToken[]
 
-  datasets            Dataset[]
-  integrationConnections IntegrationConnection[]
-  syncJobs               SyncJob[]
-  chatSessions        ChatSession[]
-  passwordResetTokens PasswordResetToken[]
+  emailVerifications      EmailVerification[]
+  sessions                Session[]
+  securityEvents          SecurityEvent[]
+  subscriptions           Subscription[]
+  payments                Payment[]
 
-  emailVerifications EmailVerification[]
-  sessions           Session[]
-  securityEvents     SecurityEvent[]
-  subscriptions      Subscription[]
-  payments           Payment[]
-
-  copilotInsights CopilotInsight[]
+  copilotInsights         CopilotInsight[]
 }
 
 model Dataset {
-  id           String   @id @default(cuid())
+  id           String           @id @default(cuid())
   originalName String
   filename     String
   size         Int
   mimetype     String
-  uploadedAt   DateTime @default(now())
+  uploadedAt   DateTime         @default(now())
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  chatSessions ChatSession[] // <-- ADD: reverse relation
+  userId       String
+  user         User             @relation(fields: [userId], references: [id], onDelete: Cascade)
+  chatSessions ChatSession[]
 
   copilotInsights CopilotInsight[]
 }
 
 model ChatSession {
-  id         String        @id @default(cuid())
-  title      String
-  createdAt  DateTime      @default(now())
-  updatedAt  DateTime      @updatedAt
-  archivedAt DateTime?     // <-- ADD: for soft-deletes/archival
+  id          String        @id @default(cuid())
+  title       String
+  createdAt   DateTime      @default(now())
+  updatedAt   DateTime      @updatedAt
+  archivedAt  DateTime?
 
-  userId     String
-  user       User          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String
+  user        User          @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  datasetId  String?       // <-- ADD: optional link to a specific dataset
-  dataset    Dataset?      @relation(fields: [datasetId], references: [id], onDelete: SetNull)
+  datasetId   String?
+  dataset     Dataset?      @relation(fields: [datasetId], references: [id], onDelete: SetNull)
 
-  messages   ChatMessage[]
+  messages    ChatMessage[]
 
   @@index([userId, updatedAt])
   @@index([userId, archivedAt])
@@ -131,7 +130,7 @@ model ChatSession {
 
 model ChatMessage {
   id        String      @id @default(cuid())
-  role      String      // "user" | "assistant"
+  role      String
   content   String
   createdAt DateTime    @default(now())
 
@@ -147,91 +146,70 @@ model PasswordResetToken {
   expiresAt DateTime
   createdAt DateTime @default(now())
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model EmailVerification {
-  id String @id @default(cuid())
-
-  codeHash String
-
-  expiresAt DateTime
-
+  id         String    @id @default(cuid())
+  codeHash   String
+  expiresAt  DateTime
   verifiedAt DateTime?
+  attempts   Int       @default(0)
+  createdAt  DateTime  @default(now())
 
-  attempts Int @default(0)
-
-  createdAt DateTime @default(now())
-
-  userId String
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId     String
+  user       User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model Session {
-  id String @id @default(cuid())
-
+  id               String    @id @default(cuid())
   refreshTokenHash String
+  ipAddress        String?
+  userAgent        String?
+  createdAt        DateTime  @default(now())
+  expiresAt        DateTime
+  lastActivity     DateTime  @default(now())
+  revokedAt        DateTime?
 
-  ipAddress String?
-
-  userAgent String?
-
-  createdAt DateTime @default(now())
-
-  expiresAt DateTime
-
-  lastActivity DateTime @default(now())
-
-  revokedAt DateTime?
-
-  userId String
-
-  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId           String
+  user             User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model SecurityEvent {
-  id String @id @default(cuid())
-
-  action SecurityAction
-
+  id        String         @id @default(cuid())
+  action    SecurityAction
   ipAddress String?
-
   userAgent String?
+  details   String?
+  createdAt DateTime       @default(now())
 
-  details String?
-
-  createdAt DateTime @default(now())
-
-  userId String?
-
-  user User? @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId    String?
+  user      User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
 }
 
 model SubscriptionPlan {
-  id String @id @default(cuid())
+  id            String         @id @default(cuid())
+  code          String
+  version       Int            @default(1)
 
-  code    String
-  version Int    @default(1)
+  name          String
+  description   String?
 
-  name        String
-  description String?
+  monthlyPrice  Int?
+  annualPrice   Int?
+  currency      String         @default("USD")
 
-  monthlyPrice Int?
-  annualPrice  Int?
-  currency     String @default("USD")
+  limits        Json?
+  features      Json?
 
-  limits   Json?
-  features Json?
+  active        Boolean        @default(true)
 
-  active Boolean @default(true)
-
-  effectiveFrom DateTime  @default(now())
+  effectiveFrom DateTime       @default(now())
   effectiveTo   DateTime?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
 
   subscriptions Subscription[]
 
@@ -241,35 +219,32 @@ model SubscriptionPlan {
 }
 
 model Subscription {
-  id String @id @default(cuid())
+  id                     String             @id @default(cuid())
+  userId                 String
+  user                   User               @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  planId                 String
+  plan                   SubscriptionPlan   @relation(fields: [planId], references: [id])
 
-  planId String
-  plan   SubscriptionPlan @relation(fields: [planId], references: [id])
-
-  currentKey String? @unique
-
-  status SubscriptionStatus @default(INCOMPLETE)
-
-  provider BillingProvider?
+  currentKey             String?            @unique
+  status                 SubscriptionStatus @default(INCOMPLETE)
+  provider               BillingProvider?
 
   providerCustomerId     String?
   providerSubscriptionId String?
 
-  interval BillingInterval?
+  interval               BillingInterval?
 
-  currentPeriodStart DateTime?
-  currentPeriodEnd   DateTime?
+  currentPeriodStart     DateTime?
+  currentPeriodEnd       DateTime?
 
-  cancelAtPeriodEnd Boolean   @default(false)
-  cancelledAt       DateTime?
+  cancelAtPeriodEnd      Boolean            @default(false)
+  cancelledAt            DateTime?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt              DateTime           @default(now())
+  updatedAt              DateTime           @updatedAt
 
-  payments Payment[]
+  payments               Payment[]
 
   @@index([userId])
   @@index([status])
@@ -277,29 +252,26 @@ model Subscription {
 }
 
 model Payment {
-  id String @id @default(cuid())
+  id                String          @id @default(cuid())
+  userId            String
+  user              User            @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  userId String
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
+  subscriptionId    String?
+  subscription      Subscription?   @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
 
-  subscriptionId String?
-  subscription   Subscription? @relation(fields: [subscriptionId], references: [id], onDelete: SetNull)
+  provider          BillingProvider
+  providerReference String          @unique
 
-  provider BillingProvider
+  amount            Int
+  currency          String
 
-  providerReference String @unique
+  status            PaymentStatus   @default(PENDING)
+  paidAt            DateTime?
 
-  amount   Int
-  currency String
+  metadata          Json?
 
-  status PaymentStatus @default(PENDING)
-
-  paidAt DateTime?
-
-  metadata Json?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
 
   @@index([userId])
   @@index([subscriptionId])
@@ -307,45 +279,33 @@ model Payment {
 }
 
 model BillingWebhookEvent {
-  id String @id @default(cuid())
-
-  provider BillingProvider
-
-  eventId String
-
-  eventType String
-
-  processed Boolean @default(false)
-
-  payload Json?
-
+  id          String          @id @default(cuid())
+  provider    BillingProvider
+  eventId     String
+  eventType   String
+  processed   Boolean         @default(false)
+  payload     Json?
   processedAt DateTime?
-
-  createdAt DateTime @default(now())
+  createdAt   DateTime        @default(now())
 
   @@unique([provider, eventId])
   @@index([processed])
 }
 
 model BillingProviderConfig {
-  id String @id @default(cuid())
-
-  provider BillingProvider @unique
-
-  enabled  Boolean @default(false)
-  priority Int     @default(0)
-
+  id                  String          @id @default(cuid())
+  provider            BillingProvider @unique
+  enabled             Boolean         @default(false)
+  priority            Int             @default(0)
   supportedCurrencies Json?
   supportedIntervals  Json?
   settings            Json?
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  createdAt           DateTime        @default(now())
+  updatedAt           DateTime        @updatedAt
 
   @@index([enabled])
   @@index([priority])
 }
-
 
 model CopilotInsight {
   id              String    @id @default(cuid())
@@ -354,15 +314,15 @@ model CopilotInsight {
   userId          String
   user            User      @relation(fields: [userId], references: [id], onDelete: Cascade)
 
-  type            String    // "ANOMALY" | "DRIVER" | "TREND" | "OPPORTUNITY"
-  severity        String    // "INFO" | "POSITIVE" | "WARNING" | "CRITICAL"
+  type            String
+  severity        String
   title           String
   metricName      String
   observedValue   Float
   expectedValue   Float?
   deltaPercentage Float?
   narrative       String    @db.Text
-  evidenceJson    Json      // Array of evidence items/strings
+  evidenceJson    Json
   mapVersion      Int       @default(1)
   dismissedAt     DateTime?
   createdAt       DateTime  @default(now())
@@ -371,7 +331,6 @@ model CopilotInsight {
   @@index([userId, datasetId, dismissedAt])
   @@index([datasetId, createdAt])
 }
-
 
 enum IntegrationStatus {
   ACTIVE
@@ -396,28 +355,29 @@ enum SyncFrequency {
 }
 
 model IntegrationConnection {
-  id                   String                   @id @default(cuid())
-  userId               String
-  user                 User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
-  providerId           String                   // e.g. "square", "shopify_pos", "postgres"
-  name                 String
-  status               IntegrationStatus        @default(ACTIVE)
-  encryptedConfig      String                   @db.Text // AES-256-GCM (iv:authTag:ciphertext)
-  syncFrequency        SyncFrequency            @default(DAILY)
-  cursor               Json?                    // Checkpoint metadata: timestamps, high watermarks, tokens
-  lastSyncAt           DateTime?
-  lastAttemptedAt      DateTime?
-  nextSyncAt           DateTime?
-  syncInProgress       Boolean                  @default(false)
-  syncLeaseExpiresAt   DateTime?
-  retryCount           Int                      @default(0)
-  errorDetails         String?                  @db.Text
-  createdAt            DateTime                 @default(now())
-  updatedAt            DateTime                 @updatedAt
+  id                      String                   @id @default(cuid())
+  userId                  String
+  user                    User                     @relation(fields: [userId], references: [id], onDelete: Cascade)
+  providerId              String
+  name                    String
+  status                  IntegrationStatus        @default(ACTIVE)
+  encryptedConfig         String                   @db.Text
+  syncFrequency           SyncFrequency            @default(DAILY)
+  cursor                  Json?
+  lastSyncAt              DateTime?
+  lastAttemptedAt         DateTime?
+  nextSyncAt              DateTime?
+  syncInProgress          Boolean                  @default(false)
+  syncLeaseExpiresAt      DateTime?
+  retryCount              Int                      @default(0)
+  errorDetails            String?                  @db.Text
+  createdAt               DateTime                 @default(now())
+  updatedAt               DateTime                 @updatedAt
 
-  syncJobs             SyncJob[]
-  mappings             CanonicalSchemaMapping[]
-  canonicalTransactions CanonicalTransaction[]
+  events                  IntegrationEvent[]
+  syncJobs                SyncJob[]
+  mappings                CanonicalSchemaMapping[]
+  canonicalTransactions   CanonicalTransaction[]
   canonicalInventoryItems CanonicalInventoryItem[]
 
   @@index([userId, providerId])
@@ -438,9 +398,9 @@ model SyncJob {
   recordsAccepted     Int                   @default(0)
   recordsRejected     Int                   @default(0)
   recordsDeduplicated Int                   @default(0)
-  mapRefreshStatus    String?               // "PENDING" | "SUCCESS" | "FAILED" | "SKIPPED"
+  mapRefreshStatus    String?
   errorMessage        String?               @db.Text
-  metadata            Json?                 // Diagnostics, token usage, latency
+  metadata            Json?
   startedAt           DateTime?
   completedAt         DateTime?
   createdAt           DateTime              @default(now())
@@ -450,18 +410,17 @@ model SyncJob {
 }
 
 model CanonicalSchemaMapping {
-  id             String                @id @default(cuid())
-  connectionId   String
-  connection     IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
-  sourceEntity   String                // e.g., "orders", "inventory_levels"
-  targetEntity   String                // e.g., "canonical_transactions", "canonical_inventory"
-  fieldMappings  Json                  // { "sourceField": "targetField" }
-  createdAt      DateTime              @default(now())
-  updatedAt      DateTime              @updatedAt
+  id            String                @id @default(cuid())
+  connectionId  String
+  connection    IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  sourceEntity  String
+  targetEntity  String
+  fieldMappings Json
+  createdAt     DateTime              @default(now())
+  updatedAt     DateTime              @updatedAt
 
   @@unique([connectionId, sourceEntity])
 }
-
 
 model CanonicalTransaction {
   id              String                @id @default(cuid())
@@ -470,17 +429,17 @@ model CanonicalTransaction {
   connectionId    String
   connection      IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
-  externalId      String                // Source system identifier
+  externalId      String
   sourceEntity    String                @default("transactions")
   transactionDate DateTime
-  
+
   currency        String                @default("USD")
   subtotal        Float                 @default(0.0)
   tax             Float                 @default(0.0)
   discount        Float                 @default(0.0)
   totalAmount     Float
-  status          String                @default("COMPLETED") // "COMPLETED", "REFUNDED", "VOID"
-  
+  status          String                @default("COMPLETED")
+
   customerRef     String?
   storeLocation   String?
   sourceMetadata  Json?
@@ -500,19 +459,19 @@ model CanonicalInventoryItem {
   connectionId     String
   connection       IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
 
-  externalId       String                // Source system item identifier
+  externalId       String
   sourceEntity     String                @default("inventory")
   sku              String
   productName      String
   category         String?
-  
+
   currentStock     Float                 @default(0.0)
   availableStock   Float?
   reservedStock    Float?
   reorderThreshold Float?
   unitCost         Float?
   inventoryValue   Float?
-  
+
   storeLocation    String?
   effectiveDate    DateTime              @default(now())
   sourceMetadata   Json?
@@ -525,4 +484,33 @@ model CanonicalInventoryItem {
   @@index([connectionId, updatedAt])
 }
 
+enum WebhookEventStatus {
+  RECEIVED
+  PROCESSING
+  PROCESSED
+  DUPLICATE
+  FAILED
+  RETRYABLE
+  DEAD_LETTER
+}
 
+model IntegrationEvent {
+  id            String                @id @default(cuid())
+  connectionId  String
+  connection    IntegrationConnection @relation(fields: [connectionId], references: [id], onDelete: Cascade)
+  tenantId      String
+  provider      String                @default("shopify")
+  topic         String
+  deliveryId    String                @unique
+  shopDomain    String
+  status        WebhookEventStatus    @default(RECEIVED)
+  payloadHash   String?
+  errorMessage  String?               @db.Text
+  correlationId String?
+  receivedAt    DateTime              @default(now())
+  processedAt   DateTime?
+
+  @@index([connectionId, status])
+  @@index([tenantId, topic])
+  @@index([shopDomain, topic])
+}

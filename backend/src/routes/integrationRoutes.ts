@@ -1,3 +1,4 @@
+import { handleShopifyWebhook } from "../controllers/shopifyWebhookController";
 import { Router } from "express";
 import { authenticate } from "../middleware/authMiddleware";
 import {
@@ -19,6 +20,7 @@ router.get("/:connectionId/freshness", authenticate, getConnectionFreshness);
 // Shopify OAuth connection flows
 router.get("/shopify/connect", authenticate, connectShopify);
 router.get("/shopify/callback", shopifyCallback);
+router.post("/shopify/webhooks", handleShopifyWebhook);
 
 // Connection operations
 router.get("/", authenticate, listConnections);

@@ -44,8 +44,11 @@ app.use(morgan("dev"));
 app.use(
   express.json({
     limit: "10mb",
-    verify: (req: express.Request, _res, buf) => {
-      if (req.originalUrl === "/api/billing/webhook") {
+        verify: (req: express.Request, _res, buf) => {
+      if (
+        req.originalUrl === "/api/billing/webhook" ||
+        req.originalUrl.startsWith("/api/integrations/shopify/webhooks")
+      ) {
         (req as express.Request & { rawBody?: Buffer }).rawBody = buf;
       }
     },

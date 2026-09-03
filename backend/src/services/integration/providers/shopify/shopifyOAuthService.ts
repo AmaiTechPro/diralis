@@ -3,6 +3,8 @@ import { ShopifyClient } from "./shopifyClient";
 import { VaultService } from "../../vaultService";
 import prisma from "../../../../lib/prisma";
 import { IntegrationStatus, SyncFrequency } from "@prisma/client";
+import { ShopifyWebhookRegistrationService } from "./shopifyWebhookRegistrationService";
+
 
 export interface ShopifyOAuthStatePayload {
   userId: string;
@@ -249,6 +251,36 @@ export class ShopifyOAuthService {
         },
       });
     }
+
+    // 6. Programmatically register required Shopify webhooks
+      let webhookRegistration = null;
+      try {
+        webhookRegistration = await ShopifyWebhookRegistrationService.registerWebhooks({
+          shop: sanitizedShop,
+          accessToken: tokenResult.accessToken,
+        });
+
+        if (!webhookRegistration.success) {
+          console.warn(
+            `[ShopifyOAuth] Webhook registration completed with partial failures for shop ${sanitizedShop}:`,
+            webhookRegistration.results
+          );
+        }
+      } catch (webhookErr: any) {
+        console.error(
+          `[ShopifyOAuth] Failed to register webhooks during OAuth for shop ${sanitizedShop}:`,
+          webhookErr.message
+        );
+      }
+
+      return {
+        connectionId: connection.id,
+        shop: sanitizedShop,
+        name: connection.name,
+        status: connection.status,
+        webhookRegistration,
+      };
+
 
     return {
       connectionId: connection.id,

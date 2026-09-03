@@ -18,7 +18,7 @@ router.get("/:connectionId/freshness", authenticate, getConnectionFreshness);
 
 // Shopify OAuth connection flows
 router.get("/shopify/connect", authenticate, connectShopify);
-router.get("/shopify/callback", authenticate, shopifyCallback);
+router.get("/shopify/callback", shopifyCallback);
 
 // Connection operations
 router.get("/", authenticate, listConnections);

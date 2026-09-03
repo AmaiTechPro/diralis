@@ -27,28 +27,27 @@ export async function connectShopify(req: Request, res: Response): Promise<void>
 }
 
 export async function shopifyCallback(req: Request, res: Response): Promise<void> {
+  const frontendUrl = process.env.FRONTEND_URL || "https://www.diralishq.com";
+
   try {
     const { code, shop, state } = req.query;
 
     if (!code || !shop || !state || typeof code !== "string" || typeof shop !== "string" || typeof state !== "string") {
-      res.status(400).json({ error: "MISSING_PARAMS: code, shop, and state are required." });
+      res.redirect(`${frontendUrl}/integrations?status=error&message=Missing+required+Shopify+parameters`);
       return;
     }
 
-    const result = await ShopifyOAuthService.handleCallback({
+    await ShopifyOAuthService.handleCallback({
       code,
       shop,
       state,
-      currentUserId: req.user?.userId,
+      currentUserId: (req as any).user?.userId,
     });
 
-    res.json({
-      success: true,
-      message: "Shopify store successfully connected.",
-      connection: result,
-    });
+    res.redirect(`${frontendUrl}/integrations?status=success&provider=shopify`);
   } catch (err: any) {
-    res.status(400).json({ error: err.message || "Shopify callback failed." });
+    const message = encodeURIComponent(err.message || "Shopify callback failed.");
+    res.redirect(`${frontendUrl}/integrations?status=error&message=${message}`);
   }
 }
 

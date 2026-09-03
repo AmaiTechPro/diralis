@@ -7,19 +7,19 @@ export interface DashboardData {
     dashboards: number;
     account: string;
   };
-
   revenueForecast: number;
   customerGrowth: number;
   operationalEfficiency: number;
   inventoryRisk: string;
   aiConfidence: number;
-
   recommendation: {
     priority: string;
     title: string;
     description: string;
+    reason?: string;
+    impact?: string;
+    modelStatus?: string;
   };
-
   chart: {
     month: string;
     revenue: number;
@@ -29,4 +29,6 @@ export interface DashboardData {
 export function getDashboardData() {
   return apiFetch<DashboardData>("/dashboard");
 }
+
+
 

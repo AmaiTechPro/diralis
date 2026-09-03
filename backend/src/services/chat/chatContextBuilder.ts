@@ -31,13 +31,22 @@ export async function buildChatContext(userId: string): Promise<ChatContext> {
   }
 
   // Check if profile/summary is already persisted on the dataset model
-  // If not cached, compute and persist to avoid future disk parsing
   const rawDataset = dataset as any;
 
   if (rawDataset.profileData) {
-    const profile = typeof rawDataset.profileData === "string"
-      ? JSON.parse(rawDataset.profileData)
-      : rawDataset.profileData;
+    const profile =
+      typeof rawDataset.profileData === "string"
+        ? JSON.parse(rawDataset.profileData)
+        : rawDataset.profileData;
+
+    const quality = profile.qualityScore ?? profile.quality?.score ?? 0;
+    let aiScore = profile.aiScore;
+    if (!aiScore) {
+      if (quality >= 90) aiScore = "A+";
+      else if (quality >= 80) aiScore = "A";
+      else if (quality >= 70) aiScore = "B";
+      else aiScore = "C";
+    }
 
     return {
       datasetName: dataset.originalName,
@@ -45,24 +54,26 @@ export async function buildChatContext(userId: string): Promise<ChatContext> {
       columns: profile.columns || 0,
       numericColumns: profile.numericColumns || [],
       dateColumns: profile.dateColumns || [],
-      businessHealth: profile.businessHealth ?? 80,
-      aiScore: profile.aiScore || "OPTIMAL",
-      executiveSummary: profile.executiveSummary || "",
+      businessHealth: profile.businessHealth ?? quality,
+      aiScore,
+      executiveSummary:
+        profile.executiveSummary ||
+        `Dataset '${dataset.originalName}' contains ${profile.rows || 0} rows and ${profile.columns || 0} columns with an overall quality score of ${quality}%.`,
       insights: profile.insights || [],
-      warnings: profile.warnings || [],
+      warnings: profile.warnings || profile.qualityIssues || [],
       recommendations: profile.recommendations || [],
-      qualityScore: profile.qualityScore ?? 100,
-      qualityIssues: profile.qualityIssues || [],
+      qualityScore: quality,
+      qualityIssues: profile.qualityIssues || profile.quality?.issues || [],
       missingValues: profile.missingValues || {},
       duplicateRows: profile.duplicateRows || 0,
     };
   }
 
-  // Fallback: Compute on demand once if not yet cached
+  // Compute on demand and await grounded report generation
   const rows = await parseDataset(dataset.id);
   const profile = profileDataset(rows);
   const insights = generateInsights(profile);
-  const report = generateReport(profile, insights);
+  const report = await generateReport(profile, insights, dataset.originalName);
 
   const context: ChatContext = {
     datasetName: dataset.originalName,
@@ -84,4 +95,5 @@ export async function buildChatContext(userId: string): Promise<ChatContext> {
 
   return context;
 }
+
 

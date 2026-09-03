@@ -27,6 +27,7 @@ export async function overallInsightsController(
         const profile = await generateDatasetProfile(dataset.id);
 
         analytics.push({
+          name: dataset.originalName,
           quality: profile.profile.quality.score,
           insights:
             profile.insights.business.length +
@@ -46,11 +47,11 @@ export async function overallInsightsController(
       }
     }
 
-    return res.json(
-      getOverallInsights({
-        datasets: analytics,
-      })
-    );
+    const overallInsightsResult = await getOverallInsights({
+      datasets: analytics,
+    });
+
+    return res.json(overallInsightsResult);
   } catch (error) {
     console.error("overallInsightsController error:", error);
     return res.status(500).json({

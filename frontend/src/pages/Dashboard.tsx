@@ -3,21 +3,16 @@ import { getGreeting } from "../utils/getGreeting";
 import { motion } from "framer-motion";
 import { useDashboard } from "../hooks/useDashboard";
 import { Layers } from "lucide-react";
-
-     {/* FRESHNESS BANNERS IMPORT */}
-
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
 import { listIntegrationsFreshness, type ConnectionFreshness } from "../services/integrationService";
 import { FreshnessBadge } from "../components/integrations/FreshnessBadge";
-
+import AIRecommendation from "../components/dashboard/AIRecommendation";
 
 export default function Dashboard() {
   const { user } = useAuth();
   const { text, emoji } = getGreeting();
-
   const { dashboardData, loading, error } = useDashboard();
-
   const [connections, setConnections] = useState<ConnectionFreshness[]>([]);
 
   useEffect(() => {
@@ -36,49 +31,31 @@ export default function Dashboard() {
 
   const activeConnection = connections.find((c) => c.status === "ACTIVE") || connections[0];
 
-
   if (loading) {
-    return (
-      <div className="p-8 text-slate-400">
-        Loading dashboard...
-      </div>
-    );
+    return <div className="p-8 text-slate-400">Loading dashboard...</div>;
   }
 
   if (error || !dashboardData) {
-  return (
-    <div className="p-8 text-red-400">
-      {error}
-    </div>
-  );
-}
+    return <div className="p-8 text-red-400">{error}</div>;
+  }
 
   return (
-    <div>
+    <div className="space-y-8">
       <motion.h1
         initial={{ opacity: 0, y: 12 }}
         animate={{ opacity: 1, y: 0 }}
         transition={{ duration: 0.5 }}
-        className="text-5xl font-bold"
+        className="text-4xl font-bold tracking-tight"
       >
-        {emoji} {text},{" "}
-        <span className="text-cyan-400">
-          {user?.fullName}
-        </span>
+        {emoji} {text}, <span className="text-cyan-400">{user?.fullName}</span>
       </motion.h1>
 
-      <p className="mt-3 text-slate-400">
-        Here's what's happening in your workspace today.
+      <p className="text-slate-400">
+        Here's what's happening in your business workspace today.
       </p>
 
-      <div className="mt-10 grid gap-6 md:grid-cols-2 xl:grid-cols-4">
-        <StatCard
-          title="Datasets"
-          value={dashboardData.stats.datasets.toString()}
-        />
-
-        {activeConnection && (
-        <div className="mt-6 p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
+      {activeConnection && (
+        <div className="p-4 rounded-xl bg-slate-900/80 border border-slate-800 flex flex-col sm:flex-row sm:items-center sm:justify-between gap-3">
           <div className="flex items-center gap-3">
             <div className="p-2 rounded-lg bg-cyan-500/10 text-cyan-400 border border-cyan-500/20">
               <Layers size={18} />
@@ -106,30 +83,40 @@ export default function Dashboard() {
         </div>
       )}
 
-        <StatCard
-          title="AI Reports"
-          value={dashboardData.stats.reports.toString()}
-        />
-
-        <StatCard
-          title="Dashboards"
-          value={dashboardData.stats.dashboards.toString()}
-        />
-
-        <StatCard
-          title="Account"
-          value={dashboardData.stats.account}
-        />
+      <div className="grid gap-6 md:grid-cols-2 xl:grid-cols-4">
+        <StatCard title="Datasets" value={dashboardData.stats.datasets.toString()} />
+        <StatCard title="AI Reports" value={dashboardData.stats.reports.toString()} />
+        <StatCard title="Dashboards" value={dashboardData.stats.dashboards.toString()} />
+        <StatCard title="Account" value={dashboardData.stats.account} />
       </div>
 
-      <div className="mt-10 rounded-xl bg-slate-900 p-8">
-        <h2 className="text-2xl font-bold">
-          {dashboardData.recommendation.title}
-        </h2>
+      <div className="grid gap-6 lg:grid-cols-3">
+        <div className="lg:col-span-2">
+          <AIRecommendation
+            confidence={dashboardData.aiConfidence}
+            title={dashboardData.recommendation.title}
+            description={dashboardData.recommendation.description}
+            reason={dashboardData.recommendation.reason}
+            impact={dashboardData.recommendation.impact}
+            priority={dashboardData.recommendation.priority}
+            modelStatus={dashboardData.recommendation.modelStatus}
+          />
+        </div>
 
-        <p className="mt-4 text-slate-400">
-          {dashboardData.recommendation.description}
-        </p>
+        <div className="rounded-xl border border-slate-800 bg-slate-900 p-6 flex flex-col justify-between">
+          <div>
+            <h3 className="text-lg font-semibold text-slate-200">Operational Health</h3>
+            <p className="text-sm text-slate-400 mt-1">
+              Dataset quality & system integrity score
+            </p>
+            <div className="mt-6 text-5xl font-extrabold text-cyan-400">
+              {dashboardData.operationalEfficiency}%
+            </div>
+          </div>
+          <div className="mt-6 text-xs text-slate-500 border-t border-slate-800 pt-4">
+            Anomaly Risk Level: <span className="font-semibold text-slate-300">{dashboardData.inventoryRisk}</span>
+          </div>
+        </div>
       </div>
     </div>
   );
@@ -140,20 +127,13 @@ interface StatCardProps {
   value: string;
 }
 
-function StatCard({
-  title,
-  value,
-}: StatCardProps) {
+function StatCard({ title, value }: StatCardProps) {
   return (
-    <div className="rounded-xl bg-slate-900 p-6">
-      <p className="text-slate-400">
-        {title}
-      </p>
-
-      <h3 className="mt-3 text-4xl font-bold">
-        {value}
-      </h3>
+    <div className="rounded-xl bg-slate-900 p-6 border border-slate-800">
+      <p className="text-slate-400 text-sm">{title}</p>
+      <h3 className="mt-3 text-4xl font-bold text-slate-100">{value}</h3>
     </div>
   );
 }
+
 

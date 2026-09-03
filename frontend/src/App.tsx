@@ -9,7 +9,7 @@ import ReportsPage from "./pages/ReportsPage";
 import Profile from "./pages/Profile";
 import Settings from "./pages/Settings";
 import AIInsightsPage from "./pages/AIInsightsPage";
-import AIChatPage from "./pages/AIChatPage";
+import { AIChatPage } from "./pages/AIChatPage";
 
 import ProtectedRoute from "./components/auth/ProtectedRoute";
 import AppLayout from "./components/layout/AppLayout";

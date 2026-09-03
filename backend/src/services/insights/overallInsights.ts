@@ -133,7 +133,7 @@ Respond ONLY with valid JSON:
 
     const completion = await aiProvider.generateCompletion({
       messages: [{ role: "user", content: prompt }],
-      maxTokens: 450,
+      maxTokens: 1000,
       temperature: 0.2,
     });
 

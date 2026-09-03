@@ -105,31 +105,25 @@ export async function generateReport(
     };
 
    console.log(
-      `[reportGenerator] Dispatching evidence package to AI (${datasetName}, ${profile.rows} rows, score:${score}%)...`
+      `[reportGenerator] Dispatching evidence package to AI (${datasetName}, ${profile.rows} rows, score: ${score}%)...`
     );
 
-    const systemPrompt = "You are a principal business intelligence analyst. You MUST return your answer as a single, raw, valid JSON object without markdown code blocks, backticks, or explanatory text.";
+    const systemPrompt = "You are a principal business intelligence analyst. You must produce valid JSON matching the user requirements. Do not output markdown codeblocks, do not output backticks, and do not include commentary.";
 
-    const userPrompt = `Analyze this dataset evidence package and output a valid JSON object.
+    const userPrompt = `Generate a JSON object evaluating this dataset evidence package.
 
-CRITICAL INSTRUCTIONS:
-1. Return raw JSON ONLY. Do NOT use markdown code fences like \`\`\`json.
-2. Base all statements strictly on the evidence provided below.
-3. Do not invent numbers or metrics not present in the package.
+Your response must be a single valid JSON object containing exactly two keys:
+1. "executiveSummary": A concise, high-impact 3-sentence summary analyzing the business health, volume, and metric trends based strictly on the facts below.
+2. "recommendations": An array of exactly 4 strings containing concrete, data-backed strategic recommendations derived from the statistics and column profiles.
 
-EVIDENCE PACKAGE:
-${JSON.stringify(evidencePackage, null, 2)}
+Strict rules:
+- Strictly output valid JSON.
+- No markdown code blocks (no \`\`\` or \`\`\`json).
+- Base all facts strictly on the provided evidence package.
+- Do not invent metrics or currency figures not present in the package.
 
-REQUIRED JSON FORMAT:
-{
-  "executiveSummary": "A concise, professional 3-sentence summary of volume, data quality, and key trends.",
-  "recommendations": [
-    "First actionable data-backed recommendation.",
-    "Second actionable data-backed recommendation.",
-    "Third actionable operational recommendation.",
-    "Fourth strategic monitoring recommendation."
-  ]
-}`;
+Evidence Package:
+${JSON.stringify(evidencePackage, null, 2)}`;
 
     const completion = await aiProvider.generateCompletion({
       messages: [
@@ -143,7 +137,6 @@ REQUIRED JSON FORMAT:
 
     console.log("[reportGenerator] OpenAI synthesis response received successfully.");
 
-    // Strip markdown formatting if any model leaks fences despite instructions
     const cleanJson = completion
       .replace(/^```json\s*/i, "")
       .replace(/^```\s*/i, "")
@@ -158,7 +151,7 @@ REQUIRED JSON FORMAT:
     if (Array.isArray(parsed.recommendations) && parsed.recommendations.length > 0) {
       recommendations = parsed.recommendations;
     }
-    
+
   } catch (err) {
     console.warn(
       "[reportGenerator] OpenAI synthesis skipped, utilizing deterministic fallback:",

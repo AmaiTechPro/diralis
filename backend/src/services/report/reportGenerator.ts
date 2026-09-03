@@ -132,8 +132,9 @@ Respond ONLY with a valid JSON object matching this exact schema:
 
     const completion = await aiProvider.generateCompletion({
       messages: [{ role: "user", content: prompt }],
-      maxTokens: 500,
+      maxTokens: 1200,
       temperature: 0.2,
+      responseFormat: "json_object",
     });
 
     console.log("[reportGenerator] OpenAI synthesis response received successfully.");

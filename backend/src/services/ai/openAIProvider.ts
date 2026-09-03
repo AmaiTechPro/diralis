@@ -22,14 +22,14 @@ export class OpenAIProvider implements AIProvider {
       })),
       max_tokens: options.maxTokens ?? 1200,
       temperature: options.temperature ?? 0.2,
+      response_format: options.responseFormat === "json_object" ? { type: "json_object" } : undefined,
     });
 
     const reply = completion.choices[0]?.message?.content;
     if (!reply) {
-      throw new Error("Received empty response from OpenAI provider.");
+      throw new Error("Received empty response from AI provider.");
     }
 
     return reply;
   }
 }
-

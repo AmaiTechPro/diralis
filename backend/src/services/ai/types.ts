@@ -7,6 +7,7 @@ export interface AICompletionOptions {
   messages: AIChatMessage[];
   maxTokens?: number;
   temperature?: number;
+  responseFormat?: "json_object" | "text";
 }
 
 export interface AIProvider {

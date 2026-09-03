@@ -2,6 +2,9 @@ import { Request, Response } from "express";
 import prisma from "../lib/prisma";
 import { generateDatasetProfile } from "../services/analyticsService";
 import { getOverallInsights } from "../services/insights/overallInsights";
+import { getCanonicalDatasetRows } from "../services/canonicalDataService";
+import { profileDataset } from "../services/profiler/profileDataset";
+import { generateInsights } from "../services/insights/generateInsights";
 
 export async function overallInsightsController(
   req: Request,
@@ -47,6 +50,34 @@ export async function overallInsightsController(
       }
     }
 
+    // Process connected store canonical data if available
+    try {
+      const canonical = await getCanonicalDatasetRows(userId);
+      if (canonical && canonical.rows.length > 0) {
+        const profile = profileDataset(canonical.rows);
+        const insights = generateInsights(profile);
+
+        analytics.push({
+          name: canonical.sourceName,
+          quality: profile.quality.score,
+          insights:
+            insights.business.length +
+            insights.statistics.length +
+            insights.forecast.length,
+          warnings: profile.quality.issues.length,
+          recommendations: [
+            ...insights.business,
+            ...insights.forecast,
+          ],
+        });
+      }
+    } catch (canonicalError) {
+      console.warn(
+        "Skipping canonical dataset processing:",
+        (canonicalError as Error).message
+      );
+    }
+
     const overallInsightsResult = await getOverallInsights({
       datasets: analytics,
     });
@@ -59,5 +90,6 @@ export async function overallInsightsController(
     });
   }
 }
+
 
 

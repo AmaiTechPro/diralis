@@ -3,6 +3,8 @@ import { getLatestDataset } from "./datasetService";
 import { parseDataset } from "./datasetFileService";
 import { profileDataset } from "./profiler/profileDataset";
 import { generateInsights } from "./insights/generateInsights";
+import { getCanonicalDatasetRows } from "./canonicalDataService";
+
 
 export async function getDashboardData(userId: string) {
   const user = await prisma.user.findUnique({
@@ -14,14 +16,16 @@ export async function getDashboardData(userId: string) {
     throw new Error("User not found");
   }
 
-  // Tenant-scoped dataset count
   const datasetsCount =
     user.role === "ADMIN"
       ? await prisma.dataset.count()
       : await prisma.dataset.count({ where: { userId } });
 
-  // Empty state if user has uploaded zero datasets
-  if (datasetsCount === 0) {
+  const canonicalData = await getCanonicalDatasetRows(userId);
+  const totalSources = datasetsCount + (canonicalData ? 1 : 0);
+
+  // Only return empty state if BOTH manual datasets and canonical connections are absent
+  if (totalSources === 0) {
     return {
       stats: {
         datasets: 0,
@@ -36,7 +40,7 @@ export async function getDashboardData(userId: string) {
       aiConfidence: 0,
       recommendation: {
         priority: "Info",
-        title: "Upload your first dataset",
+        title: "Connect Shopify or upload a dataset",
         description:
           "Upload a CSV or Excel dataset, or connect a POS/e-commerce store to unlock real-time business intelligence and forecasts.",
         reason: "No transactional data detected in this workspace yet.",
@@ -47,21 +51,27 @@ export async function getDashboardData(userId: string) {
     };
   }
 
-  // Retrieve user's latest dataset to ground live metrics
   let operationalEfficiency = 85;
   let aiConfidence = 80;
   let inventoryRisk = "Low";
   let totalRecords = 0;
-  let recommendationTitle = `${datasetsCount} dataset${datasetsCount > 1 ? "s" : ""} active`;
-  let recommendationDescription = "Dataset health is optimal. Analytics and reports are current.";
+  let recommendationTitle = `${totalSources} data source${totalSources > 1 ? "s" : ""} active`;
+  let recommendationDescription = "Data health is optimal. Analytics and reports are current.";
   let recommendationReason = "Multi-variable profiling completed without critical blockers.";
   let recommendationImpact = "High-accuracy decision confidence across active metrics.";
   let modelStatus = "Operational";
 
   try {
+    let rows: Record<string, any>[] = [];
+
     const latestDataset = await getLatestDataset(userId);
     if (latestDataset) {
-      const rows = await parseDataset(latestDataset.id);
+      rows = await parseDataset(latestDataset.id);
+    } else if (canonicalData) {
+      rows = canonicalData.rows;
+    }
+
+    if (rows.length > 0) {
       totalRecords = rows.length;
       const profile = profileDataset(rows);
       const insights = generateInsights(profile);
@@ -91,9 +101,9 @@ export async function getDashboardData(userId: string) {
 
   return {
     stats: {
-      datasets: datasetsCount,
-      reports: datasetsCount,
-      dashboards: datasetsCount > 0 ? 1 : 0,
+      datasets: totalSources,
+      reports: totalSources,
+      dashboards: totalSources > 0 ? 1 : 0,
       account: "Active",
     },
     revenueForecast: 0,
@@ -102,7 +112,7 @@ export async function getDashboardData(userId: string) {
     inventoryRisk,
     aiConfidence,
     recommendation: {
-      priority: datasetsCount > 0 ? "High" : "Info",
+      priority: totalSources > 0 ? "High" : "Info",
       title: recommendationTitle,
       description: recommendationDescription,
       reason: recommendationReason,
@@ -112,5 +122,3 @@ export async function getDashboardData(userId: string) {
     chart: [],
   };
 }
-
-

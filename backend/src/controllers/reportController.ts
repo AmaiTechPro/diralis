@@ -7,33 +7,45 @@ import { generateReport } from "../services/report/reportGenerator";
 import { generatePDFReport } from "../services/report/pdfReportGenerator";
 import { generateSectionReport } from "../services/report/reportSectionGenerator";
 import { getLatestDataset } from "../services/datasetService";
+import { getCanonicalDatasetRows } from "../services/canonicalDataService";
+
 
 async function buildReport(datasetId: string, userId: string) {
-  if (!datasetId) {
-    throw new Error("Dataset ID is required");
+  let rows: Record<string, any>[] = [];
+  let datasetName = "Dataset";
+
+  if (datasetId === "canonical-live") {
+    const canonical = await getCanonicalDatasetRows(userId);
+    if (!canonical || canonical.rows.length === 0) {
+      throw new Error("No canonical transactions found to generate report.");
+    }
+    rows = canonical.rows;
+    datasetName = canonical.sourceName;
+  } else {
+    // Tenant Isolation Check (Milestone 5.2, Section 32)
+    const datasetRecord = await prisma.dataset.findFirst({
+      where: {
+        id: datasetId,
+        userId,
+      },
+      select: {
+        originalName: true,
+      },
+    });
+
+    if (!datasetRecord) {
+      throw new Error("Dataset not found or unauthorized");
+    }
+
+    rows = await parseDataset(datasetId);
+    datasetName = datasetRecord.originalName;
   }
 
-  // Tenant Isolation Check (Milestone 5.2, Section 32)
-  const datasetRecord = await prisma.dataset.findFirst({
-    where: {
-      id: datasetId,
-      userId,
-    },
-    select: {
-      originalName: true,
-    },
-  });
-
-  if (!datasetRecord) {
-    throw new Error("Dataset not found or unauthorized");
-  }
-
-  const rows = await parseDataset(datasetId);
   const profile = profileDataset(rows);
   const insights = generateInsights(profile);
 
   // Await grounded AI report generation with real dataset provenance
-  return await generateReport(profile, insights, datasetRecord.originalName);
+  return await generateReport(profile, insights, datasetName);
 }
 
 async function resolveDatasetId(req: Request): Promise<{ datasetId: string; userId: string }> {
@@ -48,11 +60,17 @@ async function resolveDatasetId(req: Request): Promise<{ datasetId: string; user
   }
 
   const latestDataset = await getLatestDataset(userId);
-  if (!latestDataset) {
-    throw new Error("No datasets found");
+  if (latestDataset) {
+    return { datasetId: latestDataset.id, userId };
   }
 
-  return { datasetId: latestDataset.id, userId };
+  // Check if user has active canonical records from Shopify
+  const canonical = await getCanonicalDatasetRows(userId);
+  if (canonical && canonical.rows.length > 0) {
+    return { datasetId: "canonical-live", userId };
+  }
+
+  throw new Error("No datasets found");
 }
 
 export async function reportController(req: Request, res: Response) {

@@ -52,11 +52,21 @@ export async function getShopifyConnectUrl(shop: string): Promise<{ authorizatio
   );
 }
 
+export interface SyncResponse {
+  success: boolean;
+  message?: string;
+  result?: {
+    recordsIngested?: number;
+    error?: string;
+    [key: string]: any;
+  };
+}
+
 export async function triggerManualSync(
   connectionId: string,
   entityName: "transactions" | "inventory" = "transactions"
-) {
-  return await apiFetch(
+): Promise<SyncResponse> {
+  return await apiFetch<SyncResponse>(
     `/integrations/${connectionId}/sync`,
     {
       method: "POST",

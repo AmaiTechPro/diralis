@@ -39,7 +39,7 @@ export interface ShopifyClientConfig {
 }
 
 export class ShopifyClient {
-  public static readonly DEFAULT_API_VERSION = "2024-07";
+  public static readonly DEFAULT_API_VERSION = "2026-07";
   private readonly shop: string;
   private readonly accessToken: string;
   private readonly apiVersion: string;

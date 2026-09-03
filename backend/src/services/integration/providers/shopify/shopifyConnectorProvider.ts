@@ -124,15 +124,15 @@ export class ShopifyConnectorProvider implements IConnectorProvider {
     cursor: SyncCursor | null,
     limit: number
   ): Promise<IncrementalSyncBatch> {
-    // Watermark window strategy: If lastSyncTimestamp is present, filter updated_at:>=lastSyncTimestamp
+    // Watermark window strategy: Ensure clean ISO date syntax without enclosing quotes
     let queryFilter = "";
     if (cursor?.lastSyncTimestamp) {
       const watermarkDate = new Date(cursor.lastSyncTimestamp).toISOString();
-      queryFilter = `updated_at:>='${watermarkDate}'`;
+      queryFilter = `updated_at:>=${watermarkDate}`;
     } else {
       // Bounded initial window: past 30 days
       const thirtyDaysAgo = new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).toISOString();
-      queryFilter = `created_at:>='${thirtyDaysAgo}'`;
+      queryFilter = `created_at:>=${thirtyDaysAgo}`;
     }
 
     const ordersQuery = `
@@ -346,7 +346,6 @@ export class ShopifyConnectorProvider implements IConnectorProvider {
 
       const levels = node.inventoryLevels?.edges || [];
       if (levels.length === 0) {
-        // Fallback if no inventory levels defined yet
         records.push({
           id: node.id,
           sku,
@@ -356,7 +355,6 @@ export class ShopifyConnectorProvider implements IConnectorProvider {
           updated_at: new Date().toISOString(),
         });
       } else {
-        // Multi-location preservation: emit a distinct record per location
         for (const levelEdge of levels) {
           const level = levelEdge.node;
           const availableStock = level.quantities?.[0]?.quantity ?? 0;
@@ -389,5 +387,4 @@ export class ShopifyConnectorProvider implements IConnectorProvider {
     };
   }
 }
-
 

@@ -54,54 +54,52 @@ export async function parseDataset(
 async function parseCSV(
   filePath: string
 ): Promise<Record<string, unknown>[]> {
-
   return new Promise((resolve, reject) => {
-
     const rows: Record<string, unknown>[] = [];
 
     fs.createReadStream(filePath)
-      .pipe(csv())
-
+      .pipe(
+        csv({
+          skipComments: true,
+          mapHeaders: ({ header }) => header.trim().replace(/^\uFEFF/, ""), // Remove BOM and trim whitespace
+        })
+      )
       .on("data", (row) => {
-
         const parsedRow: Record<string, unknown> = {};
 
         Object.entries(row).forEach(([key, value]) => {
+          const cleanKey = key.trim();
+          if (!cleanKey) return;
 
           if (typeof value !== "string") {
-            parsedRow[key] = value;
+            parsedRow[cleanKey] = value;
             return;
           }
 
           const trimmed = value.trim();
 
           if (trimmed === "") {
-            parsedRow[key] = "";
+            parsedRow[cleanKey] = "";
             return;
           }
 
           const number = Number(trimmed);
 
           if (!Number.isNaN(number)) {
-            parsedRow[key] = number;
-          } else {
-            parsedRow[key] = trimmed;
+            parsedRow[cleanKey] = number;
+            return;
           }
 
+          parsedRow[cleanKey] = trimmed;
         });
 
-        rows.push(parsedRow);
-
+        if (Object.keys(parsedRow).length > 0) {
+          rows.push(parsedRow);
+        }
       })
-
-      .on("end", () => {
-        resolve(rows);
-      })
-
-      .on("error", reject);
-
+      .on("end", () => resolve(rows))
+      .on("error", (error) => reject(error));
   });
-
 }
 
 function parseExcel(

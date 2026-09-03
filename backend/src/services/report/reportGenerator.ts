@@ -48,14 +48,14 @@ export async function generateReport(
   if (profile.quality.issues && profile.quality.issues.length > 0) {
     recommendations.push(`Address identified quality issues: ${profile.quality.issues.slice(0, 2).join("; ")}.`);
   }
-  if (insights.anomalies.length > 0) {
+  if (insights.anomalies.length > 0 && !insights.anomalies[0].toLowerCase().includes("no anomaly")) {
     recommendations.push(`Investigate flagged outliers: ${insights.anomalies[0]}`);
   }
-  if (insights.kpis.length > 0) {
+  if (insights.kpis.length > 0 && !insights.kpis[0].toLowerCase().includes("no dominant")) {
     recommendations.push(`Establish tracking thresholds for key metrics: ${insights.kpis[0]}`);
   }
   if (recommendations.length === 0) {
-    recommendations.push("Maintain current data hygiene and monitor transaction distributions periodically.");
+    recommendations.push("Maintain standard data hygiene and monitor ongoing metric distributions.");
   }
 
   // OpenAI Grounded Synthesis (Milestone 5.2, Section 1, 8 & 16)

@@ -104,42 +104,52 @@ export async function generateReport(
       ],
     };
 
-    console.log(
-      `[reportGenerator] Dispatching evidence package to AI (${datasetName}, ${profile.rows} rows, score: ${score}%)...`
+   console.log(
+      `[reportGenerator] Dispatching evidence package to AI (${datasetName}, ${profile.rows} rows, score:${score}%)...`
     );
 
-    const prompt = `You are an elite retail and business intelligence analyst. Generate an executive summary and strategic recommendations based STRICTLY on the supplied evidence package.
+    const systemPrompt = "You are a principal business intelligence analyst. You MUST return your answer as a single, raw, valid JSON object without markdown code blocks, backticks, or explanatory text.";
 
-NON-NEGOTIABLE GROUNDING RULES:
-1. Rely ONLY on the numbers and column facts provided in the evidence package.
-2. NEVER invent new metrics, currency amounts, dates, or business events.
-3. Every recommendation must directly reference a metric, distribution, or anomaly from the evidence.
-4. If evidence is limited, state the limitation clearly.
+    const userPrompt = `Analyze this dataset evidence package and output a valid JSON object.
 
-Evidence Package:
+CRITICAL INSTRUCTIONS:
+1. Return raw JSON ONLY. Do NOT use markdown code fences like \`\`\`json.
+2. Base all statements strictly on the evidence provided below.
+3. Do not invent numbers or metrics not present in the package.
+
+EVIDENCE PACKAGE:
 ${JSON.stringify(evidencePackage, null, 2)}
 
-Respond ONLY with a valid JSON object matching this exact schema:
+REQUIRED JSON FORMAT:
 {
-  "executiveSummary": "A concise, professional 3-sentence executive summary evaluating overall business performance, key driver trends, and data integrity based on the evidence.",
+  "executiveSummary": "A concise, professional 3-sentence summary of volume, data quality, and key trends.",
   "recommendations": [
-    "Actionable recommendation 1 grounded in specific columns or metrics.",
-    "Actionable recommendation 2 addressing margin, volume, or variability.",
-    "Actionable recommendation 3 on operational optimization or anomaly mitigation.",
-    "Actionable recommendation 4 on monitoring or strategic next steps."
+    "First actionable data-backed recommendation.",
+    "Second actionable data-backed recommendation.",
+    "Third actionable operational recommendation.",
+    "Fourth strategic monitoring recommendation."
   ]
 }`;
 
     const completion = await aiProvider.generateCompletion({
-      messages: [{ role: "user", content: prompt }],
-      maxTokens: 1200,
-      temperature: 0.2,
+      messages: [
+        { role: "system", content: systemPrompt },
+        { role: "user", content: userPrompt },
+      ],
+      maxTokens: 1000,
+      temperature: 0.1,
       responseFormat: "json_object",
     });
 
     console.log("[reportGenerator] OpenAI synthesis response received successfully.");
 
-    const cleanJson = completion.replace(/```json|```/g, "").trim();
+    // Strip markdown formatting if any model leaks fences despite instructions
+    const cleanJson = completion
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+
     const parsed = JSON.parse(cleanJson);
 
     if (parsed.executiveSummary && typeof parsed.executiveSummary === "string") {
@@ -148,6 +158,7 @@ Respond ONLY with a valid JSON object matching this exact schema:
     if (Array.isArray(parsed.recommendations) && parsed.recommendations.length > 0) {
       recommendations = parsed.recommendations;
     }
+    
   } catch (err) {
     console.warn(
       "[reportGenerator] OpenAI synthesis skipped, utilizing deterministic fallback:",

@@ -12,6 +12,7 @@ import {
   Check,
   AlertTriangle,
   X,
+  Download,
 } from "lucide-react";
 import {
   getSettings,
@@ -206,6 +207,30 @@ export default function Settings() {
     }
   }
 
+  function handleDownloadBackupCodes() {
+    const content = [
+      "DIRALIS ENTERPRISE - RECOVERY BACKUP CODES",
+      `Generated: ${new Date().toUTCString()}`,
+      `Account: ${email || user?.email || ""}`,
+      "",
+      "Each code can only be used once if you lose access to your authenticator app:",
+      "----------------------------------------------------------------------",
+      ...backupCodes.map((code, i) => `${i + 1}. ${code}`),
+      "----------------------------------------------------------------------",
+      "Keep this file in a secure, encrypted location or password manager.",
+    ].join("\n");
+
+    const blob = new Blob([content], { type: "text/plain;charset=utf-8" });
+    const url = URL.createObjectURL(blob);
+    const anchor = document.createElement("a");
+    anchor.href = url;
+    anchor.download = `diralis-backup-codes-${Date.now()}.txt`;
+    document.body.appendChild(anchor);
+    anchor.click();
+    document.body.removeChild(anchor);
+    URL.revokeObjectURL(url);
+  }
+
   function handleCopyBackupCodes() {
     navigator.clipboard.writeText(backupCodes.join("\n"));
     setCopiedBackupCodes(true);
@@ -255,13 +280,20 @@ export default function Settings() {
               </span>
             ))}
           </div>
-          <div className="mt-4 flex gap-3">
+          <div className="mt-4 flex flex-wrap gap-3">
             <button
               onClick={handleCopyBackupCodes}
               className="inline-flex items-center gap-2 rounded-lg bg-amber-500 px-4 py-2 text-sm font-medium text-black hover:bg-amber-400"
             >
               {copiedBackupCodes ? <Check size={16} /> : <Copy size={16} />}
               {copiedBackupCodes ? "Copied to Clipboard" : "Copy All Codes"}
+            </button>
+            <button
+              onClick={handleDownloadBackupCodes}
+              className="inline-flex items-center gap-2 rounded-lg border border-amber-500/50 bg-amber-500/10 px-4 py-2 text-sm font-medium text-amber-300 hover:bg-amber-500/20"
+            >
+              <Download size={16} />
+              Download (.txt)
             </button>
             <button
               onClick={() => setBackupCodes([])}

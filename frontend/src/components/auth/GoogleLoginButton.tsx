@@ -6,40 +6,27 @@ import { googleLogin } from "../../api/googleAuth";
 
 export default function GoogleLoginButton() {
   const navigate = useNavigate();
-
   const { login } = useAuth();
 
-  async function handleSuccess(
-    credentialResponse: any
-  ) {
+  async function handleSuccess(credentialResponse: any) {
     try {
       if (!credentialResponse.credential) {
-        throw new Error(
-          "Google did not return a credential."
-        );
+        throw new Error("Google did not return a credential.");
       }
 
-      const result =
-        await googleLogin(
-          credentialResponse.credential
-        );
+      const result = await googleLogin(credentialResponse.credential);
 
-      login(
-        result.user,
-        result.token
-      );
+      if (!result.user || !result.token) {
+        throw new Error("Invalid response received from authentication server.");
+      }
 
-      navigate(
-        "/dashboard",
-        {
-          replace: true,
-        }
-      );
+      login(result.user, result.token);
+
+      navigate("/dashboard", {
+        replace: true,
+      });
     } catch (error) {
-      console.error(
-        "Google Login Error:",
-        error
-      );
+      console.error("Google Login Error:", error);
     }
   }
 
@@ -47,12 +34,11 @@ export default function GoogleLoginButton() {
     <GoogleLogin
       onSuccess={handleSuccess}
       onError={() => {
-        console.error(
-          "Google Login Failed"
-        );
+        console.error("Google Login Failed");
       }}
       useOneTap={false}
     />
   );
 }
+
 

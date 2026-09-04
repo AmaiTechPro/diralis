@@ -3,6 +3,7 @@ import { Router } from "express";
 import {
   register,
   login,
+  verify2FAChallenge,
   googleLogin,
   verifyEmail,
   resendVerification,
@@ -13,12 +14,13 @@ import {
   resetPassword,
 } from "../controllers/passwordResetController";
 
-
 const router = Router();
 
 router.post("/register", register);
 
 router.post("/login", login);
+
+router.post("/login/2fa", verify2FAChallenge);
 
 router.post("/google", googleLogin);
 
@@ -41,8 +43,6 @@ router.post(
   "/resend-verification",
   resendVerification
 );
-
-
 
 export default router;
 

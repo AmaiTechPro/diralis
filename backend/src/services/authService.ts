@@ -1,7 +1,8 @@
-import bcrypt from "bcryptjs";
-import prisma from "../lib/prisma";
-import { generateToken } from "../utils/jwt";
 import crypto from "crypto";
+import bcrypt from "bcryptjs";
+import * as otplib from "otplib";
+import prisma from "../lib/prisma";
+import { generateToken, generate2FATempToken, verifyToken } from "../utils/jwt";
 import { sendVerificationEmail } from "./emailService";
 
 type AuthResponse = {
@@ -18,6 +19,8 @@ type AuthResponse = {
     createdAt: Date;
   };
   token?: string;
+  requires2FA?: boolean;
+  tempToken?: string;
 };
 
 const SALT_ROUNDS = 10;
@@ -173,7 +176,16 @@ export async function loginUser(
     throw new Error(genericAuthError);
   }
 
-  // Login successful: clear any previous failed attempt counters
+  // 2. 2FA Challenge Gate: Check if user has 2FA enabled
+  if ((user as any).twoFactorEnabled) {
+    const tempToken = generate2FATempToken(user.id);
+    return {
+      requires2FA: true,
+      tempToken,
+    };
+  }
+
+  // Login successful for standard users: clear any previous failed attempt counters
   await prisma.user.update({
     where: { id: user.id },
     data: {
@@ -203,6 +215,109 @@ export async function loginUser(
       createdAt: user.createdAt,
     },
     token: generateToken(user.id, user.role),
+  };
+}
+
+export async function verify2FALogin(tempToken: string, code: string): Promise<AuthResponse> {
+  let payload: any;
+  try {
+    payload = verifyToken(tempToken);
+  } catch {
+    throw new Error("2FA session expired. Please sign in again.");
+  }
+
+  if (payload.stage !== "2FA_PENDING" || !payload.userId) {
+    throw new Error("Invalid authentication state.");
+  }
+
+  const user = await prisma.user.findUnique({
+    where: { id: payload.userId },
+  });
+
+  if (!user || !(user as any).twoFactorEnabled || !(user as any).twoFactorSecret) {
+    throw new Error("Invalid 2FA request.");
+  }
+
+  const cleanCode = code.trim();
+  let verified = false;
+
+  // 1. Check TOTP Code
+  const authInstance: any =
+    (otplib as any).authenticator ||
+    (otplib as any).default?.authenticator ||
+    (otplib as any).default ||
+    otplib;
+
+  if (typeof authInstance.verify === "function") {
+    verified = authInstance.verify({
+      token: cleanCode,
+      secret: (user as any).twoFactorSecret,
+    });
+  } else if (typeof authInstance.check === "function") {
+    verified = authInstance.check(cleanCode, (user as any).twoFactorSecret);
+  }
+
+  // 2. If TOTP fails, check recovery backup codes
+  if (!verified && (user as any).backupCodes?.length) {
+    const backupCodes: string[] = (user as any).backupCodes;
+    let matchedIndex = -1;
+
+    for (let i = 0; i < backupCodes.length; i++) {
+      const match = await bcrypt.compare(cleanCode.toUpperCase(), backupCodes[i]);
+      if (match) {
+        matchedIndex = i;
+        break;
+      }
+    }
+
+    if (matchedIndex !== -1) {
+      verified = true;
+      // Consume one-time recovery backup code
+      backupCodes.splice(matchedIndex, 1);
+      await (prisma.user as any).update({
+        where: { id: user.id },
+        data: { backupCodes },
+      });
+    }
+  }
+
+  if (!verified) {
+    throw new Error("Invalid verification code or backup code.");
+  }
+
+  // Clear counters, update last login, and log security event
+  await prisma.user.update({
+    where: { id: user.id },
+    data: {
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      lastLogin: new Date(),
+    },
+  });
+
+  await prisma.securityEvent.create({
+    data: {
+      userId: user.id,
+      action: "LOGIN_SUCCESS",
+      details: "Authenticated via Two-Factor Authentication.",
+    },
+  });
+
+  const token = generateToken(user.id, user.role);
+
+  return {
+    token,
+    user: {
+      id: user.id,
+      fullName: user.fullName,
+      username: user.username,
+      email: user.email,
+      provider: user.provider,
+      picture: user.picture,
+      role: user.role,
+      status: user.status,
+      createdAt: user.createdAt,
+    },
   };
 }
 

@@ -92,14 +92,31 @@ export async function registerUser(
     },
   });
 
-  await sendVerificationEmail(
-    user.email,
-    user.fullName,
-    verificationCode
-  );
+  // Protect against email service configuration failures crashing account creation
+  try {
+    await sendVerificationEmail(
+      user.email,
+      user.fullName,
+      verificationCode
+    );
+  } catch (emailErr) {
+    console.error("[EmailService] Failed to dispatch verification email:", emailErr);
+  }
 
   return {
-    message: "Verification code sent to your email.",
+    message: "Account created successfully.",
+    user: {
+      id: user.id,
+      fullName: user.fullName,
+      username: user.username,
+      email: user.email,
+      provider: user.provider,
+      picture: user.picture,
+      role: user.role,
+      status: user.status,
+      createdAt: user.createdAt,
+    },
+    token: generateToken(user.id, user.role),
   };
 }
 

@@ -12,6 +12,7 @@ import {
   getAdminPayments,
   getAdminRevenueMetrics,
   adminOverrideSubscription,
+  getSecurityMetrics,
 } from "../controllers/adminController";
 
 const router = Router();
@@ -30,6 +31,13 @@ router.get("/subscriptions", adminMiddleware, getAdminSubscriptions);
 router.get("/payments", adminMiddleware, getAdminPayments);
 router.get("/revenue", adminMiddleware, getAdminRevenueMetrics);
 router.patch("/subscriptions/:id/override", adminMiddleware, adminOverrideSubscription);
+
+
+// Security Telemetry Routes (supporting both paths)
+router.get("/security/events", adminMiddleware, getSecurityEvents);
+router.get("/security-events", adminMiddleware, getSecurityEvents);
+router.get("/security/metrics", adminMiddleware, getSecurityMetrics);
+
 
 export default router;
 

@@ -698,3 +698,35 @@ export async function adminOverrideSubscription(req: Request, res: Response) {
 }
 
 
+export async function getSecurityMetrics(req: Request, res: Response) {
+  try {
+    const totalEvents = await prisma.securityEvent.count();
+    
+    const failedLogins = await prisma.securityEvent.count({
+      where: { action: "FAILED_LOGIN" },
+    });
+
+    const twoFactorUsers = await prisma.user.count({
+      where: { twoFactorEnabled: true },
+    });
+
+    const lockedUsers = await prisma.user.count({
+      where: { lockedUntil: { gt: new Date() } },
+    });
+
+    const activePasskeys = await prisma.passkeyCredential.count();
+
+    res.json({
+      totalEvents,
+      failedLogins,
+      twoFactorUsers,
+      lockedUsers,
+      activePasskeys,
+    });
+  } catch (error) {
+    console.error("getSecurityMetrics error:", error);
+    res.status(500).json({ error: "Failed to load security metrics." });
+  }
+}
+
+

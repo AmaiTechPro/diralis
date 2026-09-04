@@ -55,5 +55,9 @@ router.delete("/passkeys/:id", authMiddleware, removePasskey);
 router.post("/2fa/setup", authMiddleware, setup2FA);
 router.post("/2fa/verify", authMiddleware, verify2FA);
 
+// Support both route paths for passkey registration verification
+router.post("/passkeys/register-verify", authMiddleware, verifyPasskeyRegistration);
+router.post("/passkeys/verify-registration", authMiddleware, verifyPasskeyRegistration);
+
 
 export default router;

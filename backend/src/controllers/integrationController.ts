@@ -183,3 +183,37 @@ export async function getConnectionFreshness(req: Request, res: Response): Promi
 }
 
 
+
+export async function createConnection(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const entitlement = await EntitlementService.evaluateConnectorAccess(userId);
+    if (!entitlement.allowed) {
+      res.status(403).json({ error: entitlement.message || "PLAN_NOT_ENTITLED" });
+      return;
+    }
+
+    const { providerId, name, config, syncFrequency } = req.body;
+    if (!providerId || !config) {
+      res.status(400).json({ error: "MISSING_PARAMS: 'providerId' and 'config' are required." });
+      return;
+    }
+
+    const connection = await ConnectionService.createConnection({
+      userId,
+      providerId,
+      name: name || `${providerId.toUpperCase()} Connection`,
+      config,
+      syncFrequency: syncFrequency || "DAILY",
+    });
+
+    res.status(201).json({ success: true, connection });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || "Failed to create connection." });
+  }
+}

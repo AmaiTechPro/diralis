@@ -83,3 +83,22 @@ export async function disconnectIntegration(connectionId: string): Promise<{ suc
 
 
 
+
+export interface CreateConnectionParams {
+  providerId: string;
+  name?: string;
+  config: Record<string, any>;
+  syncFrequency?: "MANUAL" | "HOURLY" | "DAILY" | "REALTIME";
+}
+
+export async function createIntegrationConnection(
+  params: CreateConnectionParams
+): Promise<{ success: boolean; connection: any }> {
+  return await apiFetch<{ success: boolean; connection: any }>(
+    "/integrations",
+    {
+      method: "POST",
+      body: JSON.stringify(params),
+    }
+  );
+}

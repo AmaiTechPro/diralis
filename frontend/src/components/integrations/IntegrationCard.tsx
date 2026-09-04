@@ -1,17 +1,29 @@
-import React, { useState } from "react";
+﻿import React, { useState } from "react";
 import { RefreshCw, Store, ExternalLink, AlertCircle, Trash2 } from "lucide-react";
+import type { LucideIcon } from "lucide-react";
 import type { ConnectionFreshness } from "../../services/integrationService";
 import { triggerManualSync, disconnectIntegration } from "../../services/integrationService";
 import { FreshnessBadge } from "./FreshnessBadge";
 
+export interface ConnectorMeta {
+  id: string;
+  name: string;
+  category: string;
+  description: string;
+  icon: LucideIcon;
+  badgeColor?: string;
+  connectButtonLabel: string;
+}
+
 interface IntegrationCardProps {
+  connector: ConnectorMeta;
   connection?: ConnectionFreshness;
-  providerType?: "shopify";
   onRefresh: () => void;
   onConnectClick?: () => void;
 }
 
 export const IntegrationCard: React.FC<IntegrationCardProps> = ({
+  connector,
   connection,
   onRefresh,
   onConnectClick,
@@ -19,6 +31,8 @@ export const IntegrationCard: React.FC<IntegrationCardProps> = ({
   const [syncing, setSyncing] = useState(false);
   const [disconnecting, setDisconnecting] = useState(false);
   const [actionError, setActionError] = useState<string | null>(null);
+
+  const Icon = connector.icon || Store;
 
   const formatRelativeTime = (isoString: string | null): string => {
     if (!isoString) return "Never";
@@ -72,11 +86,11 @@ export const IntegrationCard: React.FC<IntegrationCardProps> = ({
           <div className="flex items-center justify-between">
             <div className="flex items-center gap-3">
               <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-                <Store size={22} />
+                <Icon size={22} />
               </div>
               <div>
-                <h3 className="font-semibold text-slate-100">Shopify POS</h3>
-                <p className="text-xs text-slate-400">Point of Sale & Retail Orders</p>
+                <h3 className="font-semibold text-slate-100">{connector.name}</h3>
+                <p className="text-xs text-slate-400">{connector.category}</p>
               </div>
             </div>
             <span className="text-xs px-2.5 py-1 rounded-full bg-slate-800 text-slate-400 border border-slate-700">
@@ -84,7 +98,7 @@ export const IntegrationCard: React.FC<IntegrationCardProps> = ({
             </span>
           </div>
           <p className="mt-4 text-sm text-slate-400 leading-relaxed">
-            Synchronize retail POS orders, product items, and store inventory directly into Diralis's canonical engine.
+            {connector.description}
           </p>
         </div>
 
@@ -94,7 +108,7 @@ export const IntegrationCard: React.FC<IntegrationCardProps> = ({
             className="w-full inline-flex items-center justify-center gap-2 px-4 py-2.5 text-sm font-medium rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white transition-colors cursor-pointer"
           >
             <ExternalLink size={16} />
-            Connect Shopify Store
+            {connector.connectButtonLabel}
           </button>
         </div>
       </div>
@@ -111,7 +125,7 @@ export const IntegrationCard: React.FC<IntegrationCardProps> = ({
         <div className="flex items-start justify-between gap-4">
           <div className="flex items-center gap-3">
             <div className="p-2.5 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
-              <Store size={22} />
+              <Icon size={22} />
             </div>
             <div>
               <h3 className="font-semibold text-slate-100">{connection.name}</h3>
@@ -132,13 +146,18 @@ export const IntegrationCard: React.FC<IntegrationCardProps> = ({
           <div>
             <span className="text-slate-500 block">Records Ingested</span>
             <span className="font-medium text-slate-200 mt-0.5 block">
-              {connection.recordsLastSynced.toLocaleString()} records
+              {(connection.recordsLastSynced || 0).toLocaleString()} records
             </span>
           </div>
           <div>
             <span className="text-slate-500 block">Next Scheduled</span>
             <span className="font-medium text-slate-200 mt-0.5 block">
-              {connection.nextSyncAt ? new Date(connection.nextSyncAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" }) : "Automatic"}
+              {connection.nextSyncAt
+                ? new Date(connection.nextSyncAt).toLocaleTimeString([], {
+                    hour: "2-digit",
+                    minute: "2-digit",
+                  })
+                : "Automatic"}
             </span>
           </div>
           <div>
@@ -192,5 +211,3 @@ export const IntegrationCard: React.FC<IntegrationCardProps> = ({
     </div>
   );
 };
-
-

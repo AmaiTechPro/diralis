@@ -1,20 +1,49 @@
-import React, { useEffect, useState } from "react";
-import { Store, RefreshCw, Database, Layers, AlertCircle } from "lucide-react";
+﻿import React, { useEffect, useState } from "react";
+import { Store, RefreshCw, Database, Layers, AlertCircle, CreditCard, X } from "lucide-react";
 import type { ConnectionFreshness } from "../services/integrationService";
 import {
   listIntegrationsFreshness,
   getShopifyConnectUrl,
+  createIntegrationConnection,
 } from "../services/integrationService";
 import { IntegrationCard } from "../components/integrations/IntegrationCard";
+import type { ConnectorMeta } from "../components/integrations/IntegrationCard";
+
+const AVAILABLE_CONNECTORS: ConnectorMeta[] = [
+  {
+    id: "shopify",
+    name: "Shopify POS",
+    category: "Point of Sale & Retail Orders",
+    description: "Synchronize retail POS orders, product items, and store inventory directly into Diralis's canonical engine.",
+    icon: Store,
+    connectButtonLabel: "Connect Shopify Store",
+  },
+  {
+    id: "square",
+    name: "Square POS",
+    category: "Point of Sale & Payments",
+    description: "Synchronize Square payment orders, catalog items, and retail locations directly into Diralis's canonical engine.",
+    icon: CreditCard,
+    connectButtonLabel: "Connect Square POS",
+  },
+];
 
 export default function Integrations() {
   const [connections, setConnections] = useState<ConnectionFreshness[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Shopify modal state
-  const [isModalOpen, setIsModalOpen] = useState(false);
+  // Active modal state
+  const [activeModal, setActiveModal] = useState<"shopify" | "square" | null>(null);
+
+  // Shopify form state
   const [shopDomain, setShopDomain] = useState("");
+
+  // Square form state
+  const [squareAccessToken, setSquareAccessToken] = useState("");
+  const [squareLocationId, setSquareLocationId] = useState("");
+  const [squareEnvironment, setSquareEnvironment] = useState<"sandbox" | "production">("sandbox");
+
   const [connectLoading, setConnectLoading] = useState(false);
   const [modalError, setModalError] = useState<string | null>(null);
 
@@ -22,7 +51,7 @@ export default function Integrations() {
     try {
       setError(null);
       const conns = await listIntegrationsFreshness();
-      setConnections(conns);
+      setConnections(conns || []);
     } catch (err: any) {
       setError(err.message || "Failed to load integrations.");
     } finally {
@@ -43,7 +72,6 @@ export default function Integrations() {
 
     try {
       const { authorizationUrl } = await getShopifyConnectUrl(shopDomain.trim());
-      // Redirect user to Shopify OAuth authorization screen
       window.location.href = authorizationUrl;
     } catch (err: any) {
       setModalError(err.message || "Failed to start Shopify connection.");
@@ -51,7 +79,38 @@ export default function Integrations() {
     }
   };
 
-  const shopifyConnection = connections.find((c) => c.provider.toLowerCase() === "shopify");
+  const handleConnectSquare = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!squareAccessToken.trim()) {
+      setModalError("Square Access Token is required.");
+      return;
+    }
+
+    setConnectLoading(true);
+    setModalError(null);
+
+    try {
+      await createIntegrationConnection({
+        providerId: "square",
+        name: `Square POS (${squareEnvironment})`,
+        config: {
+          accessToken: squareAccessToken.trim(),
+          locationId: squareLocationId.trim() || undefined,
+          environment: squareEnvironment,
+        },
+        syncFrequency: "DAILY",
+      });
+
+      setActiveModal(null);
+      setSquareAccessToken("");
+      setSquareLocationId("");
+      fetchConnections();
+    } catch (err: any) {
+      setModalError(err.message || "Failed to connect Square POS.");
+    } finally {
+      setConnectLoading(false);
+    }
+  };
 
   return (
     <div className="p-6 md:p-10 max-w-7xl mx-auto">
@@ -84,16 +143,28 @@ export default function Integrations() {
         </div>
       )}
 
-      {/* Grid of Available & Active Integrations */}
+      {/* Dynamic Grid of Available & Active Integrations */}
       <div className="mt-8 grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-        {/* Shopify POS Card */}
-        <IntegrationCard
-          connection={shopifyConnection}
-          onRefresh={fetchConnections}
-          onConnectClick={() => setIsModalOpen(true)}
-        />
+        {AVAILABLE_CONNECTORS.map((connector) => {
+          const connection = connections.find(
+            (c) => c.provider.toLowerCase() === connector.id.toLowerCase()
+          );
 
-        {/* CSV File Upload Card (Standard Data Source) */}
+          return (
+            <IntegrationCard
+              key={connector.id}
+              connector={connector}
+              connection={connection}
+              onRefresh={fetchConnections}
+              onConnectClick={() => {
+                setModalError(null);
+                setActiveModal(connector.id as "shopify" | "square");
+              }}
+            />
+          );
+        })}
+
+        {/* CSV File Upload Card (Standard Ingestion) */}
         <div className="rounded-xl border border-slate-800 bg-slate-900/60 p-6 flex flex-col justify-between">
           <div>
             <div className="flex items-center justify-between">
@@ -126,10 +197,16 @@ export default function Integrations() {
         </div>
       </div>
 
-      {/* Connect Store Modal */}
-      {isModalOpen && (
+      {/* Connect Shopify Modal */}
+      {activeModal === "shopify" && (
         <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
-          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-6 shadow-2xl">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-6 shadow-2xl relative">
+            <button
+              onClick={() => setActiveModal(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-200"
+            >
+              <X size={18} />
+            </button>
             <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
               <Store className="text-emerald-400" size={20} />
               Connect Shopify Store
@@ -150,36 +227,118 @@ export default function Integrations() {
                 <label className="block text-xs font-medium text-slate-300 mb-1">
                   Shop Domain or Handle
                 </label>
-                <div className="relative">
-                  <input
-                    type="text"
-                    required
-                    placeholder="my-store.myshopify.com"
-                    value={shopDomain}
-                    onChange={(e) => setShopDomain(e.target.value)}
-                    className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-800 text-sm text-slate-100 placeholder-slate-600 focus:outline-hidden focus:border-cyan-500"
-                  />
-                </div>
-                <p className="text-[11px] text-slate-500 mt-1.5">
-                  e.g. <code>urban-boutique</code> or <code>urban-boutique.myshopify.com</code>
-                </p>
+                <input
+                  type="text"
+                  required
+                  placeholder="my-store.myshopify.com"
+                  value={shopDomain}
+                  onChange={(e) => setShopDomain(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-800 text-sm text-slate-100 placeholder-slate-600 focus:outline-hidden focus:border-cyan-500"
+                />
               </div>
 
-              <div className="flex items-center justify-end gap-3 pt-3 border-t border-slate-800">
+              <div className="flex items-center justify-end gap-3 pt-2">
                 <button
                   type="button"
-                  onClick={() => setIsModalOpen(false)}
-                  className="px-4 py-2 text-xs font-medium rounded-lg text-slate-400 hover:text-slate-200 hover:bg-slate-800 transition-colors"
+                  onClick={() => setActiveModal(null)}
+                  className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200"
                 >
                   Cancel
                 </button>
                 <button
                   type="submit"
-                  disabled={connectLoading || !shopDomain.trim()}
-                  className="inline-flex items-center gap-2 px-4 py-2 text-xs font-medium rounded-lg bg-cyan-600 hover:bg-cyan-500 text-white transition-colors disabled:opacity-50 cursor-pointer"
+                  disabled={connectLoading}
+                  className="px-4 py-2 text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors disabled:opacity-50"
                 >
-                  {connectLoading && <RefreshCw size={13} className="animate-spin" />}
-                  Authorize with Shopify
+                  {connectLoading ? "Connecting..." : "Proceed to Shopify"}
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
+      )}
+
+      {/* Connect Square Modal */}
+      {activeModal === "square" && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 backdrop-blur-xs p-4">
+          <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full p-6 shadow-2xl relative">
+            <button
+              onClick={() => setActiveModal(null)}
+              className="absolute top-4 right-4 text-slate-400 hover:text-slate-200"
+            >
+              <X size={18} />
+            </button>
+            <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
+              <CreditCard className="text-cyan-400" size={20} />
+              Connect Square POS
+            </h3>
+            <p className="text-xs text-slate-400 mt-1">
+              Enter your Square API credentials to synchronize payments and inventory.
+            </p>
+
+            {modalError && (
+              <div className="mt-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2">
+                <AlertCircle size={15} className="text-rose-400 shrink-0" />
+                <span>{modalError}</span>
+              </div>
+            )}
+
+            <form onSubmit={handleConnectSquare} className="mt-4 space-y-4">
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  Environment
+                </label>
+                <select
+                  value={squareEnvironment}
+                  onChange={(e) => setSquareEnvironment(e.target.value as "sandbox" | "production")}
+                  className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-800 text-sm text-slate-100 focus:outline-hidden focus:border-cyan-500"
+                >
+                  <option value="sandbox">Sandbox (Development / Testing)</option>
+                  <option value="production">Production (Live Store)</option>
+                </select>
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  Square Access Token
+                </label>
+                <input
+                  type="password"
+                  required
+                  placeholder="EAAA..."
+                  value={squareAccessToken}
+                  onChange={(e) => setSquareAccessToken(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-800 text-sm text-slate-100 placeholder-slate-600 focus:outline-hidden focus:border-cyan-500 font-mono"
+                />
+              </div>
+
+              <div>
+                <label className="block text-xs font-medium text-slate-300 mb-1">
+                  Location ID (Optional)
+                </label>
+                <input
+                  type="text"
+                  placeholder="LP3EEGBWK5GB3"
+                  value={squareLocationId}
+                  onChange={(e) => setSquareLocationId(e.target.value)}
+                  className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-800 text-sm text-slate-100 placeholder-slate-600 focus:outline-hidden focus:border-cyan-500 font-mono"
+                />
+              </div>
+
+              <div className="flex items-center justify-end gap-3 pt-2">
+                <button
+                  type="button"
+                  onClick={() => setActiveModal(null)}
+                  className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200"
+                >
+                  Cancel
+                </button>
+                <button
+                  type="submit"
+                  disabled={connectLoading}
+                  className="px-4 py-2 text-xs font-medium bg-cyan-600 hover:bg-cyan-500 text-white rounded-lg transition-colors disabled:opacity-50"
+                >
+                  {connectLoading ? "Connecting..." : "Connect Square"}
                 </button>
               </div>
             </form>
@@ -189,4 +348,3 @@ export default function Integrations() {
     </div>
   );
 }
-

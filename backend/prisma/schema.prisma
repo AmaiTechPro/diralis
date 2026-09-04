@@ -13,11 +13,16 @@ enum SecurityAction {
   ACCOUNT_LOCKED
   PASSWORD_RESET_REQUESTED
   PASSWORD_RESET_COMPLETED
+  PASSWORD_CHANGED
   EMAIL_VERIFIED
   GOOGLE_LOGIN
   USER_CREATED
   ROLE_CHANGED
   ACCOUNT_DISABLED
+  TWO_FACTOR_ENABLED
+  TWO_FACTOR_DISABLED
+  TWO_FACTOR_VERIFIED
+  BACKUP_CODE_USED
 }
 
 enum BillingProvider {
@@ -67,14 +72,19 @@ model User {
 
   failedLoginAttempts     Int                     @default(0)
   lockedUntil             DateTime?
-
   lastLogin               DateTime?
+
+  // Security & 2FA
+  twoFactorEnabled        Boolean                 @default(false)
+  twoFactorSecret         String?
+  backupCodes             String[]                @default([])
 
   theme                   String                  @default("dark")
   emailNotifications      Boolean                 @default(true)
 
   createdAt               DateTime                @default(now())
 
+  passwordHistories       PasswordHistory[]
   canonicalTransactions   CanonicalTransaction[]
   canonicalInventoryItems CanonicalInventoryItem[]
 
@@ -515,3 +525,16 @@ model IntegrationEvent {
   @@index([tenantId, topic])
   @@index([shopDomain, topic])
 }
+
+
+model PasswordHistory {
+  id        String   @id @default(cuid())
+  hash      String
+  createdAt DateTime @default(now())
+
+  userId    String
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+

@@ -9,7 +9,6 @@ import { generateSectionReport } from "../services/report/reportSectionGenerator
 import { getLatestDataset } from "../services/datasetService";
 import { getCanonicalDatasetRows } from "../services/canonicalDataService";
 
-
 async function buildReport(datasetId: string, userId: string) {
   let rows: Record<string, any>[] = [];
   let datasetName = "Dataset";
@@ -73,6 +72,32 @@ async function resolveDatasetId(req: Request): Promise<{ datasetId: string; user
   throw new Error("No datasets found");
 }
 
+function handleReportError(error: unknown, res: Response, fallbackMessage: string) {
+  const errorMessage = error instanceof Error ? error.message : "";
+
+  if (errorMessage === "No datasets found") {
+    return res.status(404).json({
+      message: "No valid datasets found. Please upload a dataset to generate reports.",
+    });
+  }
+
+  if (errorMessage === "Dataset not found or unauthorized") {
+    return res.status(404).json({
+      message: "Dataset not found or access denied.",
+    });
+  }
+
+  if (errorMessage.includes("Dataset file not found")) {
+    return res.status(404).json({
+      message: "The dataset file is no longer available on the server (ephemeral storage reset). Please delete and re-upload the dataset.",
+    });
+  }
+
+  return res.status(500).json({
+    message: fallbackMessage,
+  });
+}
+
 export async function reportController(req: Request, res: Response) {
   try {
     const { datasetId, userId } = await resolveDatasetId(req);
@@ -80,19 +105,7 @@ export async function reportController(req: Request, res: Response) {
     return res.json(report);
   } catch (error) {
     console.error("[reportController] Error:", error);
-    if (error instanceof Error && error.message === "No datasets found") {
-      return res.status(404).json({
-        message: "No valid datasets found. Please upload a dataset to generate reports.",
-      });
-    }
-    if (error instanceof Error && error.message === "Dataset not found or unauthorized") {
-      return res.status(404).json({
-        message: "Dataset not found or access denied.",
-      });
-    }
-    return res.status(500).json({
-      message: "Failed to generate report",
-    });
+    return handleReportError(error, res, "Failed to generate report");
   }
 }
 
@@ -108,14 +121,7 @@ export async function generateReportPDF(req: Request, res: Response) {
     pdf.pipe(res);
   } catch (error) {
     console.error("[generateReportPDF] Error:", error);
-    if (error instanceof Error && error.message === "No datasets found") {
-      return res.status(404).json({
-        message: "No valid datasets found. Please upload a dataset to generate reports.",
-      });
-    }
-    return res.status(500).json({
-      message: "Failed to generate report",
-    });
+    return handleReportError(error, res, "Failed to generate report");
   }
 }
 
@@ -149,10 +155,7 @@ export async function generateSectionReportPDF(req: Request, res: Response) {
     pdf.pipe(res);
   } catch (error) {
     console.error("[generateSectionReportPDF] Error:", error);
-    return res.status(500).json({
-      message: "Failed to generate section report",
-    });
+    return handleReportError(error, res, "Failed to generate section report");
   }
 }
-
 

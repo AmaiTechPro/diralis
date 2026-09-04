@@ -34,7 +34,7 @@ router.use("/admin", adminRoutes);
 router.use("/billing", billingRoutes);
 
 // Analytics profile routes
-router.use("/profiles", profileRoutes);
+router.use("/datasets", profileRoutes);
 
 // Copilot route
 router.use("/copilot", copilotRoutes);

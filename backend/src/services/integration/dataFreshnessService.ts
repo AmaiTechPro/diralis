@@ -55,7 +55,6 @@ export class DataFreshnessService {
     now: Date = new Date()
   ): FreshnessClassification {
     // 1. Inactive or disabled states
-    // 1. Inactive or disabled states
     if (
       connection.status === IntegrationStatus.INACTIVE ||
       (connection.status as string) === "REVOKED" ||
@@ -146,6 +145,11 @@ export class DataFreshnessService {
           orderBy: { createdAt: "desc" },
           take: includeHistory ? 5 : 1,
         },
+        _count: {
+          select: {
+            canonicalTransactions: true,
+          },
+        },
       },
     });
 
@@ -155,6 +159,8 @@ export class DataFreshnessService {
 
     const latestJob = connection.syncJobs[0] || null;
     const freshness = this.evaluateFreshness(connection, latestJob);
+    const canonicalCount = (connection as any)._count?.canonicalTransactions ?? 0;
+    const recordsCount = canonicalCount > 0 ? canonicalCount : (latestJob ? latestJob.recordsAccepted : 0);
 
     return {
       connectionId: connection.id,
@@ -166,7 +172,7 @@ export class DataFreshnessService {
       lastSuccessfulSyncAt: connection.lastSyncAt ? connection.lastSyncAt.toISOString() : null,
       lastAttemptedAt: connection.lastAttemptedAt ? connection.lastAttemptedAt.toISOString() : null,
       nextSyncAt: connection.nextSyncAt ? connection.nextSyncAt.toISOString() : null,
-      recordsLastSynced: latestJob ? latestJob.recordsAccepted : 0,
+      recordsLastSynced: recordsCount,
       retryCount: connection.retryCount,
       errorDetails: this.sanitizeErrorMessage(connection.errorDetails || latestJob?.errorMessage || null),
       recentJobs: includeHistory
@@ -196,12 +202,19 @@ export class DataFreshnessService {
           orderBy: { createdAt: "desc" },
           take: 1,
         },
+        _count: {
+          select: {
+            canonicalTransactions: true,
+          },
+        },
       },
     });
 
     return connections.map((conn) => {
       const latestJob = conn.syncJobs[0] || null;
       const freshness = this.evaluateFreshness(conn, latestJob);
+      const canonicalCount = (conn as any)._count?.canonicalTransactions ?? 0;
+      const recordsCount = canonicalCount > 0 ? canonicalCount : (latestJob ? latestJob.recordsAccepted : 0);
 
       return {
         connectionId: conn.id,
@@ -213,7 +226,7 @@ export class DataFreshnessService {
         lastSuccessfulSyncAt: conn.lastSyncAt ? conn.lastSyncAt.toISOString() : null,
         lastAttemptedAt: conn.lastAttemptedAt ? conn.lastAttemptedAt.toISOString() : null,
         nextSyncAt: conn.nextSyncAt ? conn.nextSyncAt.toISOString() : null,
-        recordsLastSynced: latestJob ? latestJob.recordsAccepted : 0,
+        recordsLastSynced: recordsCount,
         retryCount: conn.retryCount,
         errorDetails: this.sanitizeErrorMessage(conn.errorDetails || latestJob?.errorMessage || null),
       };
@@ -252,6 +265,4 @@ export class DataFreshnessService {
     return "Synchronization encountered an issue. Diralis will retry on the next cycle.";
   }
 }
-
-
 

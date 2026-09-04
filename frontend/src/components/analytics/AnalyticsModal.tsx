@@ -1,5 +1,5 @@
 import { motion, AnimatePresence } from "framer-motion";
-import { X } from "lucide-react";
+import { X, AlertCircle } from "lucide-react";
 
 import type { DatasetProfile } from "../../types/profile";
 
@@ -13,12 +13,12 @@ import AIInsightsCard from "./AIInsightsCard";
 import QualityBreakdownCard from "./QualityBreakdownCard";
 import AutoDashboard from "./AutoDashboard";
 
-
 interface Props {
   open: boolean;
   onClose: () => void;
   profile: DatasetProfile | null;
   loading: boolean;
+  error?: string | null;
 }
 
 export default function AnalyticsModal({
@@ -26,8 +26,8 @@ export default function AnalyticsModal({
   onClose,
   profile,
   loading,
+  error,
 }: Props) {
-  console.log(profile);
   return (
     <AnimatePresence>
       {open && (
@@ -59,22 +59,35 @@ export default function AnalyticsModal({
           >
             <button
               onClick={onClose}
-              className="absolute right-6 top-6 rounded-xl p-2 transition hover:bg-slate-800"
+              className="absolute right-6 top-6 rounded-xl p-2 transition hover:bg-slate-800 text-slate-400 hover:text-white"
             >
               <X size={22} />
             </button>
 
-            <h1 className="text-3xl font-bold">
-              Dataset Analytics
-            </h1>
+            <h1 className="text-3xl font-bold">Dataset Analytics</h1>
 
             {loading ? (
               <div className="py-20 text-center text-slate-400">
-                Loading analytics...
+                <div className="inline-block h-8 w-8 animate-spin rounded-full border-4 border-solid border-cyan-500 border-r-transparent align-[-0.125em] mb-4" />
+                <p>Loading analytics...</p>
               </div>
-            ) : !profile ? (
-              <div className="py-20 text-center text-red-400">
-                Failed to load analytics.
+            ) : error || !profile ? (
+              <div className="py-16 text-center">
+                <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl bg-red-500/10 border border-red-500/20 text-red-400">
+                  <AlertCircle size={28} />
+                </div>
+                <h3 className="text-lg font-semibold text-slate-200">
+                  Failed to Load Analytics
+                </h3>
+                <p className="mt-2 max-w-md mx-auto text-sm text-slate-400">
+                  {error || "The dataset file is missing from the server. If the server restarted or redeployed, please delete and re-upload the dataset file."}
+                </p>
+                <button
+                  onClick={onClose}
+                  className="mt-6 rounded-xl bg-slate-800 px-5 py-2.5 text-sm font-medium text-slate-200 hover:bg-slate-700 transition"
+                >
+                  Close
+                </button>
               </div>
             ) : (
               <>
@@ -154,41 +167,37 @@ export default function AnalyticsModal({
                   />
                 </div>
 
-                 {/* AI Insights */}
+                {/* AI Insights */}
                 <div className="mt-6">
-              <AIInsightsCard
-               summary={profile.insights.summary}
-               quality={profile.insights.quality ?? []}
-               statistics={profile.insights.statistics ?? []}
-               anomalies={profile.insights.anomalies ?? []}
-               business={profile.insights.business ?? []}
-               forecast={profile.insights.forecast ?? []}
-               kpis={profile.insights.kpis ?? []}
-               rootCauses={profile.insights.rootCauses ?? []}
-              />
-            </div>
+                  <AIInsightsCard
+                    summary={profile.insights.summary}
+                    quality={profile.insights.quality ?? []}
+                    statistics={profile.insights.statistics ?? []}
+                    anomalies={profile.insights.anomalies ?? []}
+                    business={profile.insights.business ?? []}
+                    forecast={profile.insights.forecast ?? []}
+                    kpis={profile.insights.kpis ?? []}
+                    rootCauses={profile.insights.rootCauses ?? []}
+                  />
+                </div>
 
-               {/* Quality Breakdown */}
-              <div className="mt-6">
+                {/* Quality Breakdown */}
+                <div className="mt-6">
+                  <QualityBreakdownCard
+                    score={profile.profile.quality.score}
+                    duplicates={profile.profile.duplicateRows}
+                    missing={profile.profile.missingValues}
+                  />
+                </div>
 
-               <QualityBreakdownCard
-               score={profile.profile.quality.score}
-               duplicates={profile.profile.duplicateRows}
-               missing={profile.profile.missingValues}
-              />
-
-              </div>
-
-              {/* Auto Dashboard */}
-              <div className="mt-6">
-
-             <AutoDashboard
-             visualizations={
-             profile.visualizations
-           }
-           />
-
-             </div>
+                {/* Auto Dashboard */}
+                <div className="mt-6">
+                  <AutoDashboard
+                    visualizations={
+                      profile.visualizations
+                    }
+                  />
+                </div>
 
                 {/* AI Recommendations */}
                 <div className="mt-6">

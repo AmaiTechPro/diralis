@@ -36,6 +36,7 @@ export default function Datasets() {
   const [previewLoading, setPreviewLoading] = useState(false);
   const [analyticsOpen, setAnalyticsOpen] = useState(false);
   const [analyticsLoading, setAnalyticsLoading] = useState(false);
+  const [analyticsError, setAnalyticsError] = useState<string | null>(null);
   const [profile, setProfile] = useState<DatasetProfile | null>(null);
 
   const { getLimit, getUsage, isUsageExceeded, currentTier, refresh: refreshEntitlements } = useEntitlement();
@@ -131,6 +132,8 @@ export default function Datasets() {
 
   async function handleAnalyze(id: string) {
     try {
+      setProfile(null);
+      setAnalyticsError(null);
       setAnalyticsOpen(true);
       setAnalyticsLoading(true);
       const result = await getDatasetProfile(id);
@@ -138,7 +141,9 @@ export default function Datasets() {
     } catch (err) {
       console.error(err);
       setProfile(null);
-      setError("Failed to generate dataset analytics.");
+      setAnalyticsError(
+        err instanceof Error ? err.message : "Failed to load analytics."
+      );
     } finally {
       setAnalyticsLoading(false);
     }
@@ -226,7 +231,8 @@ export default function Datasets() {
           </div>
         )}
 
-        <div className="space-y-4">
+        {/* pb-36 provides vertical clearance past the floating WhatsApp button */}
+        <div className="space-y-4 pb-36">
           <h2 className="text-2xl font-semibold">My Datasets</h2>
 
           {datasets.length === 0 ? (
@@ -259,12 +265,13 @@ export default function Datasets() {
         onClose={() => {
           setAnalyticsOpen(false);
           setProfile(null);
+          setAnalyticsError(null);
         }}
         loading={analyticsLoading}
         profile={profile}
+        error={analyticsError}
       />
     </>
   );
 }
-
 

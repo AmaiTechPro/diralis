@@ -1,18 +1,11 @@
 import bcrypt from "bcryptjs";
-
 import prisma from "../lib/prisma";
 import { generateToken } from "../utils/jwt";
-
 import crypto from "crypto";
-
-import {
-  sendVerificationEmail,
-} from "./emailService";
-
+import { sendVerificationEmail } from "./emailService";
 
 type AuthResponse = {
   message?: string;
-
   user?: {
     id: string;
     fullName: string;
@@ -24,33 +17,26 @@ type AuthResponse = {
     status: string;
     createdAt: Date;
   };
-
   token?: string;
 };
 
 const SALT_ROUNDS = 10;
+const MAX_FAILED_ATTEMPTS = 5;
+const LOCKOUT_DURATION_MS = 15 * 60 * 1000; // 15 minutes
 
 function validatePassword(password: string) {
-
   const passwordRegex =
     /^(?=.*[a-z])(?=.*[A-Z])(?=.*\d)(?=.*[^A-Za-z\d]).{8,}$/;
 
   if (!passwordRegex.test(password)) {
-
     throw new Error(
       "Password must be at least 8 characters long and include an uppercase letter, a lowercase letter, a number, and a special character."
     );
-
   }
-
 }
 
 function generateVerificationCode() {
-
-  return Math.floor(
-    100000 + Math.random() * 900000
-  ).toString();
-
+  return Math.floor(100000 + Math.random() * 900000).toString();
 }
 
 export async function registerUser(
@@ -67,200 +53,142 @@ export async function registerUser(
     throw new Error("Email already registered.");
   }
 
-  const existingUsername =
-    await prisma.user.findUnique({
-      where: { username },
-    });
+  const existingUsername = await prisma.user.findUnique({
+    where: { username },
+  });
 
   if (existingUsername) {
     throw new Error("Username already taken.");
   }
   validatePassword(password);
 
-  const hashedPassword = await bcrypt.hash(
-    password,
-    SALT_ROUNDS
-  );
+  const hashedPassword = await bcrypt.hash(password, SALT_ROUNDS);
+  const verificationCode = generateVerificationCode();
 
-  const verificationCode =
-  generateVerificationCode();
-
-const codeHash =
-  crypto
+  const codeHash = crypto
     .createHash("sha256")
     .update(verificationCode)
     .digest("hex");
 
-const expiresAt =
-  new Date(
-    Date.now() + 10 * 60 * 1000
-  );
+  const expiresAt = new Date(Date.now() + 10 * 60 * 1000);
 
-const user = await prisma.user.create({
-  data: {
-    fullName,
-    username,
-    email,
-    password: hashedPassword,
-    provider: "local",
-
-    emailVerified: false,
-
-    emailVerifications: {
-      create: {
-        codeHash,
-        expiresAt,
+  const user = await prisma.user.create({
+    data: {
+      fullName,
+      username,
+      email,
+      password: hashedPassword,
+      provider: "local",
+      emailVerified: false,
+      emailVerifications: {
+        create: {
+          codeHash,
+          expiresAt,
+        },
       },
     },
-  },
-});
+  });
 
-await sendVerificationEmail(
-
-  user.email,
-
-  user.fullName,
-
-  verificationCode
-
-);
+  await sendVerificationEmail(
+    user.email,
+    user.fullName,
+    verificationCode
+  );
 
   return {
-  message:
-    "Verification code sent to your email.",
-};
-   }
+    message: "Verification code sent to your email.",
+  };
+}
 
 export async function loginUser(
   identifier: string,
   password: string
 ): Promise<AuthResponse> {
-  const user =
-    await prisma.user.findFirst({
-      where: {
-        OR: [
-          { email: identifier },
-          { username: identifier },
-        ],
+  const user = await prisma.user.findFirst({
+    where: {
+      OR: [
+        { email: identifier },
+        { username: identifier },
+      ],
+    },
+  });
+
+  // Standardized generic error for credential mismatch or non-existent user
+  const genericAuthError = "Invalid username/email or password.";
+
+  if (!user || !user.password) {
+    throw new Error(genericAuthError);
+  }
+
+  const now = new Date();
+
+  // 1. Check if user is locked out
+  if (user.lockedUntil) {
+    if (user.lockedUntil > now) {
+      // Actively locked out: return generic message to prevent account enumeration
+      throw new Error(genericAuthError);
+    }
+
+    // Lockout period has elapsed: auto-reset counter and clear lockout timestamp
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        failedLoginAttempts: 0,
+        lockedUntil: null,
+      },
+    });
+    user.failedLoginAttempts = 0;
+    user.lockedUntil = null;
+  }
+
+  if (!user.emailVerified) {
+    throw new Error("Please verify your email before signing in.");
+  }
+
+  const passwordMatches = await bcrypt.compare(password, user.password);
+
+  if (!passwordMatches) {
+    const attempts = user.failedLoginAttempts + 1;
+    const shouldLock = attempts >= MAX_FAILED_ATTEMPTS;
+
+    await prisma.user.update({
+      where: { id: user.id },
+      data: {
+        failedLoginAttempts: shouldLock ? 0 : attempts,
+        lockedUntil: shouldLock ? new Date(Date.now() + LOCKOUT_DURATION_MS) : null,
       },
     });
 
-  if (!user || !user.password) {
-    throw new Error(
-      "Invalid username/email or password."
-    );
+    await prisma.securityEvent.create({
+      data: {
+        userId: user.id,
+        action: "FAILED_LOGIN",
+        details: shouldLock
+          ? "Account temporarily locked after 5 consecutive failures"
+          : `Attempt ${attempts} of ${MAX_FAILED_ATTEMPTS}`,
+      },
+    });
+
+    // Never disclose lock status or remaining attempts
+    throw new Error(genericAuthError);
   }
 
-  if (
-  user.lockedUntil &&
-  user.lockedUntil > new Date()
-) {
-  throw new Error(
-    "Account temporarily locked. Please try again in 15 minutes."
-  );
-}
-
-
-  if (!user.emailVerified) {
-
-  throw new Error(
-    "Please verify your email before signing in."
-  );
-
-}
-
-  const passwordMatches =
-    await bcrypt.compare(
-      password,
-      user.password
-    );
-
-  if (!passwordMatches) {
-    {/* For Debugging LoginAttempts */}
-    console.log("FAILED LOGIN:", {
-  userId: user.id,
-  attempts: user.failedLoginAttempts,
-});
-
-  const attempts =
-    user.failedLoginAttempts + 1;
-
-  const shouldLock =
-    attempts >= 5;
-
+  // Login successful: clear any previous failed attempt counters
   await prisma.user.update({
-
-    where: {
-      id: user.id,
-    },
-
+    where: { id: user.id },
     data: {
-
-      failedLoginAttempts: attempts,
-
-      lockedUntil: shouldLock
-        ? new Date(
-            Date.now() + 15 * 60 * 1000
-          )
-        : null,
-
+      failedLoginAttempts: 0,
+      lockedUntil: null,
+      lastLogin: new Date(),
     },
-
   });
 
   await prisma.securityEvent.create({
-
     data: {
-
       userId: user.id,
-
-      action: "FAILED_LOGIN",
-
-      details: `Attempt ${attempts}`,
-
+      action: "LOGIN_SUCCESS",
     },
-
   });
-
-  throw new Error(
-
-    shouldLock
-      ? "Too many failed login attempts. Your account has been locked for 15 minutes."
-      : "Invalid username/email or password."
-
-  );
-
-}
-
-await prisma.user.update({
-
-  where: {
-    id: user.id,
-  },
-
-  data: {
-
-    failedLoginAttempts: 0,
-
-    lockedUntil: null,
-
-    lastLogin: new Date(),
-
-  },
-
-});
-
-await prisma.securityEvent.create({
-
-  data: {
-
-    userId: user.id,
-
-    action: "LOGIN_SUCCESS",
-
-  },
-
-});
 
   return {
     user: {
@@ -274,10 +202,7 @@ await prisma.securityEvent.create({
       status: user.status,
       createdAt: user.createdAt,
     },
-    token: generateToken(
-  user.id,
-  user.role
-   ),
+    token: generateToken(user.id, user.role),
   };
 }
 

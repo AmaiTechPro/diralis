@@ -3,25 +3,39 @@ import { profileDataset } from "./profiler/profileDataset";
 import { generateInsights } from "./insights/generateInsights";
 import { generateReport } from "./report/reportGenerator";
 import { getLatestDataset } from "./datasetService";
+import { getCanonicalDatasetRows } from "./canonicalDataService";
 import { getAIProvider } from "./ai/providerFactory";
 
 export async function generateChatResponse(
   userId: string,
   message: string
 ): Promise<string> {
+  let rows: Record<string, any>[] = [];
+  let sourceName = "Dataset";
+
   const latestDataset = await getLatestDataset(userId);
 
-  if (!latestDataset) {
-    return "You don't have any uploaded datasets yet. Please upload a dataset or connect your store so I can analyze it.";
+  if (latestDataset) {
+    rows = await parseDataset(latestDataset.id);
+    sourceName = latestDataset.originalName;
+  } else {
+    const canonical = await getCanonicalDatasetRows(userId);
+    if (canonical && canonical.rows.length > 0) {
+      rows = canonical.rows;
+      sourceName = canonical.sourceName;
+    }
   }
 
-  const rows = await parseDataset(latestDataset.id);
+  if (rows.length === 0) {
+    return "You don't have any active data sources yet. Please connect your store or upload a dataset so I can analyze it.";
+  }
+
   const profile = profileDataset(rows);
   const insights = generateInsights(profile);
   const report = await generateReport(
     profile,
     insights,
-    latestDataset.originalName
+    sourceName
   );
 
   const prompt = message.toLowerCase();
@@ -62,12 +76,12 @@ export async function generateChatResponse(
     return report.insights.map((insight: string) => `• ${insight}`).join("\n");
   }
 
-  // Grounded conversational fallback via real AI Provider (Milestone 5.2, Section 1 & 17)
+  // Grounded conversational synthesis via configured AI Provider
   try {
     const aiProvider = getAIProvider();
 
     const groundedContext = {
-      datasetName: latestDataset.originalName,
+      datasetName: sourceName,
       rows: profile.rows,
       columns: profile.columns,
       businessHealth: report.businessHealth,
@@ -101,10 +115,9 @@ ${JSON.stringify(groundedContext, null, 2)}`,
     });
 
     return completion.trim();
-  } catch (error) {
-    console.warn("[chatService] AI fallback generation failed:", (error as Error).message);
-    return `I analyzed '${latestDataset.originalName}' (${profile.rows} records, health score: ${report.businessHealth}%). You can ask me about executive summary, business health, insights, warnings, or recommendations.`;
+  } catch (err) {
+    console.warn("[chatService] AI fallback applied:", (err as Error).message);
+    return report.executiveSummary;
   }
 }
-
 

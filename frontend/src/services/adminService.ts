@@ -10,16 +10,21 @@ export interface AdminUser {
   provider: string;
   createdAt: string;
   emailVerified: boolean;
+  twoFactorEnabled?: boolean;
   failedLoginAttempts: number;
   lockedUntil: string | null;
   lastLogin: string | null;
   picture: string | null;
+  _count?: {
+    securityEvents: number;
+  };
 }
 
 export interface AdminMetrics {
   users: {
     total: number;
     verified: number;
+    twoFactorAdoption?: number;
   };
   datasets: {
     total: number;
@@ -35,6 +40,8 @@ export interface AdminMetrics {
   security: {
     events: number;
     lockedAccounts: number;
+    recentFailedLogins?: number;
+    totalPasskeys?: number;
   };
   billing: {
     subscriptionPlans: {
@@ -76,14 +83,47 @@ export interface SecurityEvent {
   action: string;
   ipAddress: string | null;
   userAgent: string | null;
+  device: string | null;
+  country: string | null;
+  city: string | null;
   details: string | null;
+  metadata?: Record<string, any> | null;
   createdAt: string;
   user: {
     id: string;
     username: string;
     email: string;
     fullName: string;
+    picture?: string | null;
+    status?: string;
   } | null;
+}
+
+export interface SecurityTelemetryMetrics {
+  totalPasskeys: number;
+  failedLogins24h: number;
+  lockedAccounts: number;
+  eventsByAction: Array<{ action: string; count: number }>;
+  topCountries: Array<{ country: string; count: number }>;
+}
+
+export interface SecurityEventsResponse {
+  events: SecurityEvent[];
+  pagination: {
+    total: number;
+    page: number;
+    limit: number;
+    pages: number;
+  };
+}
+
+export interface UserPasskeyAdmin {
+  id: string;
+  name: string;
+  deviceType: string;
+  backedUp: boolean;
+  lastUsedAt: string | null;
+  createdAt: string;
 }
 
 export interface AdminSubscription {
@@ -153,6 +193,10 @@ export interface RevenueMetrics {
   currency: string;
 }
 
+// =========================
+// API Calls
+// =========================
+
 export async function getAdminUsers() {
   return apiFetch<{ users: AdminUser[] }>("/admin/users");
 }
@@ -161,12 +205,46 @@ export async function getAdminMetrics() {
   return apiFetch<AdminMetrics>("/admin/metrics");
 }
 
-export async function getSecurityEvents() {
-  return apiFetch<{ events: SecurityEvent[] }>("/admin/security-events");
+export async function getSecurityTelemetryMetrics() {
+  return apiFetch<SecurityTelemetryMetrics>("/admin/security/metrics");
+}
+
+export async function getSecurityEvents(params?: {
+  page?: number;
+  limit?: number;
+  action?: string;
+  country?: string;
+  search?: string;
+}) {
+  const query = new URLSearchParams();
+  if (params?.page) query.set("page", params.page.toString());
+  if (params?.limit) query.set("limit", params.limit.toString());
+  if (params?.action && params.action !== "ALL") query.set("action", params.action);
+  if (params?.country && params.country !== "ALL") query.set("country", params.country);
+  if (params?.search) query.set("search", params.search);
+
+  const qs = query.toString();
+  return apiFetch<SecurityEventsResponse>(`/admin/security/events${qs ? `?${qs}` : ""}`);
 }
 
 export async function getLockedAccounts() {
   return apiFetch<{ users: AdminUser[] }>("/admin/locked-accounts");
+}
+
+export async function unlockUserAccount(id: string) {
+  return apiFetch<{ message: string; user: AdminUser }>(`/admin/users/${id}/unlock`, {
+    method: "POST",
+  });
+}
+
+export async function getUserPasskeysAdmin(userId: string) {
+  return apiFetch<{ passkeys: UserPasskeyAdmin[] }>(`/admin/users/${userId}/passkeys`);
+}
+
+export async function revokeUserPasskeyAdmin(passkeyId: string) {
+  return apiFetch<{ message: string }>(`/admin/passkeys/${passkeyId}`, {
+    method: "DELETE",
+  });
 }
 
 export async function getAdminSubscriptions(status?: string) {
@@ -218,5 +296,7 @@ export async function deleteUser(id: string) {
     method: "DELETE",
   });
 }
+
+
 
 

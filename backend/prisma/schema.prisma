@@ -195,15 +195,23 @@ model Session {
 }
 
 model SecurityEvent {
-  id        String         @id @default(cuid())
-  action    SecurityAction
-  ipAddress String?
-  userAgent String?
-  details   String?
-  createdAt DateTime       @default(now())
+  id          String         @id @default(cuid())
+  action      SecurityAction
+  ipAddress   String?
+  userAgent   String?
+  country     String?        // e.g. "Kenya", "United States", "DE"
+  city        String?        // e.g. "Nairobi", "Frankfurt"
+  device      String?        // e.g. "Windows / Chrome", "macOS / Safari", "iOS / Mobile"
+  details     String?        // Plain readable summary
+  metadata    Json?          // Flexible JSON for future upgrades (ASN, coordinates, risk score)
+  createdAt   DateTime       @default(now())
 
-  userId    String?
-  user      User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId      String?
+  user        User?          @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId, createdAt])
+  @@index([action, createdAt])
+  @@index([country])
 }
 
 model SubscriptionPlan {

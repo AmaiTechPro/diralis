@@ -1,6 +1,6 @@
 import { Request, Response } from "express";
 import prisma from "../lib/prisma";
-import { SubscriptionStatus, BillingInterval } from "@prisma/client";
+import { SubscriptionStatus, BillingInterval, SecurityAction } from "@prisma/client";
 
 // =========================
 // Get Platform Users
@@ -21,30 +21,33 @@ export async function getUsers(req: Request, res: Response) {
         status: true,
         createdAt: true,
         emailVerified: true,
+        twoFactorEnabled: true,
         failedLoginAttempts: true,
         lockedUntil: true,
         lastLogin: true,
         picture: true,
+        _count: {
+          select: {
+            securityEvents: true,
+          },
+        },
       },
     });
 
-    res.json({
-      users,
-    });
+    res.json({ users });
   } catch (error) {
     console.error("getUsers:", error);
-    res.status(500).json({
-      message: "Failed to load users",
-    });
+    res.status(500).json({ message: "Failed to load users" });
   }
 }
 
 // =========================
-// Admin Metrics
+// Admin Core Metrics
 // =========================
 export async function getAdminMetrics(req: Request, res: Response) {
   try {
     const now = new Date();
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
 
     const [
       totalUsers,
@@ -56,6 +59,9 @@ export async function getAdminMetrics(req: Request, res: Response) {
       activeSessions,
       securityEvents,
       lockedAccounts,
+      recentFailedLogins,
+      totalPasskeys,
+      usersWith2FA,
       totalSubscriptionPlans,
       activeSubscriptionPlans,
       totalSubscriptions,
@@ -72,67 +78,47 @@ export async function getAdminMetrics(req: Request, res: Response) {
       enabledBillingProviders,
     ] = await Promise.all([
       prisma.user.count(),
-      prisma.user.count({
-        where: { emailVerified: true },
-      }),
+      prisma.user.count({ where: { emailVerified: true } }),
       prisma.dataset.count(),
       prisma.chatSession.count(),
       prisma.chatMessage.count(),
       prisma.session.count(),
       prisma.session.count({
-        where: {
-          revokedAt: null,
-          expiresAt: { gt: now },
-        },
+        where: { revokedAt: null, expiresAt: { gt: now } },
       }),
       prisma.securityEvent.count(),
-      prisma.user.count({
+      prisma.user.count({ where: { lockedUntil: { gt: now } } }),
+      prisma.securityEvent.count({
         where: {
-          lockedUntil: { gt: now },
+          action: "FAILED_LOGIN",
+          createdAt: { gte: twentyFourHoursAgo },
         },
       }),
+      prisma.passkeyCredential.count(),
+      prisma.user.count({ where: { twoFactorEnabled: true } }),
       prisma.subscriptionPlan.count(),
-      prisma.subscriptionPlan.count({
-        where: { active: true },
-      }),
+      prisma.subscriptionPlan.count({ where: { active: true } }),
       prisma.subscription.count(),
-      prisma.subscription.count({
-        where: { status: SubscriptionStatus.ACTIVE },
-      }),
-      prisma.subscription.count({
-        where: { status: SubscriptionStatus.TRIALING },
-      }),
+      prisma.subscription.count({ where: { status: SubscriptionStatus.ACTIVE } }),
+      prisma.subscription.count({ where: { status: SubscriptionStatus.TRIALING } }),
       prisma.payment.count(),
-      prisma.payment.count({
-        where: { status: "SUCCESS" },
-      }),
-      prisma.payment.count({
-        where: { status: "PENDING" },
-      }),
-      prisma.payment.count({
-        where: { status: "FAILED" },
-      }),
+      prisma.payment.count({ where: { status: "SUCCESS" } }),
+      prisma.payment.count({ where: { status: "PENDING" } }),
+      prisma.payment.count({ where: { status: "FAILED" } }),
       prisma.billingWebhookEvent.count(),
-      prisma.billingWebhookEvent.count({
-        where: { processed: true },
-      }),
-      prisma.billingWebhookEvent.count({
-        where: { processed: false },
-      }),
+      prisma.billingWebhookEvent.count({ where: { processed: true } }),
+      prisma.billingWebhookEvent.count({ where: { processed: false } }),
       prisma.billingProviderConfig.count(),
-      prisma.billingProviderConfig.count({
-        where: { enabled: true },
-      }),
+      prisma.billingProviderConfig.count({ where: { enabled: true } }),
     ]);
 
     res.json({
       users: {
         total: totalUsers,
         verified: verifiedUsers,
+        twoFactorAdoption: usersWith2FA,
       },
-      datasets: {
-        total: totalDatasets,
-      },
+      datasets: { total: totalDatasets },
       chat: {
         sessions: totalChatSessions,
         messages: totalChatMessages,
@@ -144,6 +130,8 @@ export async function getAdminMetrics(req: Request, res: Response) {
       security: {
         events: securityEvents,
         lockedAccounts,
+        recentFailedLogins,
+        totalPasskeys,
       },
       billing: {
         subscriptionPlans: {
@@ -181,9 +169,373 @@ export async function getAdminMetrics(req: Request, res: Response) {
     });
   } catch (error) {
     console.error("getAdminMetrics:", error);
-    res.status(500).json({
-      message: "Failed to load admin metrics",
+    res.status(500).json({ message: "Failed to load admin metrics" });
+  }
+}
+
+// =========================
+// Advanced Security Telemetry Metrics
+// =========================
+export async function getSecurityTelemetryMetrics(_req: Request, res: Response) {
+  try {
+    const twentyFourHoursAgo = new Date(Date.now() - 24 * 60 * 60 * 1000);
+
+    const [
+      totalPasskeys,
+      failedLogins24h,
+      lockedAccounts,
+      eventsByAction,
+      topCountries,
+    ] = await Promise.all([
+      prisma.passkeyCredential.count(),
+      prisma.securityEvent.count({
+        where: {
+          action: "FAILED_LOGIN",
+          createdAt: { gte: twentyFourHoursAgo },
+        },
+      }),
+      prisma.user.count({
+        where: { lockedUntil: { gt: new Date() } },
+      }),
+      prisma.securityEvent.groupBy({
+        by: ["action"],
+        _count: { action: true },
+        where: { createdAt: { gte: twentyFourHoursAgo } },
+      }),
+      prisma.securityEvent.groupBy({
+        by: ["country"],
+        _count: { country: true },
+        where: { country: { not: null } },
+        orderBy: { _count: { country: "desc" } },
+        take: 5,
+      }),
+    ]);
+
+    res.json({
+      totalPasskeys,
+      failedLogins24h,
+      lockedAccounts,
+      eventsByAction: eventsByAction.map((e: { action: SecurityAction; _count: { action: number } }) => ({
+        action: e.action,
+        count: e._count.action,
+      })),
+      topCountries: topCountries.map((c: { country: string | null; _count: { country: number } }) => ({
+        country: c.country || "Unknown",
+        count: c._count.country,
+      })),
     });
+  } catch (error) {
+    console.error("getSecurityTelemetryMetrics:", error);
+    res.status(500).json({ message: "Failed to load security telemetry metrics" });
+  }
+}
+
+// =========================
+// Security Audit Logs (Paginated, Filterable)
+// =========================
+export async function getSecurityEvents(req: Request, res: Response) {
+  try {
+    const page = Math.max(1, parseInt(req.query.page as string) || 1);
+    const limit = Math.min(100, Math.max(1, parseInt(req.query.limit as string) || 30));
+    const skip = (page - 1) * limit;
+
+    const action = req.query.action as string | undefined;
+    const search = req.query.search as string | undefined;
+    const country = req.query.country as string | undefined;
+
+    const where: any = {};
+
+    if (action && action !== "ALL") {
+      where.action = action as SecurityAction;
+    }
+
+    if (country && country !== "ALL") {
+      where.country = country;
+    }
+
+    if (search) {
+      where.OR = [
+        { ipAddress: { contains: search, mode: "insensitive" } },
+        { device: { contains: search, mode: "insensitive" } },
+        { city: { contains: search, mode: "insensitive" } },
+        { details: { contains: search, mode: "insensitive" } },
+        { user: { email: { contains: search, mode: "insensitive" } } },
+        { user: { username: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+
+    const [events, total] = await Promise.all([
+      prisma.securityEvent.findMany({
+        where,
+        orderBy: { createdAt: "desc" },
+        skip,
+        take: limit,
+        include: {
+          user: {
+            select: {
+              id: true,
+              username: true,
+              email: true,
+              fullName: true,
+              picture: true,
+              status: true,
+            },
+          },
+        },
+      }),
+      prisma.securityEvent.count({ where }),
+    ]);
+
+    res.json({
+      events,
+      pagination: {
+        total,
+        page,
+        limit,
+        pages: Math.ceil(total / limit),
+      },
+    });
+  } catch (error) {
+    console.error("getSecurityEvents:", error);
+    res.status(500).json({ message: "Failed to load security events" });
+  }
+}
+
+// =========================
+// Unlock Locked Account
+// =========================
+export async function unlockUserAccount(req: Request, res: Response) {
+  try {
+    const id = req.params.id as string;
+    const adminId = res.locals.user.id;
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: {
+        lockedUntil: null,
+        failedLoginAttempts: 0,
+      },
+    });
+
+    await prisma.securityEvent.create({
+      data: {
+        action: "PASSWORD_CHANGED",
+        userId: id,
+        details: `Account unlocked and login attempt counter reset by administrator ${adminId}`,
+      },
+    });
+
+    res.json({ message: "Account successfully unlocked", user: updatedUser });
+  } catch (error) {
+    console.error("unlockUserAccount:", error);
+    res.status(500).json({ message: "Failed to unlock account" });
+  }
+}
+
+// =========================
+// Get Passkeys for a User (Admin View)
+// =========================
+export async function getUserPasskeysAdmin(req: Request, res: Response) {
+  try {
+    const userId = req.params.userId as string;
+
+    const passkeys = await prisma.passkeyCredential.findMany({
+      where: { userId },
+      orderBy: { createdAt: "desc" },
+      select: {
+        id: true,
+        name: true,
+        deviceType: true,
+        backedUp: true,
+        lastUsedAt: true,
+        createdAt: true,
+      },
+    });
+
+    res.json({ passkeys });
+  } catch (error) {
+    console.error("getUserPasskeysAdmin:", error);
+    res.status(500).json({ message: "Failed to load user passkeys" });
+  }
+}
+
+// =========================
+// Revoke User Passkey (Admin Action)
+// =========================
+export async function revokeUserPasskeyAdmin(req: Request, res: Response) {
+  try {
+    const passkeyId = req.params.passkeyId as string;
+    const adminId = res.locals.user.id;
+
+    const passkey = await prisma.passkeyCredential.findUnique({
+      where: { id: passkeyId },
+    });
+
+    if (!passkey) {
+      return res.status(404).json({ message: "Passkey not found" });
+    }
+
+    await prisma.passkeyCredential.delete({
+      where: { id: passkeyId },
+    });
+
+    await prisma.securityEvent.create({
+      data: {
+        action: "WEBAUTHN_REVOKED",
+        userId: passkey.userId,
+        details: `Passkey "${passkey.name}" revoked by administrator ${adminId}`,
+      },
+    });
+
+    res.json({ message: "Passkey successfully revoked" });
+  } catch (error) {
+    console.error("revokeUserPasskeyAdmin:", error);
+    res.status(500).json({ message: "Failed to revoke passkey" });
+  }
+}
+
+// =========================
+// Locked Accounts
+// =========================
+export async function getLockedAccounts(_req: Request, res: Response) {
+  try {
+    const users = await prisma.user.findMany({
+      where: {
+        lockedUntil: {
+          gt: new Date(),
+        },
+      },
+      orderBy: {
+        lockedUntil: "asc",
+      },
+      select: {
+        id: true,
+        username: true,
+        email: true,
+        failedLoginAttempts: true,
+        lockedUntil: true,
+        fullName: true,
+      },
+    });
+
+    res.json({ users });
+  } catch (error) {
+    console.error("getLockedAccounts:", error);
+    res.status(500).json({ message: "Failed to load locked accounts" });
+  }
+}
+
+// =========================
+// Change User Role
+// =========================
+export async function changeUserRole(req: Request, res: Response) {
+  try {
+    const id = req.params.id as string;
+    const adminId = res.locals.user.id;
+
+    if (adminId === id) {
+      return res.status(403).json({ message: "You cannot change your own role." });
+    }
+
+    const { role } = req.body;
+    if (!["ADMIN", "USER"].includes(role)) {
+      return res.status(400).json({ message: "Invalid role." });
+    }
+
+    const existingUser = await prisma.user.findUnique({ where: { id } });
+    if (!existingUser) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    const user = await prisma.user.update({
+      where: { id },
+      data: { role },
+    });
+
+    await prisma.securityEvent.create({
+      data: {
+        action: "ROLE_CHANGED",
+        userId: id,
+        details: `Role changed from ${existingUser.role} to ${role} by administrator ${adminId}`,
+      },
+    });
+
+    res.json(user);
+  } catch (error) {
+    console.error("changeUserRole:", error);
+    res.status(500).json({ message: "Failed to update role" });
+  }
+}
+
+// =========================
+// Suspend / Activate User
+// =========================
+export async function toggleUserStatus(req: Request, res: Response) {
+  try {
+    const id = req.params.id as string;
+    const adminId = res.locals.user.id;
+
+    if (adminId === id) {
+      return res.status(403).json({ message: "You cannot suspend your own account." });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      return res.status(404).json({ message: "User not found" });
+    }
+
+    const newStatus = user.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
+
+    const updatedUser = await prisma.user.update({
+      where: { id },
+      data: { status: newStatus },
+    });
+
+    if (newStatus === "SUSPENDED") {
+      await prisma.securityEvent.create({
+        data: {
+          action: "ACCOUNT_DISABLED",
+          userId: id,
+          details: `Account suspended by administrator ${adminId}`,
+        },
+      });
+    }
+
+    res.json(updatedUser);
+  } catch (error) {
+    console.error("toggleUserStatus:", error);
+    res.status(500).json({ message: "Failed to update status" });
+  }
+}
+
+// =========================
+// Delete User
+// =========================
+export async function deleteUser(req: Request, res: Response) {
+  try {
+    const id = req.params.id as string;
+    const adminId = res.locals.user.id;
+
+    if (adminId === id) {
+      return res.status(403).json({ message: "You cannot delete your own account." });
+    }
+
+    const user = await prisma.user.findUnique({ where: { id } });
+    if (!user) {
+      return res.status(404).json({ message: "User not found." });
+    }
+
+    await prisma.user.delete({ where: { id } });
+
+    res.json({ message: "User deleted successfully" });
+  } catch (error) {
+    console.error("deleteUser:", error);
+    res.status(500).json({ message: "Failed to delete user" });
   }
 }
 
@@ -193,7 +545,6 @@ export async function getAdminMetrics(req: Request, res: Response) {
 export async function getAdminSubscriptions(req: Request, res: Response) {
   try {
     const statusQuery = req.query.status as string | undefined;
-
     const whereClause = statusQuery && statusQuery !== "ALL"
       ? { status: statusQuery as SubscriptionStatus }
       : {};
@@ -203,33 +554,15 @@ export async function getAdminSubscriptions(req: Request, res: Response) {
       orderBy: { createdAt: "desc" },
       include: {
         user: {
-          select: {
-            id: true,
-            fullName: true,
-            username: true,
-            email: true,
-          },
+          select: { id: true, fullName: true, username: true, email: true },
         },
         plan: {
-          select: {
-            id: true,
-            code: true,
-            name: true,
-            monthlyPrice: true,
-            annualPrice: true,
-            currency: true,
-          },
+          select: { id: true, code: true, name: true, monthlyPrice: true, annualPrice: true, currency: true },
         },
         payments: {
           orderBy: { createdAt: "desc" },
           take: 1,
-          select: {
-            id: true,
-            amount: true,
-            status: true,
-            paidAt: true,
-            providerReference: true,
-          },
+          select: { id: true, amount: true, status: true, paidAt: true, providerReference: true },
         },
       },
     });
@@ -244,28 +577,19 @@ export async function getAdminSubscriptions(req: Request, res: Response) {
 // =========================
 // Get Platform Payments
 // =========================
-export async function getAdminPayments(req: Request, res: Response) {
+export async function getAdminPayments(_req: Request, res: Response) {
   try {
     const payments = await prisma.payment.findMany({
       orderBy: { createdAt: "desc" },
       take: 100,
       include: {
         user: {
-          select: {
-            id: true,
-            fullName: true,
-            username: true,
-            email: true,
-          },
+          select: { id: true, fullName: true, username: true, email: true },
         },
         subscription: {
           include: {
             plan: {
-              select: {
-                id: true,
-                code: true,
-                name: true,
-              },
+              select: { id: true, code: true, name: true },
             },
           },
         },
@@ -282,15 +606,11 @@ export async function getAdminPayments(req: Request, res: Response) {
 // =========================
 // Get Revenue Metrics
 // =========================
-export async function getAdminRevenueMetrics(req: Request, res: Response) {
+export async function getAdminRevenueMetrics(_req: Request, res: Response) {
   try {
     const activeSubscriptions = await prisma.subscription.findMany({
-      where: {
-        status: SubscriptionStatus.ACTIVE,
-      },
-      include: {
-        plan: true,
-      },
+      where: { status: SubscriptionStatus.ACTIVE },
+      include: { plan: true },
     });
 
     let mrr = 0;
@@ -359,10 +679,7 @@ export async function adminOverrideSubscription(req: Request, res: Response) {
         currentPeriodEnd: newCurrentPeriodEnd,
         cancelAtPeriodEnd: typeof cancelAtPeriodEnd === "boolean" ? cancelAtPeriodEnd : existingSub.cancelAtPeriodEnd,
       },
-      include: {
-        plan: true,
-        user: true,
-      },
+      include: { plan: true, user: true },
     });
 
     await prisma.securityEvent.create({
@@ -377,217 +694,6 @@ export async function adminOverrideSubscription(req: Request, res: Response) {
   } catch (error) {
     console.error("adminOverrideSubscription:", error);
     res.status(500).json({ message: "Failed to override subscription" });
-  }
-}
-
-// =========================
-// Change User Role
-// =========================
-export async function changeUserRole(req: Request, res: Response) {
-  try {
-    const id = req.params.id as string;
-    const adminId = res.locals.user.id;
-
-    if (adminId === id) {
-      return res.status(403).json({
-        message: "You cannot change your own role.",
-      });
-    }
-
-    const { role } = req.body;
-
-    if (!["ADMIN", "USER"].includes(role)) {
-      return res.status(400).json({
-        message: "Invalid role.",
-      });
-    }
-
-    const existingUser = await prisma.user.findUnique({
-      where: { id },
-    });
-
-    if (!existingUser) {
-      return res.status(404).json({
-        message: "User not found.",
-      });
-    }
-
-    const user = await prisma.user.update({
-      where: { id },
-      data: { role },
-    });
-
-    await prisma.securityEvent.create({
-      data: {
-        action: "ROLE_CHANGED",
-        userId: id,
-        details: `Role changed from ${existingUser.role} to ${role} by administrator ${adminId}`,
-      },
-    });
-
-    res.json(user);
-  } catch (error) {
-    console.error("changeUserRole:", error);
-    res.status(500).json({
-      message: "Failed to update role",
-    });
-  }
-}
-
-// =========================
-// Suspend / Activate User
-// =========================
-export async function toggleUserStatus(req: Request, res: Response) {
-  try {
-    const id = req.params.id as string;
-    const adminId = res.locals.user.id;
-
-    if (adminId === id) {
-      return res.status(403).json({
-        message: "You cannot suspend your own account.",
-      });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id },
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        message: "User not found",
-      });
-    }
-
-    const newStatus = user.status === "ACTIVE" ? "SUSPENDED" : "ACTIVE";
-
-    const updatedUser = await prisma.user.update({
-      where: { id },
-      data: { status: newStatus },
-    });
-
-    if (newStatus === "SUSPENDED") {
-      await prisma.securityEvent.create({
-        data: {
-          action: "ACCOUNT_DISABLED",
-          userId: id,
-          details: `Account suspended by administrator ${adminId}`,
-        },
-      });
-    }
-
-    res.json(updatedUser);
-  } catch (error) {
-    console.error("toggleUserStatus:", error);
-    res.status(500).json({
-      message: "Failed to update status",
-    });
-  }
-}
-
-// =========================
-// Delete User
-// =========================
-export async function deleteUser(req: Request, res: Response) {
-  try {
-    const id = req.params.id as string;
-    const adminId = res.locals.user.id;
-
-    if (adminId === id) {
-      return res.status(403).json({
-        message: "You cannot delete your own account.",
-      });
-    }
-
-    const user = await prisma.user.findUnique({
-      where: { id },
-    });
-
-    if (!user) {
-      return res.status(404).json({
-        message: "User not found.",
-      });
-    }
-
-    await prisma.user.delete({
-      where: { id },
-    });
-
-    res.json({
-      message: "User deleted successfully",
-    });
-  } catch (error) {
-    console.error("deleteUser:", error);
-    res.status(500).json({
-      message: "Failed to delete user",
-    });
-  }
-}
-
-// =========================
-// Security Events
-// =========================
-export async function getSecurityEvents(req: Request, res: Response) {
-  try {
-    const events = await prisma.securityEvent.findMany({
-      orderBy: {
-        createdAt: "desc",
-      },
-      take: 100,
-      include: {
-        user: {
-          select: {
-            id: true,
-            username: true,
-            email: true,
-            fullName: true,
-          },
-        },
-      },
-    });
-
-    res.json({
-      events,
-    });
-  } catch (error) {
-    console.error("getSecurityEvents:", error);
-    res.status(500).json({
-      message: "Failed to load security events",
-    });
-  }
-}
-
-// =========================
-// Locked Accounts
-// =========================
-export async function getLockedAccounts(req: Request, res: Response) {
-  try {
-    const users = await prisma.user.findMany({
-      where: {
-        lockedUntil: {
-          gt: new Date(),
-        },
-      },
-      orderBy: {
-        lockedUntil: "asc",
-      },
-      select: {
-        id: true,
-        username: true,
-        email: true,
-        failedLoginAttempts: true,
-        lockedUntil: true,
-        fullName: true,
-      },
-    });
-
-    res.json({
-      users,
-    });
-  } catch (error) {
-    console.error("getLockedAccounts:", error);
-    res.status(500).json({
-      message: "Failed to load locked accounts",
-    });
   }
 }
 

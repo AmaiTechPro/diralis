@@ -8,6 +8,10 @@ import {
   deleteUser,
   getSecurityEvents,
   getLockedAccounts,
+  getSecurityTelemetryMetrics,
+  unlockUserAccount,
+  getUserPasskeysAdmin,
+  revokeUserPasskeyAdmin,
   getAdminSubscriptions,
   getAdminPayments,
   getAdminRevenueMetrics,
@@ -15,6 +19,8 @@ import {
   type AdminUser,
   type AdminMetrics,
   type SecurityEvent,
+  type SecurityTelemetryMetrics,
+  type UserPasskeyAdmin,
   type AdminSubscription,
   type AdminPayment,
   type RevenueMetrics,
@@ -22,10 +28,8 @@ import {
 
 import {
   Users,
-  Database,
   ShieldAlert,
   Activity,
-  MessageSquare,
   CreditCard,
   Wallet,
   Webhook,
@@ -41,6 +45,15 @@ import {
   TrendingUp,
   Receipt,
   Layers,
+  Fingerprint,
+  Monitor,
+  Unlock,
+  KeyRound,
+  ShieldCheck,
+  ChevronLeft,
+  ChevronRight,
+  MapPin,
+  X,
 } from "lucide-react";
 
 import AdminMetricCard from "../components/admin/AdminMetricCard";
@@ -64,6 +77,30 @@ function formatDate(dateString: string | null) {
   });
 }
 
+function getActionBadgeStyle(action: string) {
+  switch (action) {
+    case "LOGIN_SUCCESS":
+    case "EMAIL_VERIFIED":
+      return "bg-emerald-500/10 text-emerald-400 border-emerald-500/20";
+    case "WEBAUTHN_REGISTERED":
+    case "TWO_FACTOR_ENABLED":
+    case "TWO_FACTOR_VERIFIED":
+    case "WEBAUTHN_AUTHENTICATED":
+      return "bg-cyan-500/10 text-cyan-400 border-cyan-500/20";
+    case "FAILED_LOGIN":
+    case "ACCOUNT_LOCKED":
+    case "ACCOUNT_DISABLED":
+      return "bg-red-500/10 text-red-400 border-red-500/20";
+    case "WEBAUTHN_REVOKED":
+    case "TWO_FACTOR_DISABLED":
+    case "PASSWORD_CHANGED":
+    case "ROLE_CHANGED":
+      return "bg-amber-500/10 text-amber-400 border-amber-500/20";
+    default:
+      return "bg-slate-800 text-slate-300 border-slate-700";
+  }
+}
+
 export default function AdminDashboard() {
   const { user: currentUser } = useAuth();
 
@@ -71,6 +108,7 @@ export default function AdminDashboard() {
   const [users, setUsers] = useState<AdminUser[]>([]);
   const [securityEvents, setSecurityEvents] = useState<SecurityEvent[]>([]);
   const [lockedAccounts, setLockedAccounts] = useState<AdminUser[]>([]);
+  const [securityMetrics, setSecurityMetrics] = useState<SecurityTelemetryMetrics | null>(null);
   const [subscriptions, setSubscriptions] = useState<AdminSubscription[]>([]);
   const [payments, setPayments] = useState<AdminPayment[]>([]);
   const [revenue, setRevenue] = useState<RevenueMetrics | null>(null);
@@ -79,16 +117,29 @@ export default function AdminDashboard() {
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
 
+  // Filters
   const [search, setSearch] = useState("");
   const [roleFilter, setRoleFilter] = useState("ALL");
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [subStatusFilter, setSubStatusFilter] = useState("ALL");
+  const [securityActionFilter, setSecurityActionFilter] = useState("ALL");
 
-  // Override Modal State
+  // Security Pagination
+  const [securityPage, setSecurityPage] = useState(1);
+  const [securityTotalPages, setSecurityTotalPages] = useState(1);
+  const [securitySearch, setSecuritySearch] = useState("");
+
+  // Override Subscription Modal
   const [selectedSub, setSelectedSub] = useState<AdminSubscription | null>(null);
   const [extendDays, setExtendDays] = useState<number>(30);
   const [overrideStatus, setOverrideStatus] = useState<string>("");
   const [updatingSub, setUpdatingSub] = useState(false);
+
+  // Passkey Audit Modal
+  const [passkeyModalUser, setPasskeyModalUser] = useState<AdminUser | null>(null);
+  const [userPasskeys, setUserPasskeys] = useState<UserPasskeyAdmin[]>([]);
+  const [loadingPasskeys, setLoadingPasskeys] = useState(false);
+  const [actionLoading, setActionLoading] = useState(false);
 
   const loadDashboard = useCallback(async (showRefresh = false) => {
     try {
@@ -103,14 +154,16 @@ export default function AdminDashboard() {
         metricsData,
         eventsData,
         lockedData,
+        telemetryData,
         subsData,
         paymentsData,
         revenueData,
       ] = await Promise.all([
         getAdminUsers(),
         getAdminMetrics(),
-        getSecurityEvents(),
+        getSecurityEvents({ page: securityPage, limit: 25, action: securityActionFilter, search: securitySearch }),
         getLockedAccounts(),
+        getSecurityTelemetryMetrics().catch(() => null),
         getAdminSubscriptions(),
         getAdminPayments(),
         getAdminRevenueMetrics(),
@@ -119,7 +172,9 @@ export default function AdminDashboard() {
       setUsers(usersData.users);
       setMetrics(metricsData);
       setSecurityEvents(eventsData.events);
+      setSecurityTotalPages(eventsData.pagination?.pages || 1);
       setLockedAccounts(lockedData.users);
+      setSecurityMetrics(telemetryData);
       setSubscriptions(subsData.subscriptions);
       setPayments(paymentsData.payments);
       setRevenue(revenueData);
@@ -129,7 +184,7 @@ export default function AdminDashboard() {
       setLoading(false);
       setRefreshing(false);
     }
-  }, []);
+  }, [securityPage, securityActionFilter, securitySearch]);
 
   useEffect(() => {
     loadDashboard();
@@ -161,6 +216,48 @@ export default function AdminDashboard() {
       await loadDashboard(true);
     } catch (error) {
       console.error("Failed to delete user:", error);
+    }
+  };
+
+  const handleUnlockAccount = async (userId: string) => {
+    try {
+      setActionLoading(true);
+      await unlockUserAccount(userId);
+      await loadDashboard(true);
+    } catch (error) {
+      console.error("Failed to unlock user account:", error);
+      alert("Failed to unlock account.");
+    } finally {
+      setActionLoading(false);
+    }
+  };
+
+  const handleInspectPasskeys = async (user: AdminUser) => {
+    setPasskeyModalUser(user);
+    setLoadingPasskeys(true);
+    try {
+      const res = await getUserPasskeysAdmin(user.id);
+      setUserPasskeys(res.passkeys);
+    } catch (error) {
+      console.error("Failed to load user passkeys:", error);
+      setUserPasskeys([]);
+    } finally {
+      setLoadingPasskeys(false);
+    }
+  };
+
+  const handleRevokePasskey = async (passkeyId: string) => {
+    if (!window.confirm("Are you sure you want to revoke this passkey? The user will no longer be able to log in with this hardware key.")) return;
+    try {
+      await revokeUserPasskeyAdmin(passkeyId);
+      if (passkeyModalUser) {
+        const res = await getUserPasskeysAdmin(passkeyModalUser.id);
+        setUserPasskeys(res.passkeys);
+      }
+      await loadDashboard(true);
+    } catch (error) {
+      console.error("Failed to revoke passkey:", error);
+      alert("Failed to revoke passkey.");
     }
   };
 
@@ -218,7 +315,7 @@ export default function AdminDashboard() {
     return (
       <div className="min-h-screen bg-slate-950 p-8 text-white">
         <div className="flex items-center gap-3 text-slate-400">
-          <Activity className="animate-pulse" />
+          <Activity className="animate-pulse text-cyan-400" />
           Loading admin control center...
         </div>
       </div>
@@ -254,7 +351,7 @@ export default function AdminDashboard() {
             <h1 className="text-3xl font-bold">Diralis Admin Control Center</h1>
           </div>
           <p className="mt-2 text-slate-400">
-            Monitor infrastructure, revenue metrics, subscriptions, and platform access.
+            Enterprise infrastructure, security telemetry, audit logs, and subscription operations.
           </p>
         </div>
 
@@ -263,7 +360,7 @@ export default function AdminDashboard() {
           disabled={refreshing}
           className="inline-flex items-center justify-center gap-2 rounded-xl border border-slate-700 bg-slate-900 px-4 py-3 text-sm font-medium hover:border-cyan-500/50 disabled:opacity-50"
         >
-          <RefreshCw size={16} className={refreshing ? "animate-spin" : ""} />
+          <RefreshCw size={16} className={refreshing ? "animate-spin text-cyan-400" : ""} />
           Refresh
         </button>
       </div>
@@ -272,10 +369,10 @@ export default function AdminDashboard() {
       <div className="mt-8 flex flex-wrap gap-2 border-b border-slate-800 pb-4">
         {[
           { id: "overview", label: "Overview", icon: Layers },
+          { id: "security", label: "Security & Telemetry", icon: ShieldAlert },
           { id: "subscriptions", label: "Subscriptions & Revenue", icon: DollarSign },
           { id: "payments", label: "Transactions", icon: Receipt },
-          { id: "users", label: "Users", icon: Users },
-          { id: "security", label: "Security", icon: ShieldAlert },
+          { id: "users", label: "Users & Access", icon: Users },
         ].map((tab) => {
           const Icon = tab.icon;
           const isActive = activeTab === tab.id;
@@ -291,6 +388,11 @@ export default function AdminDashboard() {
             >
               <Icon size={16} />
               {tab.label}
+              {tab.id === "security" && lockedAccounts.length > 0 && (
+                <span className="ml-1 rounded-full bg-red-500/20 px-2 py-0.5 text-xs text-red-400">
+                  {lockedAccounts.length}
+                </span>
+              )}
             </button>
           );
         })}
@@ -299,12 +401,9 @@ export default function AdminDashboard() {
       {/* TAB: OVERVIEW */}
       {activeTab === "overview" && (
         <div className="mt-8 space-y-8">
-          {/* Revenue & Growth Summary */}
           {revenue && (
             <section>
-              <h2 className="mb-4 text-lg font-semibold text-slate-200">
-                Revenue & MRR
-              </h2>
+              <h2 className="mb-4 text-lg font-semibold text-slate-200">Revenue & MRR</h2>
               <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
                 <AdminMetricCard
                   title="Monthly Recurring (MRR)"
@@ -330,9 +429,8 @@ export default function AdminDashboard() {
             </section>
           )}
 
-          {/* Platform Core Metrics */}
           <section>
-            <h2 className="mb-4 text-lg font-semibold text-slate-200">Platform Infrastructure</h2>
+            <h2 className="mb-4 text-lg font-semibold text-slate-200">Security & Infrastructure</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
               <AdminMetricCard
                 title="Total Registered Users"
@@ -341,26 +439,26 @@ export default function AdminDashboard() {
                 icon={<Users size={24} />}
               />
               <AdminMetricCard
-                title="Datasets Uploaded"
-                value={metrics.datasets.total}
-                icon={<Database size={24} />}
+                title="Passkey Credentials"
+                value={metrics.security?.totalPasskeys ?? securityMetrics?.totalPasskeys ?? 0}
+                description="Biometric / hardware keys active"
+                icon={<Fingerprint size={24} />}
               />
               <AdminMetricCard
                 title="Active Sessions"
                 value={metrics.sessions.active}
-                description={`${metrics.sessions.total} lifetime`}
+                description={`${metrics.sessions.total} lifetime authenticated`}
                 icon={<Activity size={24} />}
               />
               <AdminMetricCard
-                title="AI Inquiries"
-                value={metrics.chat.messages}
-                description={`${metrics.chat.sessions} chat sessions`}
-                icon={<MessageSquare size={24} />}
+                title="Security Events (24h Failed)"
+                value={metrics.security?.recentFailedLogins ?? securityMetrics?.failedLogins24h ?? 0}
+                description={`${lockedAccounts.length} accounts locked`}
+                icon={<ShieldAlert size={24} />}
               />
             </div>
           </section>
 
-          {/* Billing Overview */}
           <section>
             <h2 className="mb-4 text-lg font-semibold text-slate-200">Billing Engine</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
@@ -388,6 +486,241 @@ export default function AdminDashboard() {
                 description={`${metrics.billing.providers.total} configured`}
                 icon={<Server size={24} />}
               />
+            </div>
+          </section>
+        </div>
+      )}
+
+      {/* TAB: SECURITY & TELEMETRY */}
+      {activeTab === "security" && (
+        <div className="mt-8 space-y-8">
+          {/* Security Metrics Header Bar */}
+          <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
+            <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-5">
+              <div className="flex items-center justify-between text-cyan-400">
+                <span className="text-xs font-semibold uppercase tracking-wider">Passkeys Registered</span>
+                <Fingerprint size={20} />
+              </div>
+              <div className="mt-2 text-2xl font-bold">
+                {securityMetrics?.totalPasskeys ?? metrics.security.totalPasskeys ?? 0}
+              </div>
+              <p className="mt-1 text-xs text-slate-400">FIDO2 / WebAuthn credentials active</p>
+            </div>
+
+            <div className="rounded-2xl border border-red-500/20 bg-red-500/5 p-5">
+              <div className="flex items-center justify-between text-red-400">
+                <span className="text-xs font-semibold uppercase tracking-wider">Failed Logins (24h)</span>
+                <ShieldAlert size={20} />
+              </div>
+              <div className="mt-2 text-2xl font-bold">
+                {securityMetrics?.failedLogins24h ?? metrics.security.recentFailedLogins ?? 0}
+              </div>
+              <p className="mt-1 text-xs text-slate-400">Anomalous or brute-force spikes</p>
+            </div>
+
+            <div className="rounded-2xl border border-amber-500/20 bg-amber-500/5 p-5">
+              <div className="flex items-center justify-between text-amber-400">
+                <span className="text-xs font-semibold uppercase tracking-wider">Locked Accounts</span>
+                <AlertTriangle size={20} />
+              </div>
+              <div className="mt-2 text-2xl font-bold">{lockedAccounts.length}</div>
+              <p className="mt-1 text-xs text-slate-400">Automated lockout mitigation active</p>
+            </div>
+
+            <div className="rounded-2xl border border-emerald-500/20 bg-emerald-500/5 p-5">
+              <div className="flex items-center justify-between text-emerald-400">
+                <span className="text-xs font-semibold uppercase tracking-wider">2FA Adoption</span>
+                <ShieldCheck size={20} />
+              </div>
+              <div className="mt-2 text-2xl font-bold">
+                {metrics.users.twoFactorAdoption ?? 0} Users
+              </div>
+              <p className="mt-1 text-xs text-slate-400">Enrolled in Passkeys or TOTP</p>
+            </div>
+          </div>
+
+          {/* Locked Accounts & Immediate Action */}
+          {lockedAccounts.length > 0 && (
+            <section className="rounded-2xl border border-red-500/30 bg-red-500/10 p-6">
+              <div className="flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                  <AlertTriangle className="text-red-400" size={24} />
+                  <div>
+                    <h3 className="font-bold text-red-200">Locked User Accounts</h3>
+                    <p className="text-xs text-red-300">
+                      These accounts were automatically locked due to exceeding maximum failed authentication attempts.
+                    </p>
+                  </div>
+                </div>
+              </div>
+
+              <div className="mt-4 grid gap-3 md:grid-cols-2 xl:grid-cols-3">
+                {lockedAccounts.map((user) => (
+                  <div key={user.id} className="rounded-xl border border-red-500/20 bg-slate-900/80 p-4">
+                    <div className="flex items-start justify-between">
+                      <div>
+                        <div className="font-semibold text-white">{user.fullName}</div>
+                        <div className="text-xs text-slate-400">{user.email}</div>
+                      </div>
+                      <span className="rounded bg-red-500/20 px-2 py-0.5 text-xs font-bold text-red-400">
+                        {user.failedLoginAttempts} attempts
+                      </span>
+                    </div>
+                    <div className="mt-3 flex items-center justify-between border-t border-slate-800 pt-3 text-xs">
+                      <span className="text-slate-400">
+                        Locked until: {user.lockedUntil ? new Date(user.lockedUntil).toLocaleTimeString() : "—"}
+                      </span>
+                      <button
+                        onClick={() => handleUnlockAccount(user.id)}
+                        disabled={actionLoading}
+                        className="inline-flex items-center gap-1 rounded-lg bg-emerald-600 px-2.5 py-1 text-xs font-medium text-white hover:bg-emerald-500 disabled:opacity-50"
+                      >
+                        <Unlock size={12} />
+                        Unlock Account
+                      </button>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
+
+          {/* Search, Filter & Audit Log Section */}
+          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
+            <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+              <div>
+                <h3 className="text-xl font-bold">Security Audit Telemetry</h3>
+                <p className="text-xs text-slate-400">
+                  Full cryptographic authentication events, hardware passkey operations, and reverse-proxy client telemetry.
+                </p>
+              </div>
+
+              <div className="flex flex-wrap items-center gap-3">
+                <div className="relative">
+                  <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                  <input
+                    type="text"
+                    placeholder="Search IP, email, device, or details..."
+                    value={securitySearch}
+                    onChange={(e) => setSecuritySearch(e.target.value)}
+                    className="rounded-xl border border-slate-700 bg-slate-950 py-2 pl-9 pr-4 text-xs outline-none focus:border-cyan-500"
+                  />
+                </div>
+
+                <select
+                  value={securityActionFilter}
+                  onChange={(e) => {
+                    setSecurityActionFilter(e.target.value);
+                    setSecurityPage(1);
+                  }}
+                  className="rounded-xl border border-slate-700 bg-slate-950 px-3 py-2 text-xs outline-none focus:border-cyan-500"
+                >
+                  <option value="ALL">All Actions</option>
+                  <option value="LOGIN_SUCCESS">LOGIN_SUCCESS</option>
+                  <option value="FAILED_LOGIN">FAILED_LOGIN</option>
+                  <option value="WEBAUTHN_REGISTERED">WEBAUTHN_REGISTERED</option>
+                  <option value="WEBAUTHN_AUTHENTICATED">WEBAUTHN_AUTHENTICATED</option>
+                  <option value="WEBAUTHN_REVOKED">WEBAUTHN_REVOKED</option>
+                  <option value="TWO_FACTOR_VERIFIED">TWO_FACTOR_VERIFIED</option>
+                  <option value="USER_CREATED">USER_CREATED</option>
+                  <option value="ROLE_CHANGED">ROLE_CHANGED</option>
+                </select>
+              </div>
+            </div>
+
+            {/* Audit Log Table */}
+            <div className="mt-6 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950">
+              <table className="w-full text-left text-xs">
+                <thead>
+                  <tr className="border-b border-slate-800 uppercase tracking-wider text-slate-400">
+                    <th className="p-3.5">Timestamp</th>
+                    <th className="p-3.5">Action</th>
+                    <th className="p-3.5">User</th>
+                    <th className="p-3.5">Device & OS</th>
+                    <th className="p-3.5">IP Address</th>
+                    <th className="p-3.5">Location</th>
+                    <th className="p-3.5">Details</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y border-slate-800 font-mono">
+                  {securityEvents.map((event) => (
+                    <tr key={event.id} className="text-slate-300 hover:bg-slate-900/60 font-sans">
+                      <td className="p-3.5 whitespace-nowrap text-slate-400 text-[11px]">
+                        {new Date(event.createdAt).toLocaleString()}
+                      </td>
+                      <td className="p-3.5 whitespace-nowrap">
+                        <span
+                          className={`inline-flex items-center rounded-full border px-2.5 py-0.5 text-[11px] font-semibold ${getActionBadgeStyle(
+                            event.action
+                          )}`}
+                        >
+                          {event.action}
+                        </span>
+                      </td>
+                      <td className="p-3.5 whitespace-nowrap font-sans">
+                        {event.user ? (
+                          <div>
+                            <div className="font-medium text-white">{event.user.fullName}</div>
+                            <div className="text-[11px] text-slate-400">{event.user.email}</div>
+                          </div>
+                        ) : (
+                          <span className="text-slate-500 italic">Unauthenticated</span>
+                        )}
+                      </td>
+                      <td className="p-3.5 whitespace-nowrap">
+                        <div className="flex items-center gap-1.5 text-slate-300">
+                          <Monitor size={14} className="text-slate-500" />
+                          <span className="text-[11px]">{event.device || "Unknown Device"}</span>
+                        </div>
+                      </td>
+                      <td className="p-3.5 whitespace-nowrap font-mono text-[11px] text-cyan-400">
+                        {event.ipAddress || "—"}
+                      </td>
+                      <td className="p-3.5 whitespace-nowrap">
+                        <div className="flex items-center gap-1 text-slate-300">
+                          <MapPin size={12} className="text-slate-500" />
+                          <span className="text-[11px]">
+                            {event.city && event.country
+                              ? `${event.city}, ${event.country}`
+                              : event.country || "Unknown"}
+                          </span>
+                        </div>
+                      </td>
+                      <td className="p-3.5 text-slate-400 text-[11px] max-w-xs truncate" title={event.details || ""}>
+                        {event.details || "—"}
+                      </td>
+                    </tr>
+                  ))}
+                  {securityEvents.length === 0 && (
+                    <tr>
+                      <td colSpan={7} className="p-8 text-center text-slate-500">
+                        No security telemetry events match the current filter.
+                      </td>
+                    </tr>
+                  )}
+                </tbody>
+              </table>
+            </div>
+
+            {/* Pagination Controls */}
+            <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
+              <span>Page {securityPage} of {securityTotalPages}</span>
+              <div className="flex items-center gap-2">
+                <button
+                  onClick={() => setSecurityPage((p) => Math.max(1, p - 1))}
+                  disabled={securityPage <= 1}
+                  className="rounded-lg border border-slate-800 bg-slate-950 p-2 hover:bg-slate-800 disabled:opacity-40"
+                >
+                  <ChevronLeft size={16} />
+                </button>
+                <button
+                  onClick={() => setSecurityPage((p) => Math.min(securityTotalPages, p + 1))}
+                  disabled={securityPage >= securityTotalPages}
+                  className="rounded-lg border border-slate-800 bg-slate-950 p-2 hover:bg-slate-800 disabled:opacity-40"
+                >
+                  <ChevronRight size={16} />
+                </button>
+              </div>
             </div>
           </section>
         </div>
@@ -493,7 +826,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* TAB: TRANSACTIONS / PAYMENTS */}
+      {/* TAB: PAYMENTS */}
       {activeTab === "payments" && (
         <div className="mt-8 space-y-6">
           <div>
@@ -553,7 +886,7 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* TAB: USERS */}
+      {/* TAB: USERS & PASSKEY INSPECTION */}
       {activeTab === "users" && (
         <div className="mt-8 space-y-6">
           <div className="flex flex-col gap-4 lg:flex-row">
@@ -561,7 +894,7 @@ export default function AdminDashboard() {
               <Search size={18} className="absolute left-4 top-1/2 -translate-y-1/2 text-slate-500" />
               <input
                 type="text"
-                placeholder="Search users..."
+                placeholder="Search users by name, username, or email..."
                 value={search}
                 onChange={(e) => setSearch(e.target.value)}
                 className="w-full rounded-xl border border-slate-700 bg-slate-900 py-3 pl-11 pr-4 outline-none focus:border-cyan-500"
@@ -624,9 +957,12 @@ export default function AdminDashboard() {
                           >
                             {user.status}
                           </span>
-                          <span className="rounded-full bg-slate-800 px-3 py-1 text-xs text-slate-400">
-                            {user.provider}
-                          </span>
+                          {user.twoFactorEnabled && (
+                            <span className="inline-flex items-center gap-1 rounded-full bg-cyan-500/20 px-3 py-1 text-xs text-cyan-300">
+                              <Fingerprint size={12} />
+                              Passkey/2FA Active
+                            </span>
+                          )}
                           {user.emailVerified && (
                             <span className="inline-flex items-center gap-1 rounded-full bg-green-500/10 px-3 py-1 text-xs text-green-400">
                               <CheckCircle size={12} />
@@ -637,10 +973,18 @@ export default function AdminDashboard() {
                       </div>
 
                       <div className="flex flex-wrap gap-2">
+                        <button
+                          onClick={() => handleInspectPasskeys(user)}
+                          className="inline-flex items-center gap-1 rounded-lg border border-slate-700 bg-slate-800 px-3 py-2 text-xs font-medium text-slate-200 hover:border-cyan-500/50 hover:text-white"
+                        >
+                          <KeyRound size={14} className="text-cyan-400" />
+                          Passkeys
+                        </button>
+
                         {isCurrentUser ? (
                           <span className="inline-flex items-center gap-2 rounded-lg bg-blue-500/10 px-4 py-2 text-sm font-medium text-blue-400">
                             <UserCog size={16} />
-                            Current Administrator
+                            Administrator
                           </span>
                         ) : (
                           <>
@@ -686,42 +1030,70 @@ export default function AdminDashboard() {
         </div>
       )}
 
-      {/* TAB: SECURITY */}
-      {activeTab === "security" && (
-        <div className="mt-8 space-y-8">
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h2 className="text-xl font-semibold">Locked Accounts</h2>
-            {lockedAccounts.length === 0 ? (
-              <p className="mt-4 text-slate-500">No accounts are currently locked.</p>
-            ) : (
-              <div className="mt-4 grid gap-3 md:grid-cols-2">
-                {lockedAccounts.map((user) => (
-                  <div key={user.id} className="rounded-xl border border-yellow-500/20 bg-yellow-500/5 p-4">
-                    <div className="font-semibold">{user.fullName}</div>
-                    <div className="text-sm text-slate-400">@{user.username}</div>
-                    <div className="mt-2 text-sm text-yellow-400">
-                      Failed attempts: {user.failedLoginAttempts}
-                    </div>
-                  </div>
-                ))}
+      {/* USER PASSKEY AUDIT MODAL */}
+      {passkeyModalUser && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/70 p-4 backdrop-blur-sm">
+          <div className="w-full max-w-lg rounded-2xl border border-slate-800 bg-slate-900 p-6 shadow-2xl">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Fingerprint size={22} className="text-cyan-400" />
+                <h3 className="text-lg font-bold">Passkey Credentials</h3>
               </div>
-            )}
-          </section>
-
-          <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
-            <h2 className="text-xl font-semibold">Recent Security Events</h2>
-            <div className="mt-4 space-y-3">
-              {securityEvents.slice(0, 15).map((event) => (
-                <div key={event.id} className="rounded-xl border border-slate-800 p-4">
-                  <div className="flex justify-between text-sm">
-                    <span className="font-medium text-cyan-400">{event.action}</span>
-                    <span className="text-slate-500">{new Date(event.createdAt).toLocaleString()}</span>
-                  </div>
-                  {event.details && <p className="mt-1 text-xs text-slate-400">{event.details}</p>}
-                </div>
-              ))}
+              <button
+                onClick={() => setPasskeyModalUser(null)}
+                className="rounded-lg p-1 text-slate-400 hover:bg-slate-800 hover:text-white"
+              >
+                <X size={18} />
+              </button>
             </div>
-          </section>
+
+            <p className="mt-1 text-xs text-slate-400">
+              Registered hardware & biometric authenticators for{" "}
+              <span className="font-medium text-white">{passkeyModalUser.fullName}</span> ({passkeyModalUser.email})
+            </p>
+
+            <div className="mt-4 space-y-3">
+              {loadingPasskeys ? (
+                <div className="p-6 text-center text-xs text-slate-500 animate-pulse">
+                  Querying cryptographic credentials...
+                </div>
+              ) : userPasskeys.length === 0 ? (
+                <div className="rounded-xl border border-dashed border-slate-800 p-6 text-center text-xs text-slate-500">
+                  No WebAuthn passkeys or security keys enrolled for this user.
+                </div>
+              ) : (
+                userPasskeys.map((pk) => (
+                  <div key={pk.id} className="flex items-center justify-between rounded-xl border border-slate-800 bg-slate-950 p-3.5">
+                    <div>
+                      <div className="text-sm font-semibold text-white">{pk.name}</div>
+                      <div className="flex items-center gap-3 text-[11px] text-slate-400 mt-1">
+                        <span>Type: {pk.deviceType}</span>
+                        <span>•</span>
+                        <span>Created: {formatDate(pk.createdAt)}</span>
+                        <span>•</span>
+                        <span>Last used: {pk.lastUsedAt ? formatDate(pk.lastUsedAt) : "Never"}</span>
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleRevokePasskey(pk.id)}
+                      className="rounded-lg border border-red-500/30 bg-red-500/10 px-3 py-1.5 text-xs font-semibold text-red-400 hover:bg-red-500/20"
+                    >
+                      Revoke
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
+
+            <div className="mt-6 flex justify-end">
+              <button
+                onClick={() => setPasskeyModalUser(null)}
+                className="rounded-xl border border-slate-700 px-4 py-2 text-xs font-medium text-slate-300 hover:bg-slate-800"
+              >
+                Close
+              </button>
+            </div>
+          </div>
         </div>
       )}
 
@@ -785,4 +1157,6 @@ export default function AdminDashboard() {
     </div>
   );
 }
+
+
 

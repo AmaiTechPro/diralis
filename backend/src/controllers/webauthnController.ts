@@ -9,6 +9,7 @@ import {
 } from "../services/webauthnService";
 import { verifyToken, generateToken } from "../utils/jwt";
 import prisma from "../lib/prisma";
+import { logSecurityEvent } from "../utils/auditLogger";
 
 // Helper to safely get user ID across different middleware implementations
 function extractUserId(req: Request): string | null {
@@ -16,7 +17,7 @@ function extractUserId(req: Request): string | null {
   return user?.userId || user?.id || null;
 }
 
-// --- Authenticated Management (Settings) ---
+// --- Authenticated Management (Settings & Onboarding) ---
 
 export async function getPasskeyRegistrationOptions(req: Request, res: Response): Promise<void> {
   try {
@@ -49,8 +50,24 @@ export async function verifyPasskeyRegistration(req: Request, res: Response): Pr
     }
 
     const result = await verifyAndSaveRegistration(userId, response, name);
+
+    await logSecurityEvent(req, {
+      action: "WEBAUTHN_REGISTERED",
+      userId,
+      details: `Registered WebAuthn passkey: "${name || "Security Key"}"`,
+      metadata: {
+        passkeyId: result.id,
+      },
+    });
+
     res.json({ message: "Passkey registered successfully.", passkey: result });
   } catch (error: any) {
+    await logSecurityEvent(req, {
+      action: "FAILED_LOGIN",
+      userId: extractUserId(req),
+      details: `Failed passkey enrollment attempt: ${error.message || "Unknown error"}`,
+    });
+
     res.status(400).json({ message: error.message || "Failed to verify passkey registration." });
   }
 }
@@ -86,6 +103,13 @@ export async function removePasskey(req: Request, res: Response): Promise<void> 
     }
 
     const result = await deletePasskey(userId, passkeyId);
+
+    await logSecurityEvent(req, {
+      action: "WEBAUTHN_REVOKED",
+      userId,
+      details: `Revoked passkey identifier: ${passkeyId}`,
+    });
+
     res.json(result);
   } catch (error: any) {
     res.status(400).json({ message: error.message || "Failed to delete passkey." });
@@ -124,6 +148,8 @@ export async function getPasskeyLoginOptions(req: Request, res: Response): Promi
 }
 
 export async function verifyPasskeyLogin(req: Request, res: Response): Promise<void> {
+  let targetUserId: string | null = null;
+
   try {
     const { tempToken, response } = req.body;
     if (!tempToken || !response) {
@@ -139,7 +165,7 @@ export async function verifyPasskeyLogin(req: Request, res: Response): Promise<v
       return;
     }
 
-    const targetUserId = payload.userId || payload.id;
+    targetUserId = payload.userId || payload.id;
     if (payload.stage !== "2FA_PENDING" || !targetUserId) {
       res.status(400).json({ message: "Invalid 2FA session state." });
       return;
@@ -165,12 +191,10 @@ export async function verifyPasskeyLogin(req: Request, res: Response): Promise<v
       },
     });
 
-    await prisma.securityEvent.create({
-      data: {
-        userId: user.id,
-        action: "LOGIN_SUCCESS",
-        details: "Completed 2FA via Passkey/WebAuthn.",
-      },
+    await logSecurityEvent(req, {
+      action: "WEBAUTHN_AUTHENTICATED",
+      userId: user.id,
+      details: "Completed 2FA challenge via WebAuthn Passkey.",
     });
 
     const token = generateToken(user.id, user.role);
@@ -190,8 +214,17 @@ export async function verifyPasskeyLogin(req: Request, res: Response): Promise<v
       },
     });
   } catch (error: any) {
+    await logSecurityEvent(req, {
+      action: "FAILED_LOGIN",
+      userId: targetUserId,
+      details: `Failed passkey authentication challenge: ${error.message || "Unknown error"}`,
+    });
+
     res.status(400).json({ message: error.message || "Passkey authentication failed." });
   }
 }
+
+
+
 
 

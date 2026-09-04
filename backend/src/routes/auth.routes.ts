@@ -59,5 +59,13 @@ router.post("/2fa/verify", authMiddleware, verify2FA);
 router.post("/passkeys/register-verify", authMiddleware, verifyPasskeyRegistration);
 router.post("/passkeys/verify-registration", authMiddleware, verifyPasskeyRegistration);
 
+// Passkey WebAuthn Login Options (Support both URL patterns)
+router.post("/passkeys/login-options", getPasskeyLoginOptions);
+router.post("/login/passkey/options", getPasskeyLoginOptions);
+
+// Passkey WebAuthn Login Verify (Support both URL patterns)
+router.post("/passkeys/verify-login", verifyPasskeyLogin);
+router.post("/login/passkey/verify", verifyPasskeyLogin);
+
 
 export default router;

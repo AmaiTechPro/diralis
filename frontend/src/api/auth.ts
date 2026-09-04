@@ -1,6 +1,7 @@
 import api from "../services/api";
 
 import type { AuthResponse } from "../types/auth";
+import { apiFetch } from "./apiClient";
 
 interface LoginRequest {
   identifier: string;
@@ -69,4 +70,18 @@ export async function resetPassword(
     );
 
   return response.data;
+}
+
+export async function verifyEmail(email: string, code: string) {
+  return apiFetch<{ message: string; token?: string; user?: any }>("/auth/verify-email", {
+    method: "POST",
+    body: JSON.stringify({ email, code }),
+  });
+}
+
+export async function resendVerificationCode(email: string) {
+  return apiFetch<{ message: string }>("/auth/resend-verification", {
+    method: "POST",
+    body: JSON.stringify({ email }),
+  });
 }

@@ -92,7 +92,6 @@ export async function registerUser(
     },
   });
 
-  // Protect against email service configuration failures crashing account creation
   try {
     await sendVerificationEmail(
       user.email,
@@ -104,7 +103,7 @@ export async function registerUser(
   }
 
   return {
-    message: "Account created successfully.",
+    message: "Verification code sent to your email.",
     user: {
       id: user.id,
       fullName: user.fullName,
@@ -116,7 +115,6 @@ export async function registerUser(
       status: user.status,
       createdAt: user.createdAt,
     },
-    token: generateToken(user.id, user.role),
   };
 }
 

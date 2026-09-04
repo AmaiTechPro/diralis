@@ -330,14 +330,6 @@ export async function verify2FALogin(tempToken: string, code: string): Promise<A
     },
   });
 
-  await prisma.securityEvent.create({
-    data: {
-      userId: user.id,
-      action: "LOGIN_SUCCESS",
-      details: "Authenticated via Two-Factor Verification.",
-    },
-  });
-
   const token = generateToken(user.id, user.role);
 
   return {

@@ -102,3 +102,27 @@ export async function createIntegrationConnection(
     }
   );
 }
+
+export interface ProvisionUniversalParams {
+  name: string;
+  fieldMappings?: Record<string, string>;
+}
+
+export interface ProvisionUniversalResponse {
+  success: boolean;
+  connection: any;
+  apiKey: string;
+  ingressUrl: string;
+}
+
+export async function provisionUniversalIngress(
+  params: ProvisionUniversalParams
+): Promise<ProvisionUniversalResponse> {
+  return await apiFetch<ProvisionUniversalResponse>(
+    "/integrations/universal/provision",
+    {
+      method: "POST",
+      body: JSON.stringify(params),
+    }
+  );
+}

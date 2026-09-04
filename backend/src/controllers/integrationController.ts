@@ -1,3 +1,4 @@
+﻿import prisma from "\.\./lib/prisma";
 import { Request, Response } from "express";
 import { ShopifyOAuthService } from "../services/integration/providers/shopify/shopifyOAuthService";
 import { ConnectionService } from "../services/integration/connectionService";
@@ -217,3 +218,95 @@ export async function createConnection(req: Request, res: Response): Promise<voi
     res.status(400).json({ error: err.message || "Failed to create connection." });
   }
 }
+
+import crypto from "crypto";
+import { UniversalIngressService } from "../services/integration/universalIngressService";
+
+export async function handleUniversalIngress(req: Request, res: Response): Promise<void> {
+  try {
+    const connectionId = Array.isArray(req.params.connectionId)
+      ? req.params.connectionId[0]
+      : req.params.connectionId;
+
+    if (!connectionId) {
+      res.status(400).json({ error: "MISSING_PARAM: connectionId is required." });
+      return;
+    }
+
+    const apiKey = (req.headers["x-diralis-key"] || req.headers["authorization"]?.replace("Bearer ", "")) as string;
+    if (!apiKey) {
+      res.status(401).json({ error: "UNAUTHORIZED: Missing x-diralis-key header." });
+      return;
+    }
+
+    const result = await UniversalIngressService.processIngress({
+      connectionId,
+      apiKey,
+      payload: req.body,
+    });
+
+    res.json({ ...result });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || "Failed to process ingress payload." });
+  }
+}
+
+export async function provisionUniversalConnection(req: Request, res: Response): Promise<void> {
+  try {
+    const userId = req.user?.userId;
+    if (!userId) {
+      res.status(401).json({ error: "Unauthorized" });
+      return;
+    }
+
+    const entitlement = await EntitlementService.evaluateConnectorAccess(userId);
+    if (!entitlement.allowed) {
+      res.status(403).json({ error: entitlement.message || "PLAN_NOT_ENTITLED" });
+      return;
+    }
+
+    const { name, fieldMappings } = req.body;
+    const generatedKey = `diralis_live_${crypto.randomBytes(18).toString("hex")}`;
+
+    const connection = await ConnectionService.createConnection({
+      userId,
+      providerId: "universal",
+      name: name || "Universal POS / Ingress",
+      config: {
+        apiKey: generatedKey,
+      },
+      syncFrequency: "REALTIME",
+    });
+
+    // If initial custom field mappings were supplied, persist to CanonicalSchemaMapping
+    if (fieldMappings && typeof fieldMappings === "object") {
+      await prisma.canonicalSchemaMapping.upsert({
+        where: {
+          connectionId_sourceEntity: {
+            connectionId: connection.id,
+            sourceEntity: "transactions",
+          },
+        },
+        create: {
+          connectionId: connection.id,
+          sourceEntity: "transactions",
+          targetEntity: "CanonicalTransaction",
+          fieldMappings,
+        },
+        update: {
+          fieldMappings,
+        },
+      });
+    }
+
+    res.status(201).json({
+      success: true,
+      connection,
+      apiKey: generatedKey,
+      ingressUrl: `/api/integrations/ingest/${connection.id}`,
+    });
+  } catch (err: any) {
+    res.status(400).json({ error: err.message || "Failed to provision universal connection." });
+  }
+}
+

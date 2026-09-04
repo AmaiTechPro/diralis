@@ -9,10 +9,11 @@ import {
   FileSpreadsheet, 
   X, 
   AlertCircle,
-
   CheckCircle2,
   Trash2,
-  ArrowRight
+  ArrowRight,
+  Copy,
+  Check
 } from "lucide-react";
 import type { ConnectionFreshness } from "../services/integrationService";
 import { 
@@ -20,11 +21,12 @@ import {
   getShopifyConnectUrl, 
   createIntegrationConnection, 
   triggerManualSync, 
-  disconnectIntegration 
+  disconnectIntegration,
+  provisionUniversalIngress
 } from "../services/integrationService";
 import { FreshnessBadge } from "../components/integrations/FreshnessBadge";
 
-type ModalStep = "SELECT_TYPE" | "CONNECT_SHOPIFY" | "CONNECT_SQUARE" | "UNIVERSAL_INFO";
+type ModalStep = "SELECT_TYPE" | "CONNECT_SHOPIFY" | "CONNECT_SQUARE" | "UNIVERSAL_SETUP" | "UNIVERSAL_SUCCESS";
 
 export default function Integrations() {
   const [connections, setConnections] = useState<ConnectionFreshness[]>([]);
@@ -42,6 +44,16 @@ export default function Integrations() {
   const [squareAccessToken, setSquareAccessToken] = useState("");
   const [squareLocationId, setSquareLocationId] = useState("");
   const [squareEnvironment, setSquareEnvironment] = useState<"sandbox" | "production">("sandbox");
+  const [universalName, setUniversalName] = useState("");
+
+  // Universal Ingress Provisioned State
+  const [provisionedData, setProvisionedData] = useState<{
+    apiKey: string;
+    ingressUrl: string;
+    name: string;
+  } | null>(null);
+  const [copiedKey, setCopiedKey] = useState(false);
+  const [copiedUrl, setCopiedUrl] = useState(false);
 
   // Syncing & Disconnecting per-card action state
   const [syncingId, setSyncingId] = useState<string | null>(null);
@@ -70,6 +82,8 @@ export default function Integrations() {
     setShopDomain("");
     setSquareAccessToken("");
     setSquareLocationId("");
+    setUniversalName("");
+    setProvisionedData(null);
     setIsModalOpen(true);
   };
 
@@ -77,6 +91,7 @@ export default function Integrations() {
     setIsModalOpen(false);
     setModalStep("SELECT_TYPE");
     setModalError(null);
+    setProvisionedData(null);
   };
 
   const handleConnectShopify = async (e: React.FormEvent) => {
@@ -116,6 +131,29 @@ export default function Integrations() {
       fetchConnections();
     } catch (err: any) {
       setModalError(err.message || "Failed to connect Square POS.");
+    } finally {
+      setConnectLoading(false);
+    }
+  };
+
+  const handleProvisionUniversal = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setConnectLoading(true);
+    setModalError(null);
+    try {
+      const res = await provisionUniversalIngress({
+        name: universalName.trim() || "Custom POS Ingress",
+      });
+      const fullUrl = `${window.location.origin}${res.ingressUrl}`;
+      setProvisionedData({
+        apiKey: res.apiKey,
+        ingressUrl: fullUrl,
+        name: universalName.trim() || "Custom POS Ingress",
+      });
+      setModalStep("UNIVERSAL_SUCCESS");
+      fetchConnections();
+    } catch (err: any) {
+      setModalError(err.message || "Failed to provision custom ingress webhook.");
     } finally {
       setConnectLoading(false);
     }
@@ -179,7 +217,7 @@ export default function Integrations() {
             Connected Business Systems
           </h1>
           <p className="text-sm text-slate-400 mt-1">
-            Manage live POS registers, e-commerce stores, and data streams powering your canonical AI analytics.
+            Manage live POS registers, e-commerce stores, and custom ingress streams powering Diralis AI analytics.
           </p>
         </div>
 
@@ -280,7 +318,7 @@ export default function Integrations() {
                         <span className="font-medium text-slate-200 mt-0.5 block">
                           {conn.nextSyncAt
                             ? new Date(conn.nextSyncAt).toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" })
-                            : "Automatic"}
+                            : "Real-time / Push"}
                         </span>
                       </div>
                       <div>
@@ -303,11 +341,12 @@ export default function Integrations() {
                   <div className="mt-6 pt-4 border-t border-slate-800/80 flex items-center justify-between gap-3">
                     <button
                       onClick={() => handleManualSync(conn.connectionId)}
-                      disabled={isSyncing}
-                      className="inline-flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors disabled:opacity-50 cursor-pointer"
+                      disabled={isSyncing || conn.provider === "universal"}
+                      className="inline-flex items-center justify-center gap-2 px-3 py-1.5 text-xs font-medium rounded-lg bg-slate-800 hover:bg-slate-700 text-slate-200 border border-slate-700 transition-colors disabled:opacity-40 cursor-pointer"
+                      title={conn.provider === "universal" ? "Receives live push events" : "Trigger sync"}
                     >
                       <RefreshCw size={13} className={isSyncing ? "animate-spin text-cyan-400" : ""} />
-                      {isSyncing ? "Syncing..." : "Sync Now"}
+                      {conn.provider === "universal" ? "Live Push" : isSyncing ? "Syncing..." : "Sync Now"}
                     </button>
 
                     <button
@@ -407,7 +446,7 @@ export default function Integrations() {
                   </button>
 
                   <button
-                    onClick={() => setModalStep("UNIVERSAL_INFO")}
+                    onClick={() => setModalStep("UNIVERSAL_SETUP")}
                     className="w-full p-4 rounded-xl border border-slate-800 hover:border-purple-500/50 bg-slate-950/40 hover:bg-slate-950/80 transition-all text-left flex items-center justify-between group cursor-pointer"
                   >
                     <div className="flex items-center gap-3">
@@ -416,9 +455,9 @@ export default function Integrations() {
                       </div>
                       <div>
                         <div className="text-sm font-semibold text-slate-100 group-hover:text-purple-400 transition-colors">
-                          Universal POS Ingress (Webhook / API)
+                          Universal POS Ingress (Webhook / Push API)
                         </div>
-                        <div className="text-xs text-slate-400">Push transactions from any custom POS, ERP, or Zapier</div>
+                        <div className="text-xs text-slate-400">Connect any POS, ERP, or custom billing system via webhook</div>
                       </div>
                     </div>
                     <ArrowRight size={16} className="text-slate-500 group-hover:text-purple-400 transition-colors" />
@@ -431,7 +470,7 @@ export default function Integrations() {
               <div>
                 <button
                   onClick={() => setModalStep("SELECT_TYPE")}
-                  className="text-xs text-slate-400 hover:text-slate-200 mb-3 block"
+                  className="text-xs text-slate-400 hover:text-slate-200 mb-3 block cursor-pointer"
                 >
                   ← Back to options
                 </button>
@@ -489,7 +528,7 @@ export default function Integrations() {
               <div>
                 <button
                   onClick={() => setModalStep("SELECT_TYPE")}
-                  className="text-xs text-slate-400 hover:text-slate-200 mb-3 block"
+                  className="text-xs text-slate-400 hover:text-slate-200 mb-3 block cursor-pointer"
                 >
                   ← Back to options
                 </button>
@@ -570,45 +609,139 @@ export default function Integrations() {
               </div>
             )}
 
-            {modalStep === "UNIVERSAL_INFO" && (
+            {modalStep === "UNIVERSAL_SETUP" && (
               <div>
                 <button
                   onClick={() => setModalStep("SELECT_TYPE")}
-                  className="text-xs text-slate-400 hover:text-slate-200 mb-3 block"
+                  className="text-xs text-slate-400 hover:text-slate-200 mb-3 block cursor-pointer"
                 >
                   ← Back to options
                 </button>
                 <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
                   <Webhook className="text-purple-400" size={20} />
-                  Universal POS Ingress
+                  Provision Universal Ingress
                 </h3>
                 <p className="text-xs text-slate-400 mt-1 mb-4">
-                  Stream transactions directly into Diralis Canonical Layer from any custom POS, ERP, or payment gateway.
+                  Name your connection to generate a dedicated secure webhook endpoint and API key.
                 </p>
 
-                <div className="p-4 rounded-xl bg-slate-950/70 border border-slate-800 text-xs space-y-2.5 mb-5">
-                  <div className="text-slate-300 font-medium">How it works:</div>
-                  <div className="flex items-start gap-2 text-slate-400">
-                    <CheckCircle2 size={14} className="text-purple-400 shrink-0 mt-0.5" />
-                    <span>Diralis assigns your business a unique secure ingestion webhook URL.</span>
+                {modalError && (
+                  <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2">
+                    <AlertCircle size={15} className="text-rose-400 shrink-0" />
+                    <span>{modalError}</span>
                   </div>
-                  <div className="flex items-start gap-2 text-slate-400">
-                    <CheckCircle2 size={14} className="text-purple-400 shrink-0 mt-0.5" />
-                    <span>Your register or backend pushes order payloads whenever transactions settle.</span>
+                )}
+
+                <form onSubmit={handleProvisionUniversal} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                      Connection Name
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="e.g. Odoo POS, Loyverse Register, Custom Cash System"
+                      value={universalName}
+                      onChange={(e) => setUniversalName(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-800 text-sm text-slate-100 focus:outline-hidden focus:border-purple-500"
+                    />
                   </div>
-                  <div className="flex items-start gap-2 text-slate-400">
-                    <CheckCircle2 size={14} className="text-purple-400 shrink-0 mt-0.5" />
-                    <span>Diralis automatically normalizes the data into your predictive AI models.</span>
+
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={connectLoading}
+                      className="px-4 py-2 text-xs font-medium bg-purple-600 hover:bg-purple-500 text-white rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {connectLoading ? "Provisioning..." : "Generate Webhook & Key"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
+            {modalStep === "UNIVERSAL_SUCCESS" && provisionedData && (
+              <div>
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 rounded-lg bg-emerald-500/10 text-emerald-400 border border-emerald-500/20">
+                    <CheckCircle2 size={20} />
+                  </div>
+                  <div>
+                    <h3 className="text-base font-semibold text-slate-100">Ingress Ready: {provisionedData.name}</h3>
+                    <p className="text-xs text-slate-400">Push transactions to stream into Diralis Canonical AI.</p>
                   </div>
                 </div>
 
-                <div className="flex items-center justify-end gap-3">
+                <div className="space-y-3 mt-4 text-xs">
+                  {/* Endpoint */}
+                  <div>
+                    <span className="text-slate-400 font-medium block mb-1">Ingestion Endpoint (POST)</span>
+                    <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                      <code className="text-purple-300 text-[11px] truncate flex-1 font-mono">
+                        {provisionedData.ingressUrl}
+                      </code>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(provisionedData.ingressUrl);
+                          setCopiedUrl(true);
+                          setTimeout(() => setCopiedUrl(false), 2000);
+                        }}
+                        className="text-slate-400 hover:text-slate-200 p-1 cursor-pointer"
+                        title="Copy URL"
+                      >
+                        {copiedUrl ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Header Key */}
+                  <div>
+                    <span className="text-slate-400 font-medium block mb-1">Header: x-diralis-key</span>
+                    <div className="flex items-center gap-2 p-2.5 rounded-lg bg-slate-950 border border-slate-800">
+                      <code className="text-cyan-300 text-[11px] truncate flex-1 font-mono">
+                        {provisionedData.apiKey}
+                      </code>
+                      <button
+                        onClick={() => {
+                          navigator.clipboard.writeText(provisionedData.apiKey);
+                          setCopiedKey(true);
+                          setTimeout(() => setCopiedKey(false), 2000);
+                        }}
+                        className="text-slate-400 hover:text-slate-200 p-1 cursor-pointer"
+                        title="Copy Key"
+                      >
+                        {copiedKey ? <Check size={14} className="text-emerald-400" /> : <Copy size={14} />}
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Example Payload */}
+                  <div className="mt-3 p-3 rounded-lg bg-slate-950/80 border border-slate-800 text-slate-400">
+                    <span className="text-slate-300 font-medium block mb-1">JSON Payload Format:</span>
+                    <pre className="text-[10px] text-slate-300 font-mono whitespace-pre overflow-x-auto">
+{`{
+  "externalId": "order_1001",
+  "totalAmount": 149.50,
+  "transactionDate": "2026-09-04T10:30:00Z",
+  "status": "COMPLETED"
+}`}
+                    </pre>
+                  </div>
+                </div>
+
+                <div className="mt-5 flex justify-end">
                   <button
-                    type="button"
                     onClick={closeModal}
-                    className="px-4 py-2 text-xs font-medium bg-slate-800 hover:bg-slate-700 text-slate-200 rounded-lg transition-colors cursor-pointer"
+                    className="px-4 py-2 text-xs font-semibold rounded-lg bg-purple-600 hover:bg-purple-500 text-white transition-colors cursor-pointer"
                   >
-                    Got it
+                    Done
                   </button>
                 </div>
               </div>

@@ -13,6 +13,8 @@ import {
   AlertTriangle,
   X,
   Download,
+  Fingerprint,
+  Trash2,
 } from "lucide-react";
 import {
   getSettings,
@@ -23,6 +25,13 @@ import {
   verify2FA,
   disable2FA,
 } from "../services/settingsService";
+
+import {
+  getPasskeys,
+  registerPasskey,
+  deletePasskey,
+  type PasskeyItem,
+} from "../services/passkeyService";
 
 export default function Settings() {
   const { user } = useAuth();
@@ -52,12 +61,27 @@ export default function Settings() {
   const [disablePassword, setDisablePassword] = useState("");
   const [twoFactorLoading, setTwoFactorLoading] = useState(false);
 
+  // Passkey State
+  const [passkeys, setPasskeys] = useState<PasskeyItem[]>([]);
+  const [passkeyLoading, setPasskeyLoading] = useState(false);
+  const [passkeyNickname, setPasskeyNickname] = useState("");
+  const [showAddPasskey, setShowAddPasskey] = useState(false);
+
   useEffect(() => {
     if (user) {
       setFullName(user.fullName);
       setEmail(user.email);
     }
   }, [user]);
+
+  async function loadPasskeys() {
+    try {
+      const list = await getPasskeys();
+      setPasskeys(list);
+    } catch (err) {
+      console.error("Failed to load passkeys:", err);
+    }
+  }
 
   useEffect(() => {
     async function loadSettings() {
@@ -72,6 +96,7 @@ export default function Settings() {
       }
     }
     loadSettings();
+    loadPasskeys();
   }, [applyTheme]);
 
   async function handleSettingsUpdate(updates: {
@@ -204,6 +229,42 @@ export default function Settings() {
       });
     } finally {
       setTwoFactorLoading(false);
+    }
+  }
+
+  // Passkey Actions
+  async function handleAddPasskey() {
+    try {
+      setPasskeyLoading(true);
+      await registerPasskey(passkeyNickname.trim() || "Security Key");
+      setPasskeyNickname("");
+      setShowAddPasskey(false);
+      await loadPasskeys();
+      setTwoFactorEnabled(true);
+      setMessage({ type: "success", text: "Passkey registered successfully." });
+    } catch (err: any) {
+      setMessage({
+        type: "error",
+        text: err?.message || err?.response?.data?.message || "Failed to register passkey.",
+      });
+    } finally {
+      setPasskeyLoading(false);
+    }
+  }
+
+  async function handleDeletePasskey(id: string) {
+    try {
+      setPasskeyLoading(true);
+      await deletePasskey(id);
+      await loadPasskeys();
+      setMessage({ type: "success", text: "Passkey removed." });
+    } catch (err: any) {
+      setMessage({
+        type: "error",
+        text: err?.response?.data?.message || "Failed to remove passkey.",
+      });
+    } finally {
+      setPasskeyLoading(false);
     }
   }
 
@@ -526,6 +587,84 @@ export default function Settings() {
                 </div>
               </div>
             )}
+          </div>
+
+          {/* Passkeys & Hardware Keys Section */}
+          <div className="mt-8 border-t border-slate-800 pt-6">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2">
+                <Fingerprint size={20} className="text-cyan-400" />
+                <h3 className="font-semibold text-slate-200">Passkeys & Security Keys</h3>
+              </div>
+              <button
+                onClick={() => setShowAddPasskey(true)}
+                disabled={passkeyLoading}
+                className="rounded-lg border border-cyan-500/40 bg-cyan-500/10 px-3 py-1.5 text-xs font-medium text-cyan-300 hover:bg-cyan-500/20 disabled:opacity-50"
+              >
+                + Add Passkey
+              </button>
+            </div>
+
+            <p className="mt-2 text-xs text-slate-400">
+              Sign in with biometric hardware authentication (Touch ID, Face ID, Windows Hello, or YubiKey).
+            </p>
+
+            {/* Add Passkey Prompt */}
+            {showAddPasskey && (
+              <div className="mt-4 rounded-xl border border-cyan-500/30 bg-slate-950 p-4">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm font-medium text-cyan-300">Register New Passkey</span>
+                  <button onClick={() => setShowAddPasskey(false)} className="text-slate-400 hover:text-white">
+                    <X size={16} />
+                  </button>
+                </div>
+                <div className="mt-3 flex gap-2">
+                  <input
+                    type="text"
+                    placeholder="Key name (e.g. MacBook Touch ID, YubiKey)"
+                    value={passkeyNickname}
+                    onChange={(e) => setPasskeyNickname(e.target.value)}
+                    className="flex-1 rounded-lg border border-slate-700 bg-slate-800 p-2 text-sm text-white focus:border-cyan-500 focus:outline-none"
+                  />
+                  <button
+                    onClick={handleAddPasskey}
+                    disabled={passkeyLoading}
+                    className="rounded-lg bg-cyan-500 px-4 py-2 text-xs font-semibold text-black hover:bg-cyan-400 disabled:opacity-50"
+                  >
+                    {passkeyLoading ? "Prompting..." : "Continue"}
+                  </button>
+                </div>
+              </div>
+            )}
+
+            {/* Passkeys List */}
+            <div className="mt-4 space-y-2">
+              {passkeys.length === 0 ? (
+                <p className="text-xs italic text-slate-500">No passkeys enrolled yet.</p>
+              ) : (
+                passkeys.map((pk) => (
+                  <div
+                    key={pk.id}
+                    className="flex items-center justify-between rounded-lg border border-slate-800 bg-slate-950/60 p-3 text-sm"
+                  >
+                    <div>
+                      <div className="font-medium text-slate-200">{pk.name}</div>
+                      <div className="text-xs text-slate-500">
+                        Added: {new Date(pk.createdAt).toLocaleDateString()}
+                        {pk.lastUsedAt && ` • Last used: ${new Date(pk.lastUsedAt).toLocaleDateString()}`}
+                      </div>
+                    </div>
+                    <button
+                      onClick={() => handleDeletePasskey(pk.id)}
+                      disabled={passkeyLoading}
+                      className="rounded p-1 text-slate-500 hover:bg-rose-500/10 hover:text-rose-400"
+                    >
+                      <Trash2 size={16} />
+                    </button>
+                  </div>
+                ))
+              )}
+            </div>
           </div>
         </div>
 

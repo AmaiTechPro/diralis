@@ -12,6 +12,7 @@
   "dependencies": {
     "@headlessui/react": "^2.2.10",
     "@react-oauth/google": "^0.13.5",
+    "@simplewebauthn/browser": "^14.0.0",
     "@tailwindcss/vite": "^4.3.3",
     "axios": "^1.19.0",
     "clsx": "^2.1.1",

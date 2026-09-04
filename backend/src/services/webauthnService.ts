@@ -8,10 +8,21 @@ import {
 } from "@simplewebauthn/server";
 import prisma from "../lib/prisma";
 
-// Relying Party Configuration
+// Relying Party & Origin Configuration
 const rpName = process.env.WEBAUTHN_RP_NAME || "Diralis Enterprise";
-const rpID = process.env.WEBAUTHN_RP_ID || "localhost";
-const expectedOrigin = process.env.WEBAUTHN_ORIGIN || "http://localhost:5173";
+const rpID =
+  process.env.WEBAUTHN_RP_ID ||
+  (process.env.NODE_ENV === "production" ? "diralishq.com" : "localhost");
+
+const defaultOrigins = [
+  "https://www.diralishq.com",
+  "https://diralishq.com",
+  "http://localhost:5173",
+];
+
+const expectedOrigin = process.env.WEBAUTHN_ORIGIN
+  ? [process.env.WEBAUTHN_ORIGIN, ...defaultOrigins]
+  : defaultOrigins;
 
 const CHALLENGE_TTL_MS = 5 * 60 * 1000; // 5 minutes
 

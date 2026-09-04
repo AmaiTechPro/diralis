@@ -308,8 +308,8 @@ export async function verify2FALogin(tempToken: string, code: string): Promise<A
         await prisma.securityEvent.create({
           data: {
             userId: user.id,
-            action: "SECURITY_ALERT" as any,
-            details: `One-time backup recovery code consumed. ${backupCodesList.length} codes remaining.`,
+            action: "LOGIN_SUCCESS",
+            details: `Authenticated via backup recovery code. ${backupCodesList.length} codes remaining.`,
           },
         });
       }

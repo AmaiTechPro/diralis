@@ -1,3 +1,4 @@
+﻿import { UniversalIngressProvider } from "./providers/universal/universalIngressProvider";
 import prisma from "../../lib/prisma";
 import { VaultService } from "./vaultService";
 import { MockPosProvider } from "./providers/mockPosProvider";
@@ -10,6 +11,8 @@ export class ConnectionService {
     ["mock_pos", new MockPosProvider()],
     ["shopify", new ShopifyConnectorProvider()],
     ["square", new SquareConnectorProvider()],
+    ["universal", new UniversalIngressProvider()],
+    ["universal_pos", new UniversalIngressProvider()],
   ]);
 
   public static getProvider(providerId: string): IConnectorProvider {
@@ -94,4 +97,5 @@ export class ConnectionService {
     return { success: true };
   }
 }
+
 

@@ -144,7 +144,7 @@ export default function Integrations() {
       const res = await provisionUniversalIngress({
         name: universalName.trim() || "Custom POS Ingress",
       });
-      const fullUrl = `${window.location.origin}${res.ingressUrl}`;
+      const apiOrigin = (import.meta.env.VITE_API_URL || window.location.origin).replace(/\/api\/?$/, "");`r`n      const fullUrl = `${apiOrigin}${res.ingressUrl}`;
       setProvisionedData({
         apiKey: res.apiKey,
         ingressUrl: fullUrl,
@@ -752,3 +752,4 @@ export default function Integrations() {
     </div>
   );
 }
+

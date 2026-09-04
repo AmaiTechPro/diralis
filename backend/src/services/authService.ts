@@ -1,5 +1,5 @@
 import crypto from "crypto";
-import bcrypt from "bcryptjs";
+import bcrypt from "bcrypt";
 import * as otplib from "otplib";
 import prisma from "../lib/prisma";
 import { generateToken, generate2FATempToken, verifyToken } from "../utils/jwt";
@@ -230,62 +230,97 @@ export async function verify2FALogin(tempToken: string, code: string): Promise<A
     throw new Error("Invalid authentication state.");
   }
 
+  // Explicitly fetch user with backupCodes and twoFactorSecret
   const user = await prisma.user.findUnique({
     where: { id: payload.userId },
   });
 
-  if (!user || !(user as any).twoFactorEnabled || !(user as any).twoFactorSecret) {
+  if (!user || !(user as any).twoFactorEnabled) {
     throw new Error("Invalid 2FA request.");
   }
 
-  const cleanCode = code.trim();
+  const cleanCode = code.trim().replace(/\s+/g, "");
   let verified = false;
 
-  // 1. Check TOTP Code
-  const authInstance: any =
-    (otplib as any).authenticator ||
-    (otplib as any).default?.authenticator ||
-    (otplib as any).default ||
-    otplib;
+  // 1. If 6 numeric digits, test TOTP first
+  if (/^\d{6}$/.test(cleanCode) && (user as any).twoFactorSecret) {
+    const authInstance: any =
+      (otplib as any).authenticator ||
+      (otplib as any).default?.authenticator ||
+      (otplib as any).default ||
+      otplib;
 
-  if (typeof authInstance.verify === "function") {
-    verified = authInstance.verify({
-      token: cleanCode,
-      secret: (user as any).twoFactorSecret,
-    });
-  } else if (typeof authInstance.check === "function") {
-    verified = authInstance.check(cleanCode, (user as any).twoFactorSecret);
+    try {
+      if (typeof authInstance.verify === "function") {
+        verified = authInstance.verify({
+          token: cleanCode,
+          secret: (user as any).twoFactorSecret,
+        });
+      } else if (typeof authInstance.check === "function") {
+        verified = authInstance.check(cleanCode, (user as any).twoFactorSecret);
+      }
+    } catch (e) {
+      console.warn("[2FA] TOTP check failed with error:", e);
+    }
   }
 
-  // 2. If TOTP fails, check recovery backup codes
-  if (!verified && (user as any).backupCodes?.length) {
-    const backupCodes: string[] = (user as any).backupCodes;
-    let matchedIndex = -1;
+  // 2. If not verified, check against backup recovery codes
+  if (!verified) {
+    const rawBackupCodes = (user as any).backupCodes;
+    let backupCodesList: string[] = [];
 
-    for (let i = 0; i < backupCodes.length; i++) {
-      const match = await bcrypt.compare(cleanCode.toUpperCase(), backupCodes[i]);
-      if (match) {
-        matchedIndex = i;
-        break;
+    if (Array.isArray(rawBackupCodes)) {
+      backupCodesList = [...rawBackupCodes];
+    } else if (typeof rawBackupCodes === "string") {
+      try {
+        backupCodesList = JSON.parse(rawBackupCodes);
+      } catch {
+        backupCodesList = [];
       }
     }
 
-    if (matchedIndex !== -1) {
-      verified = true;
-      // Consume one-time recovery backup code
-      backupCodes.splice(matchedIndex, 1);
-      await (prisma.user as any).update({
-        where: { id: user.id },
-        data: { backupCodes },
-      });
+    if (backupCodesList.length > 0) {
+      let matchedIndex = -1;
+      const normalizedInput = cleanCode.toUpperCase();
+
+      for (let i = 0; i < backupCodesList.length; i++) {
+        const storedHash = backupCodesList[i];
+        // Support both hashed backup codes and plain matches
+        const isMatch =
+          storedHash === normalizedInput ||
+          (await bcrypt.compare(normalizedInput, storedHash).catch(() => false));
+
+        if (isMatch) {
+          matchedIndex = i;
+          break;
+        }
+      }
+
+      if (matchedIndex !== -1) {
+        verified = true;
+        // Consume the used backup code (one-time use)
+        backupCodesList.splice(matchedIndex, 1);
+        await (prisma.user as any).update({
+          where: { id: user.id },
+          data: { backupCodes: backupCodesList },
+        });
+
+        await prisma.securityEvent.create({
+          data: {
+            userId: user.id,
+            action: "SECURITY_ALERT" as any,
+            details: `One-time backup recovery code consumed. ${backupCodesList.length} codes remaining.`,
+          },
+        });
+      }
     }
   }
 
   if (!verified) {
-    throw new Error("Invalid verification code or backup code.");
+    throw new Error("Invalid or expired verification code.");
   }
 
-  // Clear counters, update last login, and log security event
+  // Reset counters & update lastLogin
   await prisma.user.update({
     where: { id: user.id },
     data: {
@@ -299,7 +334,7 @@ export async function verify2FALogin(tempToken: string, code: string): Promise<A
     data: {
       userId: user.id,
       action: "LOGIN_SUCCESS",
-      details: "Authenticated via Two-Factor Authentication.",
+      details: "Authenticated via Two-Factor Verification.",
     },
   });
 

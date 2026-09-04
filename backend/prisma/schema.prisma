@@ -23,6 +23,9 @@ enum SecurityAction {
   TWO_FACTOR_DISABLED
   TWO_FACTOR_VERIFIED
   BACKUP_CODE_USED
+  WEBAUTHN_REGISTERED
+  WEBAUTHN_AUTHENTICATED
+  WEBAUTHN_REVOKED
 }
 
 enum BillingProvider {
@@ -78,6 +81,10 @@ model User {
   twoFactorEnabled        Boolean                 @default(false)
   twoFactorSecret         String?
   backupCodes             String[]                @default([])
+  
+  // Passkeys & WebAuthn
+  passkeys             PasskeyCredential[]
+  webauthnChallenges   WebAuthnChallenge[]
 
   theme                   String                  @default("dark")
   emailNotifications      Boolean                 @default(true)
@@ -537,4 +544,41 @@ model PasswordHistory {
 
   @@index([userId])
 }
+
+
+
+model PasskeyCredential {
+  id                   String    @id @default(cuid())
+  userId               String
+  name                 String    @default("Security Key")
+  credentialId         String    @unique
+  publicKey            Bytes
+  counter              BigInt    @default(0)
+  deviceType           String    @default("singleDevice")
+  backedUp             Boolean   @default(false)
+  transports           String[]  @default([])
+  createdAt            DateTime  @default(now())
+  lastUsedAt           DateTime?
+
+  user                 User      @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+model WebAuthnChallenge {
+  id        String   @id @default(cuid())
+  userId    String
+  challenge String   @unique
+  type      String   // "REGISTRATION" | "AUTHENTICATION"
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  user      User     @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+}
+
+
+
+
 

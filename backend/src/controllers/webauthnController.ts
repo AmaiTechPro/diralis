@@ -10,11 +10,17 @@ import {
 import { verifyToken, generateToken } from "../utils/jwt";
 import prisma from "../lib/prisma";
 
+// Helper to safely get user ID across different middleware implementations
+function extractUserId(req: Request): string | null {
+  const user = (req as any).user;
+  return user?.userId || user?.id || null;
+}
+
 // --- Authenticated Management (Settings) ---
 
 export async function getPasskeyRegistrationOptions(req: Request, res: Response): Promise<void> {
   try {
-    const userId = (req as any).user?.id;
+    const userId = extractUserId(req);
     if (!userId) {
       res.status(401).json({ message: "Unauthorized." });
       return;
@@ -29,7 +35,7 @@ export async function getPasskeyRegistrationOptions(req: Request, res: Response)
 
 export async function verifyPasskeyRegistration(req: Request, res: Response): Promise<void> {
   try {
-    const userId = (req as any).user?.id;
+    const userId = extractUserId(req);
     const { response, name } = req.body;
 
     if (!userId) {
@@ -51,7 +57,7 @@ export async function verifyPasskeyRegistration(req: Request, res: Response): Pr
 
 export async function getUserPasskeys(req: Request, res: Response): Promise<void> {
   try {
-    const userId = (req as any).user?.id;
+    const userId = extractUserId(req);
     if (!userId) {
       res.status(401).json({ message: "Unauthorized." });
       return;
@@ -66,7 +72,7 @@ export async function getUserPasskeys(req: Request, res: Response): Promise<void
 
 export async function removePasskey(req: Request, res: Response): Promise<void> {
   try {
-    const userId = (req as any).user?.id;
+    const userId = extractUserId(req);
     const passkeyId = Array.isArray(req.params.id) ? req.params.id[0] : req.params.id;
 
     if (!userId) {
@@ -85,6 +91,7 @@ export async function removePasskey(req: Request, res: Response): Promise<void> 
     res.status(400).json({ message: error.message || "Failed to delete passkey." });
   }
 }
+
 // --- Login 2FA Flow (Requires valid tempToken) ---
 
 export async function getPasskeyLoginOptions(req: Request, res: Response): Promise<void> {
@@ -103,12 +110,13 @@ export async function getPasskeyLoginOptions(req: Request, res: Response): Promi
       return;
     }
 
-    if (payload.stage !== "2FA_PENDING" || !payload.userId) {
+    const targetUserId = payload.userId || payload.id;
+    if (payload.stage !== "2FA_PENDING" || !targetUserId) {
       res.status(400).json({ message: "Invalid 2FA session state." });
       return;
     }
 
-    const options = await getAuthenticationOptions(payload.userId);
+    const options = await getAuthenticationOptions(targetUserId);
     res.json(options);
   } catch (error: any) {
     res.status(400).json({ message: error.message || "Failed to get authentication options." });
@@ -131,15 +139,16 @@ export async function verifyPasskeyLogin(req: Request, res: Response): Promise<v
       return;
     }
 
-    if (payload.stage !== "2FA_PENDING" || !payload.userId) {
+    const targetUserId = payload.userId || payload.id;
+    if (payload.stage !== "2FA_PENDING" || !targetUserId) {
       res.status(400).json({ message: "Invalid 2FA session state." });
       return;
     }
 
-    await verifyAuthentication(payload.userId, response);
+    await verifyAuthentication(targetUserId, response);
 
     const user = await prisma.user.findUnique({
-      where: { id: payload.userId },
+      where: { id: targetUserId },
     });
 
     if (!user) {
@@ -147,7 +156,6 @@ export async function verifyPasskeyLogin(req: Request, res: Response): Promise<v
       return;
     }
 
-    // Reset lockouts and update last login
     await prisma.user.update({
       where: { id: user.id },
       data: {
@@ -185,6 +193,5 @@ export async function verifyPasskeyLogin(req: Request, res: Response): Promise<v
     res.status(400).json({ message: error.message || "Passkey authentication failed." });
   }
 }
-
 
 

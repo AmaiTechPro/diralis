@@ -1,49 +1,41 @@
 import { Router } from "express";
-import { adminMiddleware } from "../middleware/adminMiddleware";
 import {
-  getUsers,
-  getAdminMetrics,
-  changeUserRole,
-  toggleUserStatus,
-  deleteUser,
-  getSecurityEvents,
-  getLockedAccounts,
-  getSecurityTelemetryMetrics,
-  unlockUserAccount,
-  getUserPasskeysAdmin,
-  revokeUserPasskeyAdmin,
-  getAdminSubscriptions,
-  getAdminPayments,
-  getAdminRevenueMetrics,
-  adminOverrideSubscription,
-} from "../controllers/adminController";
+  register,
+  login,
+  googleLogin,
+  verifyEmail,
+  resendVerification,
+  verify2FAChallenge,
+} from "../controllers/authController";
+import {
+  getPasskeyRegistrationOptions,
+  verifyPasskeyRegistration,
+  getUserPasskeys,
+  removePasskey,
+  getPasskeyLoginOptions,
+  verifyPasskeyLogin,
+} from "../controllers/webauthnController";
+import { authenticate as authMiddleware } from "../middleware/authMiddleware";
+import { authenticate } from "../middleware/authMiddleware";
 
 const router = Router();
 
-// All routes require ADMIN access
-router.get("/users", adminMiddleware, getUsers);
-router.get("/metrics", adminMiddleware, getAdminMetrics);
-router.patch("/users/:id/role", adminMiddleware, changeUserRole);
-router.patch("/users/:id/status", adminMiddleware, toggleUserStatus);
-router.delete("/users/:id", adminMiddleware, deleteUser);
+// Core Auth Routes
+router.post("/register", register);
+router.post("/login", login);
+router.post("/google", googleLogin);
+router.post("/verify-email", verifyEmail);
+router.post("/resend-verification", resendVerification);
+router.post("/verify-2fa", verify2FAChallenge);
 
-// Security Telemetry & Administrative Response
-router.get("/security/metrics", adminMiddleware, getSecurityTelemetryMetrics);
-router.get("/security/events", adminMiddleware, getSecurityEvents);
-router.get("/security-events", adminMiddleware, getSecurityEvents); // backwards-compatibility alias
-router.get("/locked-accounts", adminMiddleware, getLockedAccounts);
-router.post("/users/:id/unlock", adminMiddleware, unlockUserAccount);
-router.get("/users/:userId/passkeys", adminMiddleware, getUserPasskeysAdmin);
-router.delete("/passkeys/:passkeyId", adminMiddleware, revokeUserPasskeyAdmin);
+// Passkey WebAuthn Authentication (Login Flow)
+router.post("/passkeys/login-options", getPasskeyLoginOptions);
+router.post("/passkeys/verify-login", verifyPasskeyLogin);
 
-// Subscription & Revenue Management
-router.get("/subscriptions", adminMiddleware, getAdminSubscriptions);
-router.get("/payments", adminMiddleware, getAdminPayments);
-router.get("/revenue", adminMiddleware, getAdminRevenueMetrics);
-router.patch("/subscriptions/:id/override", adminMiddleware, adminOverrideSubscription);
+// Passkey WebAuthn Management (Authenticated Session / Onboarding)
+router.get("/passkeys/register-options", authMiddleware, getPasskeyRegistrationOptions);
+router.post("/passkeys/verify-registration", authMiddleware, verifyPasskeyRegistration);
+router.get("/passkeys", authMiddleware, getUserPasskeys);
+router.delete("/passkeys/:id", authMiddleware, removePasskey);
 
 export default router;
-
-
-
-

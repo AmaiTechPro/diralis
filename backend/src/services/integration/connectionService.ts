@@ -3,11 +3,13 @@ import { VaultService } from "./vaultService";
 import { MockPosProvider } from "./providers/mockPosProvider";
 import { ShopifyConnectorProvider } from "./providers/shopify/shopifyConnectorProvider";
 import { IConnectorProvider } from "./connectorTypes";
+import { SquareConnectorProvider } from "./providers/square/squareConnectorProvider";
 
 export class ConnectionService {
   private static providers = new Map<string, IConnectorProvider>([
     ["mock_pos", new MockPosProvider()],
     ["shopify", new ShopifyConnectorProvider()],
+    ["square", new SquareConnectorProvider()],
   ]);
 
   public static getProvider(providerId: string): IConnectorProvider {

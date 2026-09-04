@@ -18,6 +18,11 @@ import {
 import { authenticate as authMiddleware } from "../middleware/authMiddleware";
 import { authenticate } from "../middleware/authMiddleware";
 
+import {
+  setup2FA,
+  verify2FA, // or confirm2FA / whatever matches the export in settingsController
+} from "../controllers/settingsController";
+
 const router = Router();
 
 // Core Auth Routes
@@ -37,5 +42,18 @@ router.get("/passkeys/register-options", authMiddleware, getPasskeyRegistrationO
 router.post("/passkeys/verify-registration", authMiddleware, verifyPasskeyRegistration);
 router.get("/passkeys", authMiddleware, getUserPasskeys);
 router.delete("/passkeys/:id", authMiddleware, removePasskey);
+
+
+// --- Passkey Management ---
+router.get("/passkeys/register-options", authMiddleware, getPasskeyRegistrationOptions);
+router.post("/passkeys/register-options", authMiddleware, getPasskeyRegistrationOptions);
+router.post("/passkeys/verify-registration", authMiddleware, verifyPasskeyRegistration);
+router.get("/passkeys", authMiddleware, getUserPasskeys);
+router.delete("/passkeys/:id", authMiddleware, removePasskey);
+
+// --- 2FA / TOTP Management ---
+router.post("/2fa/setup", authMiddleware, setup2FA);
+router.post("/2fa/verify", authMiddleware, verify2FA);
+
 
 export default router;

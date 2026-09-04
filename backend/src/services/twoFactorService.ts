@@ -4,14 +4,44 @@ import QRCode from "qrcode";
 import bcrypt from "bcrypt";
 import prisma from "../lib/prisma";
 
-// Handle ESM and CJS import variations of otplib
-const authenticator = (otplib as any).authenticator || (otplib as any).default?.authenticator || otplib;
+// Safe resolver across CommonJS, ES Module, and bundled environments
+const authInstance: any =
+  (otplib as any).authenticator ||
+  (otplib as any).default?.authenticator ||
+  (otplib as any).default ||
+  otplib;
 
 const APP_NAME = "Diralis Enterprise";
 
+/**
+ * Generates an RFC 6238 compliant otpauth URI directly to avoid module export discrepancies.
+ */
+function buildOtpAuthUrl(account: string, issuer: string, secret: string): string {
+  const encodedIssuer = encodeURIComponent(issuer);
+  const encodedAccount = encodeURIComponent(account);
+  return `otpauth://totp/${encodedIssuer}:${encodedAccount}?secret=${secret}&issuer=${encodedIssuer}&algorithm=SHA1&digits=6&period=30`;
+}
+
 export async function initiate2FASetup(userId: string, email: string) {
-  const secret = authenticator.generateSecret();
-  const otpauth = authenticator.keyuri(email, APP_NAME, secret);
+  // Generate a standard base32 secret (falls back to native crypto if module fails)
+  let secret: string;
+  if (typeof authInstance.generateSecret === "function") {
+    secret = authInstance.generateSecret();
+  } else {
+    // Standard RFC base32 secret generator fallback
+    const alphabet = "ABCDEFGHIJKLMNOPQRSTUVWXYZ234567";
+    const bytes = crypto.randomBytes(20);
+    secret = "";
+    for (let i = 0; i < bytes.length; i++) {
+      secret += alphabet[bytes[i] % alphabet.length];
+    }
+  }
+
+  const otpauth =
+    typeof authInstance.keyuri === "function"
+      ? authInstance.keyuri(email, APP_NAME, secret)
+      : buildOtpAuthUrl(email, APP_NAME, secret);
+
   const qrCodeDataUrl = await QRCode.toDataURL(otpauth);
 
   await (prisma.user as any).update({
@@ -35,10 +65,10 @@ export async function confirmAndEnable2FA(userId: string, token: string) {
     throw new Error("2FA setup has not been initiated.");
   }
 
-  const isValid = authenticator.verify({
-    token,
-    secret: user.twoFactorSecret,
-  });
+  const isValid =
+    typeof authInstance.verify === "function"
+      ? authInstance.verify({ token, secret: user.twoFactorSecret })
+      : authInstance.check?.(token, user.twoFactorSecret);
 
   if (!isValid) {
     throw new Error("Invalid verification code. Please check your authenticator app.");
@@ -107,4 +137,5 @@ export async function disable2FA(userId: string, currentPassword: string) {
 
   return { success: true };
 }
+
 

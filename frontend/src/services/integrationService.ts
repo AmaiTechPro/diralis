@@ -1,4 +1,4 @@
-import { apiFetch } from "../api/client";
+﻿import { apiFetch } from "../api/client";
 
 export type FreshnessClassification =
   | "FRESH"
@@ -76,7 +76,7 @@ export async function triggerManualSync(
 }
 
 export async function disconnectIntegration(connectionId: string): Promise<{ success: boolean; message: string }> {
-  return await apiFetch<{ success: boolean; message: string }>(`/api/integrations/${connectionId}`, {
+  return await apiFetch<{ success: boolean; message: string }>(`/integrations/${connectionId}`, {
     method: "DELETE",
   });
 }

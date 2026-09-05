@@ -5,6 +5,7 @@ import {
   Plus, 
   Store, 
   CreditCard, 
+  ShoppingBag,
   Webhook, 
   FileSpreadsheet, 
   X, 
@@ -26,7 +27,13 @@ import {
 } from "../services/integrationService";
 import { FreshnessBadge } from "../components/integrations/FreshnessBadge";
 
-type ModalStep = "SELECT_TYPE" | "CONNECT_SHOPIFY" | "CONNECT_SQUARE" | "UNIVERSAL_SETUP" | "UNIVERSAL_SUCCESS";
+type ModalStep = 
+  | "SELECT_TYPE" 
+  | "CONNECT_SHOPIFY" 
+  | "CONNECT_SQUARE" 
+  | "CONNECT_WOOCOMMERCE" 
+  | "UNIVERSAL_SETUP" 
+  | "UNIVERSAL_SUCCESS";
 
 export default function Integrations() {
   const [connections, setConnections] = useState<ConnectionFreshness[]>([]);
@@ -44,6 +51,12 @@ export default function Integrations() {
   const [squareAccessToken, setSquareAccessToken] = useState("");
   const [squareLocationId, setSquareLocationId] = useState("");
   const [squareEnvironment, setSquareEnvironment] = useState<"sandbox" | "production">("sandbox");
+  
+  // WooCommerce Form State
+  const [wooStoreUrl, setWooStoreUrl] = useState("");
+  const [wooConsumerKey, setWooConsumerKey] = useState("");
+  const [wooConsumerSecret, setWooConsumerSecret] = useState("");
+
   const [universalName, setUniversalName] = useState("");
 
   // Universal Ingress Provisioned State
@@ -82,6 +95,9 @@ export default function Integrations() {
     setShopDomain("");
     setSquareAccessToken("");
     setSquareLocationId("");
+    setWooStoreUrl("");
+    setWooConsumerKey("");
+    setWooConsumerSecret("");
     setUniversalName("");
     setProvisionedData(null);
     setIsModalOpen(true);
@@ -91,6 +107,9 @@ export default function Integrations() {
     setIsModalOpen(false);
     setModalStep("SELECT_TYPE");
     setModalError(null);
+    setWooStoreUrl("");
+    setWooConsumerKey("");
+    setWooConsumerSecret("");
     setProvisionedData(null);
   };
 
@@ -131,6 +150,34 @@ export default function Integrations() {
       fetchConnections();
     } catch (err: any) {
       setModalError(err.message || "Failed to connect Square POS.");
+    } finally {
+      setConnectLoading(false);
+    }
+  };
+
+  const handleConnectWooCommerce = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!wooStoreUrl.trim() || !wooConsumerKey.trim() || !wooConsumerSecret.trim()) {
+      setModalError("Store URL, Consumer Key, and Consumer Secret are required.");
+      return;
+    }
+    setConnectLoading(true);
+    setModalError(null);
+    try {
+      await createIntegrationConnection({
+        providerId: "woocommerce",
+        name: "WooCommerce Store",
+        config: {
+          storeUrl: wooStoreUrl.trim(),
+          consumerKey: wooConsumerKey.trim(),
+          consumerSecret: wooConsumerSecret.trim(),
+        },
+        syncFrequency: "DAILY",
+      });
+      closeModal();
+      fetchConnections();
+    } catch (err: any) {
+      setModalError(err.message || "Failed to connect WooCommerce Store.");
     } finally {
       setConnectLoading(false);
     }
@@ -205,6 +252,7 @@ export default function Integrations() {
     const p = provider.toLowerCase();
     if (p.includes("shopify")) return <Store size={20} className="text-emerald-400" />;
     if (p.includes("square")) return <CreditCard size={20} className="text-cyan-400" />;
+    if (p.includes("woocommerce")) return <ShoppingBag size={20} className="text-indigo-400" />;
     return <Webhook size={20} className="text-purple-400" />;
   };
 
@@ -447,6 +495,24 @@ export default function Integrations() {
                   </button>
 
                   <button
+                    onClick={() => setModalStep("CONNECT_WOOCOMMERCE")}
+                    className="w-full p-4 rounded-xl border border-slate-800 hover:border-indigo-500/50 bg-slate-950/40 hover:bg-slate-950/80 transition-all text-left flex items-center justify-between group cursor-pointer"
+                  >
+                    <div className="flex items-center gap-3">
+                      <div className="p-2.5 rounded-lg bg-indigo-500/10 text-indigo-400 border border-indigo-500/20">
+                        <ShoppingBag size={20} />
+                      </div>
+                      <div>
+                        <div className="text-sm font-semibold text-slate-100 group-hover:text-indigo-400 transition-colors">
+                          WooCommerce Store
+                        </div>
+                        <div className="text-xs text-slate-400">Direct REST API integration for orders & catalog</div>
+                      </div>
+                    </div>
+                    <ArrowRight size={16} className="text-slate-500 group-hover:text-indigo-400 transition-colors" />
+                  </button>
+
+                  <button
                     onClick={() => setModalStep("UNIVERSAL_SETUP")}
                     className="w-full p-4 rounded-xl border border-slate-800 hover:border-purple-500/50 bg-slate-950/40 hover:bg-slate-950/80 transition-all text-left flex items-center justify-between group cursor-pointer"
                   >
@@ -610,6 +676,92 @@ export default function Integrations() {
               </div>
             )}
 
+            {modalStep === "CONNECT_WOOCOMMERCE" && (
+              <div>
+                <button
+                  onClick={() => setModalStep("SELECT_TYPE")}
+                  className="text-xs text-slate-400 hover:text-slate-200 mb-3 block cursor-pointer"
+                >
+                  ← Back to options
+                </button>
+                <h3 className="text-lg font-semibold text-slate-100 flex items-center gap-2">
+                  <ShoppingBag className="text-indigo-400" size={20} />
+                  Connect WooCommerce
+                </h3>
+                <p className="text-xs text-slate-400 mt-1 mb-4">
+                  Enter your WooCommerce API credentials for direct synchronization.
+                </p>
+
+                {modalError && (
+                  <div className="mb-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-300 text-xs flex items-center gap-2">
+                    <AlertCircle size={15} className="text-rose-400 shrink-0" />
+                    <span>{modalError}</span>
+                  </div>
+                )}
+
+                <form onSubmit={handleConnectWooCommerce} className="space-y-4">
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                      Store URL
+                    </label>
+                    <input
+                      type="url"
+                      required
+                      placeholder="https://mystore.com"
+                      value={wooStoreUrl}
+                      onChange={(e) => setWooStoreUrl(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-800 text-sm text-slate-100 placeholder-slate-600 focus:outline-hidden focus:border-indigo-500 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                      Consumer Key (ck_...)
+                    </label>
+                    <input
+                      type="text"
+                      required
+                      placeholder="ck_..."
+                      value={wooConsumerKey}
+                      onChange={(e) => setWooConsumerKey(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-800 text-sm text-slate-100 placeholder-slate-600 focus:outline-hidden focus:border-indigo-500 font-mono"
+                    />
+                  </div>
+
+                  <div>
+                    <label className="block text-xs font-medium text-slate-300 mb-1">
+                      Consumer Secret (cs_...)
+                    </label>
+                    <input
+                      type="password"
+                      required
+                      placeholder="cs_..."
+                      value={wooConsumerSecret}
+                      onChange={(e) => setWooConsumerSecret(e.target.value)}
+                      className="w-full px-3.5 py-2.5 rounded-lg bg-slate-950 border border-slate-800 text-sm text-slate-100 placeholder-slate-600 focus:outline-hidden focus:border-indigo-500 font-mono"
+                    />
+                  </div>
+
+                  <div className="flex items-center justify-end gap-3 pt-2">
+                    <button
+                      type="button"
+                      onClick={closeModal}
+                      className="px-4 py-2 text-xs font-medium text-slate-400 hover:text-slate-200 cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button
+                      type="submit"
+                      disabled={connectLoading}
+                      className="px-4 py-2 text-xs font-medium bg-indigo-600 hover:bg-indigo-500 text-white rounded-lg transition-colors cursor-pointer disabled:opacity-50"
+                    >
+                      {connectLoading ? "Connecting..." : "Connect WooCommerce"}
+                    </button>
+                  </div>
+                </form>
+              </div>
+            )}
+
             {modalStep === "UNIVERSAL_SETUP" && (
               <div>
                 <button
@@ -753,3 +905,5 @@ export default function Integrations() {
     </div>
   );
 }
+
+

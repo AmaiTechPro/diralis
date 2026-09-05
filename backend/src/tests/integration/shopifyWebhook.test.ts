@@ -1,3 +1,4 @@
+import { describe, it, expect, beforeAll, afterAll, vi } from "vitest";
 import crypto from "crypto";
 import request from "supertest";
 import app from "../../app";
@@ -140,7 +141,7 @@ describe("Shopify Real-Time Webhook Pipeline", () => {
     });
 
     it("accepts valid webhook deliveries and responds fast (<200ms) with ACCEPTED", async () => {
-      const processSpy = jest.spyOn(ShopifyWebhookProcessor, "processEvent").mockResolvedValue(undefined);
+      const processSpy = vi.spyOn(ShopifyWebhookProcessor, "processEvent").mockResolvedValue(undefined as any);
 
       const payload = JSON.stringify({
         id: 123456789,
@@ -207,6 +208,4 @@ describe("Shopify Real-Time Webhook Pipeline", () => {
     });
   });
 });
-
-
 

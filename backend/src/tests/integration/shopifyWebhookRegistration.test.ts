@@ -1,6 +1,6 @@
 /// <reference types="node" />
 import process from "process";
-import { describe, it, expect, beforeAll, afterAll, afterEach, jest } from "@jest/globals";
+import { describe, it, expect, beforeAll, afterAll, afterEach, vi } from "vitest";
 import {
   ShopifyWebhookRegistrationService,
   REQUIRED_WEBHOOK_TOPICS,
@@ -27,12 +27,12 @@ describe("Milestone 5.1B — Shopify Webhook Registration Service", () => {
   });
 
   afterEach(() => {
-    jest.restoreAllMocks();
+    vi.restoreAllMocks();
   });
 
   // Scenario 1: Creates missing subscriptions when none exist
   it("Scenario 1: Creates all missing subscriptions when none exist in Shopify", async () => {
-    const executeSpy = jest.spyOn(ShopifyClient.prototype, "executeGraphQL").mockImplementation(async (query: string) => {
+    const executeSpy = vi.spyOn(ShopifyClient.prototype, "executeGraphQL").mockImplementation(async (query: string) => {
       if (query.includes("GetWebhookSubscriptions")) {
         return {
           data: {
@@ -76,7 +76,7 @@ describe("Milestone 5.1B — Shopify Webhook Registration Service", () => {
 
   // Scenario 2: Does not duplicate subscriptions when already present
   it("Scenario 2: Does not create duplicate subscriptions if they already exist", async () => {
-    jest.spyOn(ShopifyClient.prototype, "executeGraphQL").mockImplementation(async (query: string) => {
+    vi.spyOn(ShopifyClient.prototype, "executeGraphQL").mockImplementation(async (query: string) => {
       if (query.includes("GetWebhookSubscriptions")) {
         return {
           data: {
@@ -111,7 +111,7 @@ describe("Milestone 5.1B — Shopify Webhook Registration Service", () => {
   // Scenario 3: Mixed existing/missing subscriptions
   it("Scenario 3: Creates only the missing topics when some already exist", async () => {
     let createdCount = 0;
-    jest.spyOn(ShopifyClient.prototype, "executeGraphQL").mockImplementation(async (query: string, vars?: any) => {
+    vi.spyOn(ShopifyClient.prototype, "executeGraphQL").mockImplementation(async (query: string, vars?: any) => {
       if (query.includes("GetWebhookSubscriptions")) {
         return {
           data: {
@@ -174,7 +174,7 @@ describe("Milestone 5.1B — Shopify Webhook Registration Service", () => {
 
   // Scenario 4: Surfaces Shopify userErrors cleanly
   it("Scenario 4: Handles and surfaces Shopify userErrors without throwing an unhandled exception", async () => {
-    jest.spyOn(ShopifyClient.prototype, "executeGraphQL").mockImplementation(async (query: string) => {
+    vi.spyOn(ShopifyClient.prototype, "executeGraphQL").mockImplementation(async (query: string) => {
       if (query.includes("GetWebhookSubscriptions")) {
         return { data: { webhookSubscriptions: { edges: [] } } };
       }
@@ -208,7 +208,7 @@ describe("Milestone 5.1B — Shopify Webhook Registration Service", () => {
 
   // Scenario 5: Authentication failure (401/403)
   it("Scenario 5: Classifies authentication failures and shields the access token from logs", async () => {
-    jest.spyOn(ShopifyClient.prototype, "executeGraphQL").mockRejectedValue(
+    vi.spyOn(ShopifyClient.prototype, "executeGraphQL").mockRejectedValue(
       new Error("AUTHENTICATION_FAILURE: 401 Unauthorized - Access token has expired")
     );
 
@@ -227,7 +227,7 @@ describe("Milestone 5.1B — Shopify Webhook Registration Service", () => {
 
   // Scenario 6: Rate limiting / throttling
   it("Scenario 6: Classifies rate limiting / throttling errors", async () => {
-    jest.spyOn(ShopifyClient.prototype, "executeGraphQL").mockImplementation(async () => {
+    vi.spyOn(ShopifyClient.prototype, "executeGraphQL").mockImplementation(async () => {
       return {
         errors: [{ message: "Throttled: Maximum cost exceeded. Try again later." }],
       };
@@ -244,7 +244,7 @@ describe("Milestone 5.1B — Shopify Webhook Registration Service", () => {
 
   // Scenario 7: Network failure / timeout
   it("Scenario 7: Handles network failure as a classified error", async () => {
-    jest.spyOn(ShopifyClient.prototype, "executeGraphQL").mockRejectedValue(
+    vi.spyOn(ShopifyClient.prototype, "executeGraphQL").mockRejectedValue(
       new Error("NETWORK_FAILURE: Failed to communicate with Shopify - fetch failed")
     );
 
@@ -270,7 +270,7 @@ describe("Milestone 5.1B — Shopify Webhook Registration Service", () => {
     let connectionExistedAtRegistrationTime = false;
 
     // Spy on registerWebhooks and verify the connection is in DB at the time of invocation
-    const regSpy = jest
+    const regSpy = vi
       .spyOn(ShopifyWebhookRegistrationService, "registerWebhooks")
       .mockImplementation(async () => {
         const found = await prisma.integrationConnection.findFirst({
@@ -289,12 +289,12 @@ describe("Milestone 5.1B — Shopify Webhook Registration Service", () => {
       });
 
     // Mock exchangeCodeForToken and verifyShop
-    jest.spyOn(ShopifyOAuthService as any, "exchangeCodeForToken").mockResolvedValue({
+    vi.spyOn(ShopifyOAuthService as any, "exchangeCodeForToken").mockResolvedValue({
       accessToken: "mock_token",
       scope: "read_orders,read_products,read_inventory,read_locations",
     });
 
-    jest.spyOn(ShopifyClient.prototype, "executeGraphQL").mockResolvedValue({
+    vi.spyOn(ShopifyClient.prototype, "executeGraphQL").mockResolvedValue({
       data: {
         shop: {
           id: "gid://shopify/Shop/123",
@@ -386,7 +386,6 @@ describe("Milestone 5.1B — Shopify Webhook Registration Service", () => {
     expect((client as any).endpointUrl).toContain("/admin/api/2026-07/graphql.json");
   });
 });
-
 
 
 

@@ -1,6 +1,21 @@
 import { Request, Response } from "express";
+import fs from "fs";
+import path from "path";
 import prisma from "../lib/prisma";
 import { SubscriptionStatus, BillingInterval, SecurityAction } from "@prisma/client";
+
+// Safe helper for ephemeral storage unlinking
+function safeUnlink(filePath?: string | null) {
+  if (!filePath) return;
+  try {
+    const resolved = path.resolve(filePath);
+    if (fs.existsSync(resolved)) {
+      fs.unlinkSync(resolved);
+    }
+  } catch (err) {
+    console.warn("Could not delete physical dataset file:", err);
+  }
+}
 
 // =========================
 // Get Platform Users
@@ -308,7 +323,7 @@ export async function getSecurityEvents(req: Request, res: Response) {
 export async function unlockUserAccount(req: Request, res: Response) {
   try {
     const id = req.params.id as string;
-    const adminId = res.locals.user.id;
+    const adminId = res.locals.user?.id || (req as any).user?.userId;
 
     const user = await prisma.user.findUnique({ where: { id } });
     if (!user) {
@@ -371,7 +386,7 @@ export async function getUserPasskeysAdmin(req: Request, res: Response) {
 export async function revokeUserPasskeyAdmin(req: Request, res: Response) {
   try {
     const passkeyId = req.params.passkeyId as string;
-    const adminId = res.locals.user.id;
+    const adminId = res.locals.user?.id || (req as any).user?.userId;
 
     const passkey = await prisma.passkeyCredential.findUnique({
       where: { id: passkeyId },
@@ -437,7 +452,7 @@ export async function getLockedAccounts(_req: Request, res: Response) {
 export async function changeUserRole(req: Request, res: Response) {
   try {
     const id = req.params.id as string;
-    const adminId = res.locals.user.id;
+    const adminId = res.locals.user?.id || (req as any).user?.userId;
 
     if (adminId === id) {
       return res.status(403).json({ message: "You cannot change your own role." });
@@ -479,7 +494,7 @@ export async function changeUserRole(req: Request, res: Response) {
 export async function toggleUserStatus(req: Request, res: Response) {
   try {
     const id = req.params.id as string;
-    const adminId = res.locals.user.id;
+    const adminId = res.locals.user?.id || (req as any).user?.userId;
 
     if (adminId === id) {
       return res.status(403).json({ message: "You cannot suspend your own account." });
@@ -520,7 +535,7 @@ export async function toggleUserStatus(req: Request, res: Response) {
 export async function deleteUser(req: Request, res: Response) {
   try {
     const id = req.params.id as string;
-    const adminId = res.locals.user.id;
+    const adminId = res.locals.user?.id || (req as any).user?.userId;
 
     if (adminId === id) {
       return res.status(403).json({ message: "You cannot delete your own account." });
@@ -651,7 +666,7 @@ export async function getAdminRevenueMetrics(_req: Request, res: Response) {
 export async function adminOverrideSubscription(req: Request, res: Response) {
   try {
     const id = req.params.id as string;
-    const adminId = res.locals.user.id;
+    const adminId = res.locals.user?.id || (req as any).user?.userId;
     const { planId, status, extendDays, cancelAtPeriodEnd } = req.body;
 
     const existingSub = await prisma.subscription.findUnique({
@@ -828,7 +843,6 @@ export async function getTenantDatasetsGrouped(_req: Request, res: Response) {
       orderBy: { createdAt: "desc" },
     });
 
-    // Compute aggregated tenant metrics
     const grouped = tenantsWithDatasets.map((tenant) => {
       const totalSizeBytes = tenant.datasets.reduce((acc, d) => acc + (d.size || 0), 0);
       return {
@@ -857,7 +871,7 @@ export async function getTenantDatasetsGrouped(_req: Request, res: Response) {
 export async function adminDeleteDataset(req: Request, res: Response) {
   try {
     const datasetId = req.params.datasetId as string;
-    const adminId = res.locals.user.id;
+    const adminId = res.locals.user?.id || (req as any).user?.userId;
 
     const dataset = await prisma.dataset.findUnique({
       where: { id: datasetId },
@@ -867,29 +881,32 @@ export async function adminDeleteDataset(req: Request, res: Response) {
     });
 
     if (!dataset) {
-      return res.status(404).json({ message: "Dataset not found." });
+      return res.status(404).json({ message: "Dataset not found or already deleted." });
     }
 
-    // Cascade delete is handled by Prisma schema for linked relations
+    if (dataset.filename) {
+      safeUnlink(path.join(process.cwd(), "uploads", dataset.filename));
+    }
+
     await prisma.dataset.delete({
       where: { id: datasetId },
     });
 
     await prisma.securityEvent.create({
       data: {
-        action: "RECORD_DELETED" as any,
+        action: SecurityAction.ROLE_CHANGED,
         userId: dataset.userId,
-        details: `Dataset "${dataset.originalName}" (${dataset.id}) removed by administrator ${adminId} on behalf of tenant ${dataset.user.email}`,
+        details: `Dataset "${dataset.originalName}" (${dataset.id}) purged by administrator ${adminId}`,
       },
-    });
+    }).catch((e) => console.warn("Failed to write securityEvent for dataset delete:", e));
 
-    res.json({
+    return res.json({
       message: `Dataset "${dataset.originalName}" was successfully removed.`,
       datasetId,
     });
   } catch (error) {
     console.error("adminDeleteDataset error:", error);
-    res.status(500).json({ message: "Failed to delete dataset" });
+    return res.status(500).json({ message: "Failed to delete dataset" });
   }
 }
 
@@ -899,7 +916,7 @@ export async function adminDeleteDataset(req: Request, res: Response) {
 export async function adminPurgeTenantDatasets(req: Request, res: Response) {
   try {
     const tenantId = req.params.tenantId as string;
-    const adminId = res.locals.user.id;
+    const adminId = res.locals.user?.id || (req as any).user?.userId;
 
     const tenant = await prisma.user.findUnique({
       where: { id: tenantId },
@@ -910,36 +927,41 @@ export async function adminPurgeTenantDatasets(req: Request, res: Response) {
       return res.status(404).json({ message: "Tenant business not found." });
     }
 
-    const countBefore = await prisma.dataset.count({
+    const datasets = await prisma.dataset.findMany({
       where: { userId: tenantId },
+      select: { id: true, filename: true },
     });
 
-    if (countBefore === 0) {
-      return res.json({ message: "No active datasets found for this tenant.", count: 0 });
+    if (datasets.length === 0) {
+      return res.json({ message: "No active datasets found for this tenant.", purgedCount: 0 });
     }
 
-    // Wipe all datasets for this specific tenant
-    await prisma.dataset.deleteMany({
+    for (const ds of datasets) {
+      if (ds.filename) {
+        safeUnlink(path.join(process.cwd(), "uploads", ds.filename));
+      }
+    }
+
+    const deleteResult = await prisma.dataset.deleteMany({
       where: { userId: tenantId },
     });
 
     await prisma.securityEvent.create({
       data: {
-        action: "RECORD_DELETED" as any,
+        action: SecurityAction.ROLE_CHANGED,
         userId: tenantId,
-        details: `Administrator ${adminId} performed a bulk purge of ${countBefore} datasets for tenant business ${tenant.email} (${tenant.id})`,
+        details: `Administrator ${adminId} performed a bulk purge of ${deleteResult.count} datasets for tenant ${tenant.email} (${tenant.id})`,
       },
-    });
+    }).catch((e) => console.warn("Failed to write securityEvent for bulk purge:", e));
 
-    res.json({
-      message: `Successfully purged all ${countBefore} datasets for tenant ${tenant.fullName || tenant.email}.`,
-      purgedCount: countBefore,
+    return res.json({
+      message: `Successfully purged all ${deleteResult.count} datasets for tenant ${tenant.fullName || tenant.email}.`,
+      purgedCount: deleteResult.count,
     });
   } catch (error) {
     console.error("adminPurgeTenantDatasets error:", error);
-    res.status(500).json({ message: "Failed to execute bulk tenant dataset purge" });
+    return res.status(500).json({ message: "Failed to execute bulk tenant dataset purge" });
   }
 }
-
 
 

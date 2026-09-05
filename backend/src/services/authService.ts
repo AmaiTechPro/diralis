@@ -5,7 +5,7 @@ import prisma from "../lib/prisma";
 import { generateToken, generate2FATempToken, verifyToken } from "../utils/jwt";
 import { sendVerificationEmail } from "./emailService";
 
-type AuthResponse = {
+export type AuthResponse = {
   message?: string;
   user?: {
     id: string;
@@ -21,6 +21,10 @@ type AuthResponse = {
   token?: string;
   requires2FA?: boolean;
   tempToken?: string;
+  methods?: {
+    totp: boolean;
+    passkey: boolean;
+  };
 };
 
 const SALT_ROUNDS = 10;
@@ -143,7 +147,6 @@ export async function loginUser(
   // 1. Check if user is locked out
   if (user.lockedUntil) {
     if (user.lockedUntil > now) {
-      // Actively locked out: return generic message to prevent account enumeration
       throw new Error(genericAuthError);
     }
 
@@ -187,20 +190,30 @@ export async function loginUser(
       },
     });
 
-    // Never disclose lock status or remaining attempts
     throw new Error(genericAuthError);
   }
 
-  // 2. 2FA Challenge Gate: Check if user has 2FA enabled
-  if ((user as any).twoFactorEnabled) {
+  // 2. MFA Challenge Gate: Check registered credentials accurately
+  const passkeyCount = await prisma.passkeyCredential.count({
+    where: { userId: user.id },
+  });
+
+  const hasTOTP = Boolean((user as any).twoFactorEnabled && (user as any).twoFactorSecret);
+  const hasPasskeys = passkeyCount > 0;
+
+  if (hasTOTP || hasPasskeys) {
     const tempToken = generate2FATempToken(user.id);
     return {
       requires2FA: true,
       tempToken,
+      methods: {
+        totp: hasTOTP,
+        passkey: hasPasskeys,
+      },
     };
   }
 
-  // Login successful for standard users: clear any previous failed attempt counters
+  // Login successful for standard users: clear previous failed attempt counters
   await prisma.user.update({
     where: { id: user.id },
     data: {
@@ -250,7 +263,7 @@ export async function verify2FALogin(tempToken: string, code: string): Promise<A
     where: { id: payload.userId },
   });
 
-  if (!user || !(user as any).twoFactorEnabled) {
+  if (!user) {
     throw new Error("Invalid 2FA request.");
   }
 
@@ -300,7 +313,6 @@ export async function verify2FALogin(tempToken: string, code: string): Promise<A
 
       for (let i = 0; i < backupCodesList.length; i++) {
         const storedHash = backupCodesList[i];
-        // Support both hashed backup codes and plain matches
         const isMatch =
           storedHash === normalizedInput ||
           (await bcrypt.compare(normalizedInput, storedHash).catch(() => false));

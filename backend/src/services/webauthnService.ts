@@ -123,12 +123,6 @@ export async function verifyAndSaveRegistration(
     },
   });
 
-  // Ensure 2FA is marked enabled on the user profile
-  await prisma.user.update({
-    where: { id: userId },
-    data: { twoFactorEnabled: true },
-  });
-
   await prisma.securityEvent.create({
     data: {
       userId,
@@ -274,12 +268,12 @@ export async function deletePasskey(userId: string, passkeyId: string) {
     where: { id: passkeyId },
   });
 
-  // Check remaining authenticators (passkeys + totp)
   const remainingPasskeys = await prisma.passkeyCredential.count({
     where: { userId },
   });
   const user = await prisma.user.findUnique({ where: { id: userId } });
 
+  // Only turn off twoFactorEnabled if the user has no TOTP secret configured either
   if (remainingPasskeys === 0 && !user?.twoFactorSecret) {
     await prisma.user.update({
       where: { id: userId },
@@ -297,7 +291,5 @@ export async function deletePasskey(userId: string, passkeyId: string) {
 
   return { message: "Passkey removed." };
 }
-
-
 
 

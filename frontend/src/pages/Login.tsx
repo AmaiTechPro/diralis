@@ -20,6 +20,10 @@ export default function Login() {
   const [tempToken, setTempToken] = useState("");
   const [twoFactorCode, setTwoFactorCode] = useState("");
   const [isBackupMode, setIsBackupMode] = useState(false);
+  const [availableMethods, setAvailableMethods] = useState<{ totp: boolean; passkey: boolean }>({
+    totp: false,
+    passkey: false,
+  });
 
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
@@ -47,7 +51,7 @@ export default function Login() {
     setLoading(true);
 
     try {
-      const result = await loginApi({
+      const result: any = await loginApi({
         identifier,
         password,
       });
@@ -55,6 +59,10 @@ export default function Login() {
       // Intercept 2FA challenge gate
       if (result.requires2FA && result.tempToken) {
         setTempToken(result.tempToken);
+        setAvailableMethods({
+          totp: Boolean(result.methods?.totp),
+          passkey: Boolean(result.methods?.passkey),
+        });
         setRequires2FA(true);
         setLoading(false);
         return;
@@ -191,6 +199,7 @@ export default function Login() {
     setRequires2FA(false);
     setTempToken("");
     setTwoFactorCode("");
+    setIsBackupMode(false);
     setError("");
   }
 
@@ -201,7 +210,7 @@ export default function Login() {
           onSubmit={handleSubmit}
           className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-2xl"
         >
-          <h1 className="mb-2 text-center text-3xl font-bold">Welcome Back</h1>
+          <h1 className="mb-2 text-center text-3xl font-bold text-white">Welcome Back</h1>
           <p className="mb-8 text-center text-slate-400">
             Sign in to your Diralis account
           </p>
@@ -337,6 +346,10 @@ export default function Login() {
           <p className="mt-2 text-center text-sm text-slate-400">
             {isBackupMode
               ? "Use one of your 8-character recovery backup codes."
+              : availableMethods.passkey && !availableMethods.totp
+              ? "Verify your identity using your registered passkey or security key."
+              : !availableMethods.passkey && availableMethods.totp
+              ? "Enter the 6-digit code from your authenticator app."
               : "Verify your identity using a registered passkey or authenticator code."}
           </p>
 
@@ -346,8 +359,8 @@ export default function Login() {
             </div>
           )}
 
-          {/* Biometric / Passkey Primary Option */}
-          {!isBackupMode && (
+          {/* Biometric / Passkey Option */}
+          {!isBackupMode && availableMethods.passkey && (
             <div className="mt-6">
               <button
                 type="button"
@@ -359,38 +372,46 @@ export default function Login() {
                 {passkeyLoading ? "Prompting Device..." : "Use Passkey or Security Key"}
               </button>
 
-              <div className="my-5 flex items-center">
-                <div className="h-px flex-1 bg-slate-800" />
-                <span className="px-3 text-xs text-slate-500">OR ENTER CODE</span>
-                <div className="h-px flex-1 bg-slate-800" />
-              </div>
+              {/* Show divider only when TOTP form is also present */}
+              {availableMethods.totp && (
+                <div className="my-5 flex items-center">
+                  <div className="h-px flex-1 bg-slate-800" />
+                  <span className="px-3 text-xs text-slate-500">OR ENTER CODE</span>
+                  <div className="h-px flex-1 bg-slate-800" />
+                </div>
+              )}
             </div>
           )}
 
-          {/* Form for TOTP / Backup Code */}
-          <form onSubmit={handleVerify2FA} className="space-y-4">
-            <input
-              type="text"
-              autoFocus
-              maxLength={isBackupMode ? 10 : 6}
-              value={twoFactorCode}
-              onChange={(e) => {
-                const val = isBackupMode
-                  ? e.target.value.toUpperCase()
-                  : e.target.value.replace(/\D/g, "");
-                setTwoFactorCode(val);
-              }}
-              placeholder={isBackupMode ? "e.g. C3B9E50F" : "000000"}
-              className="w-full rounded-xl border border-slate-700 bg-slate-800 p-3.5 text-center font-mono text-xl tracking-widest text-white outline-none transition focus:border-cyan-500"
-            />
+          {/* Form for TOTP or Backup Code */}
+          {(availableMethods.totp || isBackupMode) && (
+            <form onSubmit={handleVerify2FA} className={`space-y-4 ${!availableMethods.passkey || isBackupMode ? "mt-6" : ""}`}>
+              <input
+                type="text"
+                autoFocus={!availableMethods.passkey || isBackupMode}
+                maxLength={isBackupMode ? 10 : 6}
+                value={twoFactorCode}
+                onChange={(e) => {
+                  const val = isBackupMode
+                    ? e.target.value.toUpperCase()
+                    : e.target.value.replace(/\D/g, "");
+                  setTwoFactorCode(val);
+                }}
+                placeholder={isBackupMode ? "e.g. C3B9E50F" : "000000"}
+                className="w-full rounded-xl border border-slate-700 bg-slate-800 p-3.5 text-center font-mono text-xl tracking-widest text-white outline-none transition focus:border-cyan-500"
+              />
 
-            <button
-              disabled={loading || passkeyLoading || !twoFactorCode.trim()}
-              className="w-full rounded-xl bg-cyan-500 p-3 font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:opacity-60"
-            >
-              {loading ? "Verifying..." : "Authenticate"}
-            </button>
+              <button
+                disabled={loading || passkeyLoading || !twoFactorCode.trim()}
+                className="w-full rounded-xl bg-cyan-500 p-3 font-semibold text-slate-950 transition hover:bg-cyan-400 disabled:opacity-60"
+              >
+                {loading ? "Verifying..." : "Authenticate"}
+              </button>
+            </form>
+          )}
 
+          {/* Emergency Backup Mode Toggle */}
+          <div className="mt-4">
             <button
               type="button"
               onClick={() => {
@@ -401,10 +422,12 @@ export default function Login() {
               className="w-full text-center text-xs text-cyan-400 hover:underline"
             >
               {isBackupMode
-                ? "Switch to Authenticator Code (TOTP)"
+                ? availableMethods.totp
+                  ? "Switch to Authenticator Code (TOTP)"
+                  : "Switch to Passkey Verification"
                 : "Lost access? Use an emergency backup code"}
             </button>
-          </form>
+          </div>
 
           <div className="mt-6 border-t border-slate-800 pt-4">
             <button

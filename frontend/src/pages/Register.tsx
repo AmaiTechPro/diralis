@@ -33,7 +33,7 @@ type OnboardingStep = "REGISTER" | "VERIFY_EMAIL" | "OPTIONAL_SECURITY";
 
 export default function Register() {
   const navigate = useNavigate();
-  const { login } = useAuth();
+  const { login, user: authUser } = useAuth();
 
   const [step, setStep] = useState<OnboardingStep>("REGISTER");
 
@@ -93,7 +93,6 @@ export default function Register() {
     "bg-emerald-500",
   ][strength];
 
-  // Resend Timer countdown
   useEffect(() => {
     if (resendCooldown > 0) {
       const timer = setTimeout(() => setResendCooldown((prev) => prev - 1), 1000);
@@ -107,7 +106,7 @@ export default function Register() {
     setError("");
 
     if (!passwordValid) {
-      setError("Please choose a stronger password.");
+      setError("Please choose a stronger password matching the requirements.");
       return;
     }
 
@@ -126,7 +125,6 @@ export default function Register() {
         password,
       });
 
-      // Transition to mandatory email OTP verification
       setStep("VERIFY_EMAIL");
       setResendCooldown(60);
     } catch (err: any) {
@@ -156,10 +154,8 @@ export default function Register() {
       const res: any = await verifyEmailApi(email, otpCode.trim());
 
       if (res.token && res.user) {
-        // Authenticate the user into context & localStorage
         login(res.user, res.token);
         setAuthenticatedUser(res.user);
-        // Move to optional security setup
         setStep("OPTIONAL_SECURITY");
       } else {
         navigate("/login");
@@ -200,7 +196,7 @@ export default function Register() {
     setPasskeyLoading(true);
 
     try {
-      const deviceName = `${navigator.platform || "Primary"} Device`;
+      const deviceName = `${navigator.platform || "Primary"} Security Key`;
       await registerPasskey(deviceName);
       setPasskeySuccess(true);
       setTimeout(() => {
@@ -210,7 +206,7 @@ export default function Register() {
       setError(
         err.message ||
         err.response?.data?.message ||
-        "Passkey setup was cancelled or failed."
+        "Passkey setup was cancelled or failed. You can try again or use an authenticator app."
       );
     } finally {
       setPasskeyLoading(false);
@@ -224,7 +220,6 @@ export default function Register() {
     setTotpLoading(true);
 
     try {
-      // Calls existing TOTP setup endpoint
       const res = await apiFetch<{ qrCode: string; secret: string }>("/auth/2fa/setup", {
         method: "POST",
       });
@@ -255,14 +250,15 @@ export default function Register() {
         proceedToApp();
       }, 1500);
     } catch (err: any) {
-      setError(err.message || "Invalid authenticator code.");
+      setError(err.message || "Invalid verification code. Please check your authenticator app.");
     } finally {
       setTotpLoading(false);
     }
   }
 
   function proceedToApp() {
-    if (authenticatedUser?.role === "ADMIN") {
+    const targetUser = authenticatedUser || authUser;
+    if (targetUser?.role === "ADMIN") {
       navigate("/admin");
     } else {
       navigate("/dashboard");
@@ -271,9 +267,7 @@ export default function Register() {
 
   return (
     <div className="flex min-h-screen items-center justify-center bg-slate-950 px-6 py-12">
-      {/* ------------------------------------------------------------- */}
-      {/* STEP 1: INITIAL SIGN UP FORM                                  */}
-      {/* ------------------------------------------------------------- */}
+      {/* STEP 1: INITIAL SIGN UP FORM */}
       {step === "REGISTER" && (
         <form
           onSubmit={handleRegisterSubmit}
@@ -423,9 +417,7 @@ export default function Register() {
         </form>
       )}
 
-      {/* ------------------------------------------------------------- */}
-      {/* STEP 2: MANDATORY EMAIL OTP VERIFICATION GATE                */}
-      {/* ------------------------------------------------------------- */}
+      {/* STEP 2: MANDATORY EMAIL OTP VERIFICATION GATE */}
       {step === "VERIFY_EMAIL" && (
         <form
           onSubmit={handleVerifyEmailSubmit}
@@ -493,9 +485,7 @@ export default function Register() {
         </form>
       )}
 
-      {/* ------------------------------------------------------------- */}
-      {/* STEP 3: OPTIONAL MULTI-FACTOR / PASSKEY SETUP SCREEN          */}
-      {/* ------------------------------------------------------------- */}
+      {/* STEP 3: OPTIONAL MULTI-FACTOR / PASSKEY SETUP SCREEN */}
       {step === "OPTIONAL_SECURITY" && (
         <div className="w-full max-w-md rounded-2xl border border-slate-800 bg-slate-900 p-8 shadow-2xl">
           <div className="mx-auto mb-4 flex h-14 w-14 items-center justify-center rounded-2xl border border-emerald-500/30 bg-emerald-500/10 text-emerald-400">
@@ -600,13 +590,16 @@ export default function Register() {
                   type="button"
                   onClick={handleRegisterPasskey}
                   disabled={passkeyLoading}
-                  className="flex-1 rounded-xl bg-cyan-500 p-3 text-xs font-semibold text-slate-950 hover:bg-cyan-400"
+                  className="flex-1 rounded-xl bg-cyan-500 p-3 text-xs font-semibold text-slate-950 hover:bg-cyan-400 disabled:opacity-50"
                 >
-                  Retry Prompt
+                  {passkeyLoading ? "Prompting..." : "Retry Prompt"}
                 </button>
                 <button
                   type="button"
-                  onClick={() => setSecurityMethod(null)}
+                  onClick={() => {
+                    setSecurityMethod(null);
+                    setError("");
+                  }}
                   className="rounded-xl border border-slate-700 px-4 py-3 text-xs text-slate-300 hover:bg-slate-800"
                 >
                   Back
@@ -676,7 +669,10 @@ export default function Register() {
                     </button>
                     <button
                       type="button"
-                      onClick={() => setSecurityMethod(null)}
+                      onClick={() => {
+                        setSecurityMethod(null);
+                        setError("");
+                      }}
                       className="rounded-xl border border-slate-700 px-4 py-3 text-xs text-slate-300 hover:bg-slate-800"
                     >
                       Back
@@ -687,7 +683,7 @@ export default function Register() {
             </div>
           )}
 
-          {/* SKIP BUTTON AFTER SELECTION */}
+          {/* CONTINUE BUTTON UPON ACTIVATION */}
           {(passkeySuccess || totpSuccess) && (
             <div className="mt-6">
               <button

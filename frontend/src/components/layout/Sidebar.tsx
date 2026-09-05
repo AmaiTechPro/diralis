@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import {
   LayoutDashboard,
+  ShieldCheck,
   Database,
   BrainCircuit,
   Bot,
@@ -28,8 +29,11 @@ export default function Sidebar({
   onClose,
 }: SidebarProps) {
   const navigate = useNavigate();
-  const { logout, token } = useAuth();
+  const { user, logout, token } = useAuth();
   const [overview, setOverview] = useState<BillingOverview | null>(null);
+
+  const isAdmin = user?.role === "ADMIN";
+  const dashboardPath = isAdmin ? "/admin" : "/dashboard";
 
   useEffect(() => {
     if (!token) return;
@@ -77,12 +81,14 @@ export default function Sidebar({
           ${collapsed ? "p-4 text-center" : "p-6"}
         `}
       >
-        <h1 className="text-2xl font-bold text-cyan-400">
-          {collapsed ? "D" : "DIRALIS"}
-        </h1>
+        <Link to={dashboardPath} className="inline-block">
+          <h1 className="text-2xl font-bold text-cyan-400">
+            {collapsed ? "D" : "DIRALIS"}
+          </h1>
+        </Link>
         {!collapsed && (
           <p className="mt-1 text-sm text-slate-400">
-            AI Business Intelligence
+            {isAdmin ? "Enterprise Administration" : "AI Business Intelligence"}
           </p>
         )}
       </div>
@@ -90,9 +96,9 @@ export default function Sidebar({
       {/* Navigation */}
       <nav className="flex-1 space-y-1.5 p-4 overflow-y-auto">
         <SidebarLink
-          to="/dashboard"
-          icon={<LayoutDashboard size={20} />}
-          title="Dashboard"
+          to={dashboardPath}
+          icon={isAdmin ? <ShieldCheck size={20} className="text-purple-400" /> : <LayoutDashboard size={20} />}
+          title={isAdmin ? "Admin Console" : "Dashboard"}
           collapsed={collapsed}
           onClick={onClose}
         />
@@ -162,36 +168,62 @@ export default function Sidebar({
         />
       </nav>
 
-      {/* Embedded Subscription Tier Card */}
+      {/* Embedded Role / Subscription Status Card */}
       {!collapsed && (
         <div className="mx-4 my-2 rounded-xl border border-slate-800 bg-slate-950/60 p-3.5 text-xs">
-          <div className="flex items-center justify-between">
-            <span className="font-semibold text-slate-200 flex items-center gap-1.5">
-              <Sparkles size={14} className="text-cyan-400" />
-              {planName} Plan
-            </span>
-            <span
-              className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
-                isProOrAbove
-                  ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
-                  : "bg-slate-800 text-slate-400"
-              }`}
-            >
-              {isProOrAbove ? "Active" : "Free Tier"}
-            </span>
-          </div>
-          <p className="mt-1.5 text-slate-400 text-[11px]">
-            {isProOrAbove
-              ? "All premium features unlocked."
-              : "Upgrade to unlock advanced AI models and higher quotas."}
-          </p>
-          <Link
-            to="/billing"
-            onClick={onClose}
-            className="mt-2.5 block text-center rounded-lg bg-slate-800 px-3 py-1.5 font-medium text-cyan-400 hover:bg-slate-700 hover:text-cyan-300 transition"
-          >
-            {isProOrAbove ? "Manage Subscription" : "Upgrade Plan"}
-          </Link>
+          {isAdmin ? (
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-purple-300 flex items-center gap-1.5">
+                  <ShieldCheck size={14} className="text-purple-400" />
+                  Admin Console
+                </span>
+                <span className="rounded-full bg-purple-500/20 px-2 py-0.5 text-[10px] font-medium text-purple-300 border border-purple-500/30">
+                  Root Access
+                </span>
+              </div>
+              <p className="mt-1.5 text-slate-400 text-[11px]">
+                Full tenant governance and security oversight active.
+              </p>
+              <Link
+                to="/admin"
+                onClick={onClose}
+                className="mt-2.5 block text-center rounded-lg bg-purple-500/10 border border-purple-500/30 px-3 py-1.5 font-medium text-purple-300 hover:bg-purple-500/20 transition"
+              >
+                Open Admin Center
+              </Link>
+            </div>
+          ) : (
+            <div>
+              <div className="flex items-center justify-between">
+                <span className="font-semibold text-slate-200 flex items-center gap-1.5">
+                  <Sparkles size={14} className="text-cyan-400" />
+                  {planName} Plan
+                </span>
+                <span
+                  className={`rounded-full px-2 py-0.5 text-[10px] font-medium ${
+                    isProOrAbove
+                      ? "bg-emerald-500/20 text-emerald-300 border border-emerald-500/30"
+                      : "bg-slate-800 text-slate-400"
+                  }`}
+                >
+                  {isProOrAbove ? "Active" : "Free Tier"}
+                </span>
+              </div>
+              <p className="mt-1.5 text-slate-400 text-[11px]">
+                {isProOrAbove
+                  ? "All premium features unlocked."
+                  : "Upgrade to unlock advanced AI models and higher quotas."}
+              </p>
+              <Link
+                to="/billing"
+                onClick={onClose}
+                className="mt-2.5 block text-center rounded-lg bg-slate-800 px-3 py-1.5 font-medium text-cyan-400 hover:bg-slate-700 hover:text-cyan-300 transition"
+              >
+                {isProOrAbove ? "Manage Subscription" : "Upgrade Plan"}
+              </Link>
+            </div>
+          )}
         </div>
       )}
 

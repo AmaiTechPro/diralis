@@ -16,6 +16,9 @@ import {
   getAdminPayments,
   getAdminRevenueMetrics,
   adminOverrideSubscription,
+  getTenantDatasetsGrouped,
+  adminDeleteDataset,
+  adminPurgeTenantDatasets,
   type AdminUser,
   type AdminMetrics,
   type SecurityEvent,
@@ -24,6 +27,7 @@ import {
   type AdminSubscription,
   type AdminPayment,
   type RevenueMetrics,
+  type TenantGroupedDataset,
 } from "../services/adminService";
 
 import {
@@ -54,11 +58,15 @@ import {
   ChevronRight,
   MapPin,
   X,
+  Database,
+  Building2,
+  FileSpreadsheet,
+  AlertOctagon,
 } from "lucide-react";
 
 import AdminMetricCard from "../components/admin/AdminMetricCard";
 
-type AdminTab = "overview" | "users" | "subscriptions" | "payments" | "security";
+type AdminTab = "overview" | "datasets" | "users" | "subscriptions" | "payments" | "security";
 
 function formatMoney(amountInCents: number, currency: string = "USD") {
   return new Intl.NumberFormat("en-US", {
@@ -75,6 +83,14 @@ function formatDate(dateString: string | null) {
     month: "short",
     day: "numeric",
   });
+}
+
+function formatBytes(bytes: number) {
+  if (!bytes || bytes === 0) return "0 B";
+  const k = 1024;
+  const sizes = ["B", "KB", "MB", "GB", "TB"];
+  const i = Math.floor(Math.log(bytes) / Math.log(k));
+  return `${parseFloat((bytes / Math.pow(k, i)).toFixed(2))} ${sizes[i]}`;
 }
 
 function getActionBadgeStyle(action: string) {
@@ -95,6 +111,7 @@ function getActionBadgeStyle(action: string) {
     case "TWO_FACTOR_DISABLED":
     case "PASSWORD_CHANGED":
     case "ROLE_CHANGED":
+    case "RECORD_DELETED":
       return "bg-amber-500/10 text-amber-400 border-amber-500/20";
     default:
       return "bg-slate-800 text-slate-300 border-slate-700";
@@ -113,6 +130,7 @@ export default function AdminDashboard() {
   const [payments, setPayments] = useState<AdminPayment[]>([]);
   const [revenue, setRevenue] = useState<RevenueMetrics | null>(null);
   const [metrics, setMetrics] = useState<AdminMetrics | null>(null);
+  const [tenantDatasets, setTenantDatasets] = useState<TenantGroupedDataset[]>([]);
 
   const [loading, setLoading] = useState(true);
   const [refreshing, setRefreshing] = useState(false);
@@ -123,6 +141,7 @@ export default function AdminDashboard() {
   const [statusFilter, setStatusFilter] = useState("ALL");
   const [subStatusFilter, setSubStatusFilter] = useState("ALL");
   const [securityActionFilter, setSecurityActionFilter] = useState("ALL");
+  const [datasetSearch, setDatasetSearch] = useState("");
 
   // Security Pagination
   const [securityPage, setSecurityPage] = useState(1);
@@ -141,6 +160,9 @@ export default function AdminDashboard() {
   const [loadingPasskeys, setLoadingPasskeys] = useState(false);
   const [actionLoading, setActionLoading] = useState(false);
 
+  // Dataset Action State
+  const [datasetActionLoading, setDatasetActionLoading] = useState<string | null>(null);
+
   const loadDashboard = useCallback(async (showRefresh = false) => {
     try {
       if (showRefresh) {
@@ -158,6 +180,7 @@ export default function AdminDashboard() {
         subsData,
         paymentsData,
         revenueData,
+        tenantsData,
       ] = await Promise.all([
         getAdminUsers(),
         getAdminMetrics(),
@@ -167,6 +190,7 @@ export default function AdminDashboard() {
         getAdminSubscriptions(),
         getAdminPayments(),
         getAdminRevenueMetrics(),
+        getTenantDatasetsGrouped().catch(() => ({ tenants: [] })),
       ]);
 
       setUsers(usersData.users);
@@ -178,6 +202,7 @@ export default function AdminDashboard() {
       setSubscriptions(subsData.subscriptions);
       setPayments(paymentsData.payments);
       setRevenue(revenueData);
+      setTenantDatasets(tenantsData.tenants);
     } catch (error) {
       console.error("Failed to load admin dashboard:", error);
     } finally {
@@ -210,7 +235,7 @@ export default function AdminDashboard() {
   };
 
   const handleDelete = async (id: string) => {
-    if (!window.confirm("Delete this user permanently?")) return;
+    if (!window.confirm("Delete this user permanently? This will delete all their datasets as well.")) return;
     try {
       await deleteUser(id);
       await loadDashboard(true);
@@ -279,6 +304,39 @@ export default function AdminDashboard() {
     }
   };
 
+  // Administrative Dataset Operations
+  const handleDeleteDataset = async (datasetId: string, datasetName: string) => {
+    if (!window.confirm(`Delete dataset "${datasetName}"? Linked chat sessions and insights will be removed.`)) return;
+    try {
+      setDatasetActionLoading(datasetId);
+      await adminDeleteDataset(datasetId);
+      await loadDashboard(true);
+    } catch (error) {
+      console.error("Failed to delete dataset:", error);
+      alert("Failed to delete dataset.");
+    } finally {
+      setDatasetActionLoading(null);
+    }
+  };
+
+  const handlePurgeTenant = async (tenantId: string, businessName: string, count: number) => {
+    const confirmation = window.prompt(
+      `CAUTION: You are about to permanently purge ALL ${count} datasets for "${businessName}".\nType "PURGE" to confirm this action:`
+    );
+    if (confirmation !== "PURGE") return;
+
+    try {
+      setDatasetActionLoading(tenantId);
+      await adminPurgeTenantDatasets(tenantId);
+      await loadDashboard(true);
+    } catch (error) {
+      console.error("Failed to purge tenant datasets:", error);
+      alert("Failed to execute bulk tenant purge.");
+    } finally {
+      setDatasetActionLoading(null);
+    }
+  };
+
   const filteredUsers = useMemo(() => {
     const query = search.trim().toLowerCase();
     return users.filter((user) => {
@@ -310,6 +368,17 @@ export default function AdminDashboard() {
       return matchesSearch && matchesStatus;
     });
   }, [subscriptions, search, subStatusFilter]);
+
+  const filteredTenantDatasets = useMemo(() => {
+    const q = datasetSearch.trim().toLowerCase();
+    if (!q) return tenantDatasets;
+    return tenantDatasets.filter(
+      (t) =>
+        t.businessName.toLowerCase().includes(q) ||
+        t.email.toLowerCase().includes(q) ||
+        t.datasets.some((d) => d.originalName.toLowerCase().includes(q))
+    );
+  }, [tenantDatasets, datasetSearch]);
 
   if (loading) {
     return (
@@ -351,7 +420,7 @@ export default function AdminDashboard() {
             <h1 className="text-3xl font-bold">Diralis Admin Control Center</h1>
           </div>
           <p className="mt-2 text-slate-400">
-            Enterprise infrastructure, security telemetry, audit logs, and subscription operations.
+            Enterprise infrastructure, tenant dataset governance, security telemetry, and subscription operations.
           </p>
         </div>
 
@@ -369,6 +438,7 @@ export default function AdminDashboard() {
       <div className="mt-8 flex flex-wrap gap-2 border-b border-slate-800 pb-4">
         {[
           { id: "overview", label: "Overview", icon: Layers },
+          { id: "datasets", label: "Datasets & Tenants", icon: Database },
           { id: "security", label: "Security & Telemetry", icon: ShieldAlert },
           { id: "subscriptions", label: "Subscriptions & Revenue", icon: DollarSign },
           { id: "payments", label: "Transactions", icon: Receipt },
@@ -388,6 +458,11 @@ export default function AdminDashboard() {
             >
               <Icon size={16} />
               {tab.label}
+              {tab.id === "datasets" && (
+                <span className="ml-1 rounded-full bg-cyan-500/20 px-2 py-0.5 text-xs text-cyan-300">
+                  {metrics.datasets.total}
+                </span>
+              )}
               {tab.id === "security" && lockedAccounts.length > 0 && (
                 <span className="ml-1 rounded-full bg-red-500/20 px-2 py-0.5 text-xs text-red-400">
                   {lockedAccounts.length}
@@ -430,8 +505,14 @@ export default function AdminDashboard() {
           )}
 
           <section>
-            <h2 className="mb-4 text-lg font-semibold text-slate-200">Security & Infrastructure</h2>
+            <h2 className="mb-4 text-lg font-semibold text-slate-200">Tenant Data & Infrastructure</h2>
             <div className="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4">
+              <AdminMetricCard
+                title="Global Datasets"
+                value={metrics.datasets.total}
+                description="Across all business tenants"
+                icon={<Database size={24} />}
+              />
               <AdminMetricCard
                 title="Total Registered Users"
                 value={metrics.users.total}
@@ -449,12 +530,6 @@ export default function AdminDashboard() {
                 value={metrics.sessions.active}
                 description={`${metrics.sessions.total} lifetime authenticated`}
                 icon={<Activity size={24} />}
-              />
-              <AdminMetricCard
-                title="Security Events (24h Failed)"
-                value={metrics.security?.recentFailedLogins ?? securityMetrics?.failedLogins24h ?? 0}
-                description={`${lockedAccounts.length} accounts locked`}
-                icon={<ShieldAlert size={24} />}
               />
             </div>
           </section>
@@ -491,10 +566,151 @@ export default function AdminDashboard() {
         </div>
       )}
 
+      {/* TAB: DATASETS & TENANT GOVERNANCE */}
+      {activeTab === "datasets" && (
+        <div className="mt-8 space-y-6">
+          <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
+            <div>
+              <h2 className="text-xl font-bold flex items-center gap-2">
+                <Database className="text-cyan-400" size={22} />
+                Tenant Dataset Operations & Governance
+              </h2>
+              <p className="text-sm text-slate-400">
+                Inspect datasets grouped by business, fulfill customer data-deletion requests, or perform a 1-click business reset.
+              </p>
+            </div>
+
+            <div className="relative">
+              <Search size={16} className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+              <input
+                type="text"
+                placeholder="Search business or file name..."
+                value={datasetSearch}
+                onChange={(e) => setDatasetSearch(e.target.value)}
+                className="w-72 rounded-xl border border-slate-700 bg-slate-900 py-2.5 pl-9 pr-4 text-xs outline-none focus:border-cyan-500"
+              />
+            </div>
+          </div>
+
+          {filteredTenantDatasets.length === 0 ? (
+            <div className="rounded-2xl border border-dashed border-slate-800 p-12 text-center text-slate-400">
+              <Database size={40} className="mx-auto mb-3 text-slate-600" />
+              <p className="font-semibold text-white">No Tenant Datasets Found</p>
+              <p className="text-xs text-slate-500 mt-1">
+                {datasetSearch ? "No businesses match your search filter." : "Tenants have not uploaded any business datasets yet."}
+              </p>
+            </div>
+          ) : (
+            <div className="space-y-6">
+              {filteredTenantDatasets.map((tenant) => (
+                <div
+                  key={tenant.tenantId}
+                  className="rounded-2xl border border-slate-800 bg-slate-900 overflow-hidden shadow-xl"
+                >
+                  {/* Tenant Header Banner */}
+                  <div className="flex flex-col gap-4 border-b border-slate-800 bg-slate-950/60 p-5 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="flex items-center gap-3">
+                      <div className="rounded-xl border border-cyan-500/20 bg-cyan-500/10 p-2.5 text-cyan-400">
+                        <Building2 size={22} />
+                      </div>
+                      <div>
+                        <div className="flex items-center gap-2">
+                          <h3 className="font-bold text-white text-base">{tenant.businessName}</h3>
+                          <span className="rounded-full bg-slate-800 px-2 py-0.5 text-[10px] font-medium text-slate-400">
+                            {tenant.role}
+                          </span>
+                        </div>
+                        <div className="text-xs text-slate-400 flex items-center gap-2 mt-0.5">
+                          <span>{tenant.email}</span>
+                          <span>•</span>
+                          <span>Joined {formatDate(tenant.memberSince)}</span>
+                        </div>
+                      </div>
+                    </div>
+
+                    <div className="flex items-center gap-3">
+                      <div className="text-right sm:border-r sm:border-slate-800 sm:pr-4">
+                        <div className="text-xs text-slate-400">Total Storage</div>
+                        <div className="font-mono text-sm font-semibold text-cyan-400">
+                          {formatBytes(tenant.totalSizeBytes)} ({tenant.datasetCount} files)
+                        </div>
+                      </div>
+
+                      {/* 1-Click Business Data Reset Button */}
+                      <button
+                        onClick={() => handlePurgeTenant(tenant.tenantId, tenant.businessName, tenant.datasetCount)}
+                        disabled={datasetActionLoading === tenant.tenantId}
+                        className="inline-flex items-center gap-1.5 rounded-xl border border-red-500/30 bg-red-500/10 px-3.5 py-2 text-xs font-semibold text-red-400 transition hover:bg-red-500/20 disabled:opacity-50"
+                        title="Delete all datasets belonging to this tenant"
+                      >
+                        <AlertOctagon size={14} />
+                        <span>Purge All Tenant Data</span>
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Tenant Individual Datasets List */}
+                  <div className="overflow-x-auto">
+                    <table className="w-full text-left text-xs">
+                      <thead>
+                        <tr className="border-b border-slate-800/80 bg-slate-900/40 text-slate-400 uppercase tracking-wider">
+                          <th className="p-3.5">Dataset / File</th>
+                          <th className="p-3.5">File Size</th>
+                          <th className="p-3.5">Format</th>
+                          <th className="p-3.5">AI Insights / Chats</th>
+                          <th className="p-3.5">Uploaded</th>
+                          <th className="p-3.5 text-right">Support Action</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y border-slate-800/60">
+                        {tenant.datasets.map((ds) => (
+                          <tr key={ds.id} className="text-slate-300 hover:bg-slate-800/30">
+                            <td className="p-3.5">
+                              <div className="flex items-center gap-2 font-medium text-white">
+                                <FileSpreadsheet size={16} className="text-cyan-400 shrink-0" />
+                                <span className="truncate max-w-xs">{ds.originalName}</span>
+                              </div>
+                              <span className="font-mono text-[10px] text-slate-500">{ds.id}</span>
+                            </td>
+                            <td className="p-3.5 font-mono text-slate-300">{formatBytes(ds.size)}</td>
+                            <td className="p-3.5">
+                              <span className="rounded bg-slate-800 px-2 py-0.5 text-[10px] font-mono text-slate-300">
+                                {ds.mimetype || "tabular"}
+                              </span>
+                            </td>
+                            <td className="p-3.5 text-slate-400">
+                              <div className="flex items-center gap-2 text-[11px]">
+                                <span>{ds._count?.copilotInsights ?? 0} insights</span>
+                                <span>•</span>
+                                <span>{ds._count?.chatSessions ?? 0} chats</span>
+                              </div>
+                            </td>
+                            <td className="p-3.5 text-slate-400">{formatDate(ds.uploadedAt)}</td>
+                            <td className="p-3.5 text-right">
+                              <button
+                                onClick={() => handleDeleteDataset(ds.id, ds.originalName)}
+                                disabled={datasetActionLoading === ds.id}
+                                className="inline-flex items-center gap-1 rounded-lg border border-red-500/20 bg-red-500/10 px-2.5 py-1 text-xs font-medium text-red-400 hover:bg-red-500/20 disabled:opacity-50"
+                              >
+                                <Trash2 size={12} />
+                                Delete
+                              </button>
+                            </td>
+                          </tr>
+                        ))}
+                      </tbody>
+                    </table>
+                  </div>
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+      )}
+
       {/* TAB: SECURITY & TELEMETRY */}
       {activeTab === "security" && (
         <div className="mt-8 space-y-8">
-          {/* Security Metrics Header Bar */}
           <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <div className="rounded-2xl border border-cyan-500/20 bg-cyan-500/5 p-5">
               <div className="flex items-center justify-between text-cyan-400">
@@ -539,7 +755,6 @@ export default function AdminDashboard() {
             </div>
           </div>
 
-          {/* Locked Accounts & Immediate Action */}
           {lockedAccounts.length > 0 && (
             <section className="rounded-2xl border border-red-500/30 bg-red-500/10 p-6">
               <div className="flex items-center justify-between">
@@ -585,13 +800,13 @@ export default function AdminDashboard() {
             </section>
           )}
 
-          {/* Search, Filter & Audit Log Section */}
+          {/* Audit Log Table */}
           <section className="rounded-2xl border border-slate-800 bg-slate-900 p-6">
             <div className="flex flex-col justify-between gap-4 md:flex-row md:items-center">
               <div>
                 <h3 className="text-xl font-bold">Security Audit Telemetry</h3>
                 <p className="text-xs text-slate-400">
-                  Full cryptographic authentication events, hardware passkey operations, and reverse-proxy client telemetry.
+                  Full cryptographic authentication events, administrative actions, and dataset deletions.
                 </p>
               </div>
 
@@ -618,6 +833,7 @@ export default function AdminDashboard() {
                   <option value="ALL">All Actions</option>
                   <option value="LOGIN_SUCCESS">LOGIN_SUCCESS</option>
                   <option value="FAILED_LOGIN">FAILED_LOGIN</option>
+                  <option value="RECORD_DELETED">RECORD_DELETED</option>
                   <option value="WEBAUTHN_REGISTERED">WEBAUTHN_REGISTERED</option>
                   <option value="WEBAUTHN_AUTHENTICATED">WEBAUTHN_AUTHENTICATED</option>
                   <option value="WEBAUTHN_REVOKED">WEBAUTHN_REVOKED</option>
@@ -628,7 +844,6 @@ export default function AdminDashboard() {
               </div>
             </div>
 
-            {/* Audit Log Table */}
             <div className="mt-6 overflow-x-auto rounded-xl border border-slate-800 bg-slate-950">
               <table className="w-full text-left text-xs">
                 <thead>
@@ -702,7 +917,6 @@ export default function AdminDashboard() {
               </table>
             </div>
 
-            {/* Pagination Controls */}
             <div className="mt-4 flex items-center justify-between text-xs text-slate-400">
               <span>Page {securityPage} of {securityTotalPages}</span>
               <div className="flex items-center gap-2">
@@ -1157,6 +1371,5 @@ export default function AdminDashboard() {
     </div>
   );
 }
-
 
 

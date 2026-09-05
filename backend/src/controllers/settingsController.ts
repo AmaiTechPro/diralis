@@ -14,6 +14,7 @@ export async function getSettings(req: Request, res: Response) {
         theme: true,
         emailNotifications: true,
         twoFactorEnabled: true,
+        twoFactorSecret: true, // Fetch the secret to verify TOTP status
       },
     });
 
@@ -21,10 +22,13 @@ export async function getSettings(req: Request, res: Response) {
       return res.status(404).json({ message: "User not found" });
     }
 
+    // Only report 2FA as active if both the flag is true AND the secret exists
+    const hasTotpConfigured = Boolean(user.twoFactorEnabled && user.twoFactorSecret);
+
     return res.json({
       theme: user.theme,
       emailNotifications: user.emailNotifications,
-      twoFactorEnabled: user.twoFactorEnabled,
+      twoFactorEnabled: hasTotpConfigured, 
     });
   } catch (error) {
     console.error("[getSettings] Error:", error);

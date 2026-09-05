@@ -29,6 +29,7 @@ export async function getUsers(req: Request, res: Response) {
         _count: {
           select: {
             securityEvents: true,
+            datasets: true,
           },
         },
       },
@@ -697,11 +698,10 @@ export async function adminOverrideSubscription(req: Request, res: Response) {
   }
 }
 
-
 export async function getSecurityMetrics(req: Request, res: Response) {
   try {
     const totalEvents = await prisma.securityEvent.count();
-    
+
     const failedLogins = await prisma.securityEvent.count({
       where: { action: "FAILED_LOGIN" },
     });
@@ -728,5 +728,218 @@ export async function getSecurityMetrics(req: Request, res: Response) {
     res.status(500).json({ error: "Failed to load security metrics." });
   }
 }
+
+// =========================================================================
+// ENTERPRISE TENANT & DATASET OPERATIONS (ADMIN SUPER-POWERS)
+// =========================================================================
+
+/**
+ * 1. Get All Datasets with Tenant Details (Categorized & Searchable)
+ */
+export async function getAdminDatasets(req: Request, res: Response) {
+  try {
+    const search = req.query.search as string | undefined;
+    const userId = req.query.userId as string | undefined;
+
+    const where: any = {};
+    if (userId) {
+      where.userId = userId;
+    }
+
+    if (search) {
+      where.OR = [
+        { originalName: { contains: search, mode: "insensitive" } },
+        { filename: { contains: search, mode: "insensitive" } },
+        { mimetype: { contains: search, mode: "insensitive" } },
+        { user: { email: { contains: search, mode: "insensitive" } } },
+        { user: { fullName: { contains: search, mode: "insensitive" } } },
+        { user: { username: { contains: search, mode: "insensitive" } } },
+      ];
+    }
+
+    const datasets = await prisma.dataset.findMany({
+      where,
+      orderBy: { uploadedAt: "desc" },
+      include: {
+        user: {
+          select: {
+            id: true,
+            fullName: true,
+            username: true,
+            email: true,
+            role: true,
+            status: true,
+            createdAt: true,
+          },
+        },
+        _count: {
+          select: {
+            chatSessions: true,
+            copilotInsights: true,
+          },
+        },
+      },
+    });
+
+    res.json({ datasets });
+  } catch (error) {
+    console.error("getAdminDatasets error:", error);
+    res.status(500).json({ message: "Failed to load admin datasets" });
+  }
+}
+
+/**
+ * 2. Get Datasets Grouped by Business / Tenant
+ */
+export async function getTenantDatasetsGrouped(_req: Request, res: Response) {
+  try {
+    const tenantsWithDatasets = await prisma.user.findMany({
+      where: {
+        datasets: {
+          some: {},
+        },
+      },
+      select: {
+        id: true,
+        fullName: true,
+        username: true,
+        email: true,
+        role: true,
+        status: true,
+        createdAt: true,
+        datasets: {
+          orderBy: { uploadedAt: "desc" },
+          select: {
+            id: true,
+            originalName: true,
+            filename: true,
+            size: true,
+            mimetype: true,
+            uploadedAt: true,
+            _count: {
+              select: {
+                chatSessions: true,
+                copilotInsights: true,
+              },
+            },
+          },
+        },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+
+    // Compute aggregated tenant metrics
+    const grouped = tenantsWithDatasets.map((tenant) => {
+      const totalSizeBytes = tenant.datasets.reduce((acc, d) => acc + (d.size || 0), 0);
+      return {
+        tenantId: tenant.id,
+        businessName: tenant.fullName || tenant.username,
+        email: tenant.email,
+        role: tenant.role,
+        status: tenant.status,
+        memberSince: tenant.createdAt,
+        datasetCount: tenant.datasets.length,
+        totalSizeBytes,
+        datasets: tenant.datasets,
+      };
+    });
+
+    res.json({ tenants: grouped });
+  } catch (error) {
+    console.error("getTenantDatasetsGrouped error:", error);
+    res.status(500).json({ message: "Failed to load grouped tenant datasets" });
+  }
+}
+
+/**
+ * 3. Delete a Single Dataset as Admin (Support Override)
+ */
+export async function adminDeleteDataset(req: Request, res: Response) {
+  try {
+    const datasetId = req.params.datasetId as string;
+    const adminId = res.locals.user.id;
+
+    const dataset = await prisma.dataset.findUnique({
+      where: { id: datasetId },
+      include: {
+        user: { select: { id: true, email: true, fullName: true } },
+      },
+    });
+
+    if (!dataset) {
+      return res.status(404).json({ message: "Dataset not found." });
+    }
+
+    // Cascade delete is handled by Prisma schema for linked relations
+    await prisma.dataset.delete({
+      where: { id: datasetId },
+    });
+
+    await prisma.securityEvent.create({
+      data: {
+        action: "RECORD_DELETED" as any,
+        userId: dataset.userId,
+        details: `Dataset "${dataset.originalName}" (${dataset.id}) removed by administrator ${adminId} on behalf of tenant ${dataset.user.email}`,
+      },
+    });
+
+    res.json({
+      message: `Dataset "${dataset.originalName}" was successfully removed.`,
+      datasetId,
+    });
+  } catch (error) {
+    console.error("adminDeleteDataset error:", error);
+    res.status(500).json({ message: "Failed to delete dataset" });
+  }
+}
+
+/**
+ * 4. 1-Click Business Dataset Purge (Bulk Clear All Datasets for a Tenant)
+ */
+export async function adminPurgeTenantDatasets(req: Request, res: Response) {
+  try {
+    const tenantId = req.params.tenantId as string;
+    const adminId = res.locals.user.id;
+
+    const tenant = await prisma.user.findUnique({
+      where: { id: tenantId },
+      select: { id: true, fullName: true, email: true },
+    });
+
+    if (!tenant) {
+      return res.status(404).json({ message: "Tenant business not found." });
+    }
+
+    const countBefore = await prisma.dataset.count({
+      where: { userId: tenantId },
+    });
+
+    if (countBefore === 0) {
+      return res.json({ message: "No active datasets found for this tenant.", count: 0 });
+    }
+
+    // Wipe all datasets for this specific tenant
+    await prisma.dataset.deleteMany({
+      where: { userId: tenantId },
+    });
+
+    await prisma.securityEvent.create({
+      data: {
+        action: "RECORD_DELETED" as any,
+        userId: tenantId,
+        details: `Administrator ${adminId} performed a bulk purge of ${countBefore} datasets for tenant business ${tenant.email} (${tenant.id})`,
+      },
+    });
+
+    res.json({
+      message: `Successfully purged all ${countBefore} datasets for tenant ${tenant.fullName || tenant.email}.`,
+      purgedCount: countBefore,
+    });
+  } catch (error) {
+    console.error("adminPurgeTenantDatasets error:", error);
+    res.status(500).json({ message: "Failed to execute bulk tenant dataset purge" });
+  }
+}
+
 
 

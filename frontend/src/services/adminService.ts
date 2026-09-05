@@ -297,6 +297,78 @@ export async function deleteUser(id: string) {
   });
 }
 
+// ==========================================
+// Tenant & Dataset Admin Operations
+// ==========================================
+
+export interface AdminDatasetItem {
+  id: string;
+  originalName: string;
+  filename: string;
+  size: number;
+  mimetype: string;
+  uploadedAt: string;
+  userId: string;
+  user: {
+    id: string;
+    fullName: string;
+    username: string;
+    email: string;
+    role: string;
+    status: string;
+    createdAt: string;
+  };
+  _count: {
+    chatSessions: number;
+    copilotInsights: number;
+  };
+}
+
+export interface TenantGroupedDataset {
+  tenantId: string;
+  businessName: string;
+  email: string;
+  role: string;
+  status: string;
+  memberSince: string;
+  datasetCount: number;
+  totalSizeBytes: number;
+  datasets: {
+    id: string;
+    originalName: string;
+    filename: string;
+    size: number;
+    mimetype: string;
+    uploadedAt: string;
+    _count: {
+      chatSessions: number;
+      copilotInsights: number;
+    };
+  }[];
+}
+
+export async function getAdminDatasets(search?: string): Promise<{ datasets: AdminDatasetItem[] }> {
+  const query = search ? `?search=${encodeURIComponent(search)}` : "";
+  return apiFetch(`/admin/datasets${query}`);
+}
+
+export async function getTenantDatasetsGrouped(): Promise<{ tenants: TenantGroupedDataset[] }> {
+  return apiFetch("/admin/datasets/tenants");
+}
+
+export async function adminDeleteDataset(datasetId: string): Promise<{ message: string; datasetId: string }> {
+  return apiFetch(`/admin/datasets/${datasetId}`, {
+    method: "DELETE",
+  });
+}
+
+export async function adminPurgeTenantDatasets(tenantId: string): Promise<{ message: string; purgedCount: number }> {
+  return apiFetch(`/admin/tenants/${tenantId}/datasets`, {
+    method: "DELETE",
+  });
+}
+
+
 
 
 

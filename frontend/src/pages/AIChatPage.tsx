@@ -49,6 +49,8 @@ export const AIChatPage: React.FC = () => {
   } = useAIChat();
 
   const [availableDatasets, setAvailableDatasets] = useState<DatasetOption[]>([]);
+  const [hasConnectedBusiness, setHasConnectedBusiness] = useState(false);
+  const [connectedBusinessName, setConnectedBusinessName] = useState<string | null>(null);
   const [selectedDatasetId, setSelectedDatasetId] = useState<string | undefined>(undefined);
   const [inputContent, setInputContent] = useState("");
   const [mobileSidebarOpen, setMobileSidebarOpen] = useState(false);
@@ -56,14 +58,37 @@ export const AIChatPage: React.FC = () => {
   const [editTitleValue, setEditTitleValue] = useState("");
   const textareaRef = useRef<HTMLTextAreaElement | null>(null);
 
-  // Load user's uploaded datasets to populate selector
+  // Load uploaded datasets and active business connection states
   useEffect(() => {
+    let activeConnectionsExist = false;
+
+    // 1. Fetch active integration connections
+    api
+      .get("/integrations/freshness")
+      .then((res: any) => {
+        const connections = res.data?.connections || [];
+        const active = connections.filter((c: any) => c.status === "ACTIVE");
+        if (active.length > 0) {
+          activeConnectionsExist = true;
+          setHasConnectedBusiness(true);
+          const name = active.length === 1 ? active[0].name : "Connected Business Systems";
+          setConnectedBusinessName(name);
+        } else {
+          setHasConnectedBusiness(false);
+        }
+      })
+      .catch(() => {
+        setHasConnectedBusiness(false);
+      });
+
+    // 2. Fetch uploaded datasets
     api
       .get("/datasets")
       .then((res: any) => {
         const list = res.data?.datasets || res.data || [];
         setAvailableDatasets(list);
-        if (list.length > 0 && !selectedDatasetId) {
+        // Only select an uploaded dataset by default if there is no connected business fallback
+        if (list.length > 0 && !selectedDatasetId && !activeConnectionsExist) {
           setSelectedDatasetId(list[0].id);
         }
       })
@@ -74,10 +99,8 @@ export const AIChatPage: React.FC = () => {
   useEffect(() => {
     if (activeSession?.dataset?.id) {
       setSelectedDatasetId(activeSession.dataset.id);
-    } else if (availableDatasets.length > 0 && !selectedDatasetId) {
-      setSelectedDatasetId(availableDatasets[0].id);
     }
-  }, [activeSession, availableDatasets]);
+  }, [activeSession]);
 
   const onSend = (textToSend?: string) => {
     const text = textToSend || inputContent;
@@ -249,7 +272,7 @@ export const AIChatPage: React.FC = () => {
               </div>
             </div>
 
-            {/* Dataset Selector Dropdown */}
+            {/* Context Selector: Explicit Uploaded Datasets or Connected Business Systems */}
             <div className="flex items-center gap-2">
               <Database size={15} className="text-cyan-400 hidden sm:inline" />
               <div className="relative">
@@ -258,9 +281,21 @@ export const AIChatPage: React.FC = () => {
                   onChange={(e) => setSelectedDatasetId(e.target.value || undefined)}
                   className="appearance-none bg-slate-900 border border-slate-700 hover:border-cyan-500/60 text-slate-200 text-xs rounded-xl px-3 py-1.5 pr-8 outline-none cursor-pointer focus:ring-1 focus:ring-cyan-500"
                 >
-                  <option value="" disabled>
-                    Select Active Dataset
-                  </option>
+                  {hasConnectedBusiness && (
+                    <option value="">
+                      🔗 {connectedBusinessName || "Connected Business Systems"}
+                    </option>
+                  )}
+                  {!hasConnectedBusiness && availableDatasets.length === 0 && (
+                    <option value="" disabled>
+                      No Data Context Available
+                    </option>
+                  )}
+                  {!hasConnectedBusiness && availableDatasets.length > 0 && (
+                    <option value="" disabled>
+                      Select Active Dataset
+                    </option>
+                  )}
                   {availableDatasets.map((ds) => (
                     <option key={ds.id} value={ds.id}>
                       {ds.originalName}
@@ -348,7 +383,7 @@ export const AIChatPage: React.FC = () => {
               <div className="flex justify-start">
                 <div className="bg-slate-900 border border-slate-800 text-slate-400 rounded-2xl rounded-bl-sm px-5 py-3.5 text-sm flex items-center gap-2">
                   <span className="w-2 h-2 rounded-full bg-cyan-400 animate-ping" />
-                  <span>Diralis AI is analyzing dataset context...</span>
+                  <span>Diralis AI is analyzing business context...</span>
                 </div>
               </div>
             )}
@@ -389,7 +424,11 @@ export const AIChatPage: React.FC = () => {
           ) : (
             <div className="flex flex-col h-full items-center justify-center p-8 text-center space-y-3 text-slate-500 text-sm">
               <Database size={32} className="text-slate-600" />
-              <p>Upload or select a dataset from the header dropdown to view proactive statistical insights and run what-if simulations.</p>
+              <p>
+                {hasConnectedBusiness
+                  ? "Connected Business Systems are active. Start chatting with Diralis AI to analyze your live store transactions."
+                  : "Upload or select a dataset from the header dropdown to view proactive statistical insights and run what-if simulations."}
+              </p>
             </div>
           )}
         </aside>
@@ -399,4 +438,5 @@ export const AIChatPage: React.FC = () => {
 };
 
 export default AIChatPage;
+
 
